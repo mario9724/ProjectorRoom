@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roomies - Salas Sociales</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Pantalla Registro -->
+  <div id="registro-screen" class="screen active">
+    <h1>¡Hola! ¿Cómo te llamas?</h1>
+    <input id="user_name" placeholder="Tu nombre" required>
+    <input id="pin" type="number" placeholder="PIN 4 dígitos" maxlength="4" required>
+    <input id="tmdb_api" placeholder="TMDB API Key" required>
+    <input id="filmoteca_type" placeholder="Tipo (movie/series)" required>
+    <input id="sala_name" placeholder="Nombre primera sala" required>
+    <button onclick="register()">Crear cuenta</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="screen">
+    <!-- Menú inferior -->
+    <nav class="bottom-nav">
+      <button onclick="showSection('busqueda')">🔍 Búsqueda</button>
+      <button onclick="showSection('filmoteca')">📚 Filmoteca</button>
+      <button onclick="showSection('social')">👥 Social</button>
+      <button onclick="showSection('repro')">▶️ Reproducción</button>
+    </nav>
+    <!-- Contenido dinámico -->
+    <div id="content"></div>
+    <button class="config-btn" onclick="showConfig()">⚙️</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
