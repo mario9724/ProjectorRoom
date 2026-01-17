@@ -5,17 +5,23 @@ const pool = require('../db');
 router.post('/create', async (req, res) => {
   const { roomName, hostUsername, manifest, sourceUrl, useHostSource } = req.body;
   
+  if (!roomName?.trim() || !hostUsername?.trim() || !sourceUrl?.trim()) {
+    return res.status(400).json({ success: false, error: 'Datos incompletos' });
+  }
+  
   try {
     const result = await pool.query(
       `INSERT INTO rooms (room_name, host_username, manifest, source_url, use_host_source) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [roomName, hostUsername, manifest, sourceUrl, useHostSource]
+       VALUES ($1, $2, $3, $4, $5) RETURNING id, room_name, source_url, use_host_source, created_at`,
+      [roomName.trim(), hostUsername.trim(), manifest, sourceUrl.trim(), useHostSource]
     );
     res.json({ success: true, projectorRoom: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, error: 'Error creando sala' });
   }
 });
+
 
 router.get('/:id', async (req, res) => {
   try {
