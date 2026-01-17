@@ -18,23 +18,24 @@
       <h2>🎭 Configuración de Sala</h2>
       <input type="text" id="roomName" placeholder="Nombre de tu ProjectorRoom" required maxlength="30">
       
-      <h2>🔑 Configuración TMDB</h2>
-      <input type="text" id="tmdbApiKey" placeholder="TMDB API Key (v3.auth.get-client-credentials)" required>
+      <h2>🔑 TMDB API Key</h2>
+      <input type="text" id="tmdbApiKey" placeholder="v3.auth.get-client-credentials" required>
       
-      <h2>🔌 Manifest/Addons (Opcional)</h2>
-      <textarea id="manifest" placeholder='{"debrid_service": "realdebrid", "addons": []}' rows="3"></textarea>
+      <h2>🔌 Stremio Manifest URL</h2>
+      <input type="url" id="manifestUrl" placeholder="https://torrentio.strem.fun/manifest.json" value="https://torrentio.strem.fun/manifest.json">
+      <small>Torrentio • Debridio • Juan Carlos</small>
       
       <div class="search-section">
         <h3>🔍 Buscar Películas/Series</h3>
         <div class="search-input-group">
-          <input type="text" id="searchQuery" placeholder="Escribe título (ej: Inception, The Office)" maxlength="100">
+          <input type="text" id="searchQuery" placeholder="Seven, Breaking Bad..." maxlength="100">
           <button onclick="searchContent()">🔎 Buscar</button>
         </div>
         <div id="searchResults" class="search-grid"></div>
       </div>
       
       <div id="sourceSelection" style="display:none;">
-        <h3>📺 Selecciona Fuente</h3>
+        <h3>📺 Fuentes Stremio</h3>
         <div id="sourcesList"></div>
       </div>
       
@@ -46,7 +47,7 @@
           </label>
           <label class="radio-option">
             <input type="radio" name="sourceMode" value="guest">
-            👥 Cada invitado aporta su fuente
+            👥 Invitados aportan fuente
           </label>
         </div>
         <button onclick="createRoom()" id="createBtn">🚀 Crear ProjectorRoom</button>
