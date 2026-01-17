@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProjectorRoom - Reproducción</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="room-container">
+    <div class="video-section">
+      <div id="videoPlayer"></div>
+      <div class="room-info">
+        <h2 id="roomName">ProjectorRoom</h2>
+        <button onclick="copyInviteLink()">📋 Invitar amigos</button>
+        <div id="sourceSelector" style="display:none;"></div>
+      </div>
+    </div>
+    
+    <div class="chat-section">
+      <h3>💬 Chat ProjectorRoom</h3>
+      <div id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Escribe aquí..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Enviar</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/chat.js"></script>
+</body>
+</html>
