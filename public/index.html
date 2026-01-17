@@ -12,36 +12,44 @@
     <p>Las mejores salas de cine sincronizadas</p>
     
     <div class="form-section">
-      <h2>Crear ProjectorRoom</h2>
+      <h2>👤 Tu Identidad</h2>
+      <input type="text" id="username" placeholder="Nombre de usuario" required maxlength="20">
       
-      <input type="text" id="username" placeholder="Tu nombre de usuario" required>
-      <input type="text" id="roomName" placeholder="Nombre de tu ProjectorRoom" required>
-      <textarea id="manifest" placeholder="Manifest (API keys, addons, TMDB...)" rows="4"></textarea>
+      <h2>🎭 Configuración de Sala</h2>
+      <input type="text" id="roomName" placeholder="Nombre de tu ProjectorRoom" required maxlength="30">
+      
+      <h2>🔑 Configuración TMDB</h2>
+      <input type="text" id="tmdbApiKey" placeholder="TMDB API Key (v3.auth.get-client-credentials)" required>
+      
+      <h2>🔌 Manifest/Addons (Opcional)</h2>
+      <textarea id="manifest" placeholder='{"debrid_service": "realdebrid", "addons": []}' rows="3"></textarea>
       
       <div class="search-section">
-        <h3>🔍 Buscar en TMDB</h3>
-        <input type="text" id="searchQuery" placeholder="Películas o series...">
-        <button onclick="searchContent()">Buscar</button>
-        <div id="searchResults"></div>
+        <h3>🔍 Buscar Películas/Series</h3>
+        <div class="search-input-group">
+          <input type="text" id="searchQuery" placeholder="Escribe título (ej: Inception, The Office)" maxlength="100">
+          <button onclick="searchContent()">🔎 Buscar</button>
+        </div>
+        <div id="searchResults" class="search-grid"></div>
       </div>
       
       <div id="sourceSelection" style="display:none;">
-        <h3>📺 Fuentes disponibles</h3>
+        <h3>📺 Selecciona Fuente</h3>
         <div id="sourcesList"></div>
       </div>
       
       <div class="host-options" style="display:none;">
         <div class="radio-group">
-          <label>
+          <label class="radio-option">
             <input type="radio" name="sourceMode" value="host" checked>
-            🎯 Mi fuente para todos
+            🎯 Usar MI fuente para todos
           </label>
-          <label>
+          <label class="radio-option">
             <input type="radio" name="sourceMode" value="guest">
-            👥 Invitados aportan fuente
+            👥 Cada invitado aporta su fuente
           </label>
         </div>
-        <button onclick="createRoom()">🚀 Crear ProjectorRoom</button>
+        <button onclick="createRoom()" id="createBtn">🚀 Crear ProjectorRoom</button>
       </div>
     </div>
   </div>
