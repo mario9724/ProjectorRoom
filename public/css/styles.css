@@ -1,4 +1,102 @@
-/* AÑADIR al CSS existente */
+:root {
+  --primary-color: #4f46e5;
+  --secondary-color: #7c3aed;
+  --accent-color: #06b6d4;
+  --bg-color: #0f0f23;
+  --surface-color: #1e1b4b;
+  --text-color: #f8fafc;
+  --border-color: #3730a3;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, var(--bg-color) 0%, #1e1b4b 100%);
+  color: var(--text-color);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+h1 + p {
+  text-align: center;
+  margin-bottom: 3rem;
+  opacity: 0.8;
+  font-size: 1.2rem;
+}
+
+.form-section {
+  background: var(--surface-color);
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 20px 25px -5px rgba(79, 70, 229, 0.3);
+  border: 1px solid var(--border-color);
+}
+
+input, textarea {
+  width: 100%;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-color);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+button {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.3s;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* CUADRÍCULA COMPACTA PELÍCULAS */
 .search-compact {
   display: flex;
   gap: 1rem;
@@ -17,7 +115,7 @@
   padding: 1rem;
   background: rgba(30, 27, 75, 0.5);
   border-radius: 16px;
-  border: 1px solid #3730a3;
+  border: 1px solid var(--border-color);
 }
 
 .movie-card {
@@ -27,11 +125,13 @@
   cursor: pointer;
   transition: all 0.2s;
   aspect-ratio: 2/3;
+  border: 2px solid transparent;
 }
 
-.movie-card:hover {
+.movie-card:hover, .movie-card.selected {
   transform: scale(1.05);
   box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
+  border-color: var(--primary-color);
 }
 
 .movie-poster {
@@ -52,25 +152,188 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 600;
 }
 
+/* SELECCIONADO */
 #selectedMovie {
   background: rgba(16, 185, 129, 0.2);
-  padding: 1rem;
+  padding: 1.5rem;
   border-radius: 12px;
-  margin: 1rem 0;
-  border: 2px solid #10b981;
+  margin: 1.5rem 0;
+  border: 2px solid var(--success-color);
+  text-align: center;
+}
+
+/* FUENTES STREMIO */
+.source-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.2rem;
+  background: var(--bg-color);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.source-option:hover, .source-option input:checked + div {
+  background: rgba(79, 70, 229, 0.2);
+  border-color: var(--primary-color);
+}
+
+.source-option input {
+  margin-top: 0.3rem;
+  accent-color: var(--primary-color);
 }
 
 .host-options {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--bg-color);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.host-options label {
+  display: block;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  background: rgba(79, 70, 229, 0.1);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.host-options label:hover {
+  background: rgba(79, 70, 229, 0.2);
+}
+
+/* TÍTULOS */
+h2 {
+  color: var(--accent-color);
+  margin: 2rem 0 1rem 0;
+  font-size: 1.4rem;
+  border-left: 4px solid var(--accent-color);
+  padding-left: 1rem;
+  font-weight: 600;
+}
+
+h3 {
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+small {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* SALA DE REPRODUCCIÓN */
+.room-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  height: 100vh;
+  padding: 1rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.video-section {
+  background: var(--surface-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+#videoPlayer video {
+  width: 100%;
+  height: 500px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 16px;
+  margin-bottom: 1rem;
+}
+
+.room-info {
   padding: 1rem;
   background: var(--bg-color);
   border-radius: 12px;
 }
 
-.host-options label {
-  display: block;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
+.chat-section {
+  background: var(--surface-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+}
+
+#chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--bg-color);
+  border-radius: 12px;
+  max-height: 500px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 1rem;
+}
+
+.chat-input input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* SCROLLBAR PERSONALIZADA */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .container { padding: 1rem; }
+  h1 { font-size: 2rem; }
+  .movie-grid { 
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    max-height: 300px;
+  }
+  .room-container { 
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+  #videoPlayer video { height: 300px; }
+}
+
+@media (max-width: 480px) {
+  .search-compact { flex-direction: column; }
+  .movie-grid { grid-template-columns: repeat(2, 1fr); }
 }
