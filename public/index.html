@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProjectorRoom - Crea tu sala</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 ProjectorRoom</h1>
+    <p>Las mejores salas de cine sincronizadas</p>
+    
+    <div class="form-section">
+      <h2>Crear ProjectorRoom</h2>
+      
+      <input type="text" id="username" placeholder="Tu nombre de usuario" required>
+      <input type="text" id="roomName" placeholder="Nombre de tu ProjectorRoom" required>
+      <textarea id="manifest" placeholder="Manifest (API keys, addons, TMDB...)" rows="4"></textarea>
+      
+      <div class="search-section">
+        <h3>🔍 Buscar en TMDB</h3>
+        <input type="text" id="searchQuery" placeholder="Películas o series...">
+        <button onclick="searchContent()">Buscar</button>
+        <div id="searchResults"></div>
+      </div>
+      
+      <div id="sourceSelection" style="display:none;">
+        <h3>📺 Fuentes disponibles</h3>
+        <div id="sourcesList"></div>
+      </div>
+      
+      <div class="host-options" style="display:none;">
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="sourceMode" value="host" checked>
+            🎯 Mi fuente para todos
+          </label>
+          <label>
+            <input type="radio" name="sourceMode" value="guest">
+            👥 Invitados aportan fuente
+          </label>
+        </div>
+        <button onclick="createRoom()">🚀 Crear ProjectorRoom</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/search.js"></script>
+</body>
+</html>
