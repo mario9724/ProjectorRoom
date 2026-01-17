@@ -1,4 +1,4 @@
-let selectedContent = null;
+let selectedMovie = null;
 let stremioSources = [];
 
 async function searchContent() {
@@ -6,145 +6,128 @@ async function searchContent() {
   const apiKey = document.getElementById('tmdbApiKey').value.trim();
   
   if (!query || !apiKey) {
-    alert('⚠️ Completa TMDB API Key y término de búsqueda');
+    alert('Completa API Key y búsqueda');
     return;
   }
   
-  const resultsDiv = document.getElementById('searchResults');
-  resultsDiv.innerHTML = '<div style="padding:2rem;text-align:center">🔄 Buscando...</div>';
+  const grid = document.getElementById('movieGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;padding:2rem;text-align:center">🔄 Buscando...</div>';
   
   try {
-    const response = await fetch(
-      `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=es-ES&include_adult=false`
+    const res = await fetch(
+      `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=es-ES`
     );
+    const data = await res.json();
     
-    if (!response.ok) throw new Error(`TMDB Error ${response.status}`);
-    
-    const data = await response.json();
-    displayResults(data.results.filter(item => 
+    const movies = data.results.filter(item => 
       item.media_type === 'movie' || item.media_type === 'tv'
-    ));
+    ).slice(0, 20);
     
-  } catch (error) {
-    resultsDiv.innerHTML = `
-      <div style="color:#ef4444;padding:2rem;text-align:center">
-        ❌ ${error.message}<br>
-        <small><a href="https://www.themoviedb.org/settings/api" target="_blank">Obtener API Key</a></small>
-      </div>
-    `;
+    grid.innerHTML = movies.map(item => {
+      const title = item.title || item.name;
+      const year = item.release_date?.slice(0,4) || item.first_air_date?.slice(0,4);
+      return `
+        <div class="movie-card" onclick="selectMovie(${item.id}, '${item.media_type}', '${title.replace(/'/g,"\\'")}', '${year}')">
+          <div class="movie-poster" style="${item.poster_path ? `background-image:url(https://image.tmdb.org/t/p/w154${item.poster_path})` : ''}"></div>
+          <div class="movie-info">
+            <h4>${title}</h4>
+            <p>${year}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+  } catch(e) {
+    grid.innerHTML = `<div style="color:#ef4444;padding:2rem">Error: ${e.message}</div>`;
   }
 }
 
-function displayResults(results) {
-  const container = document.getElementById('searchResults');
+function selectMovie(id, mediaType, title, year) {
+  selectedMovie = { id, mediaType, title, year };
   
-  if (results.length === 0) {
-    container.innerHTML = '<div style="padding:2rem;text-align:center">No hay resultados</div>';
+  document.getElementById('selectedMovie').innerHTML = `
+    <strong>✅ Seleccionado:</strong> ${title} (${year})<br>
+    <small>ID: ${id} | Tipo: ${mediaType}</small>
+  `;
+  document.getElementById('selectedMovie').style.display = 'block';
+  document.getElementById('manifestSection').style.display = 'block';
+  
+  // Ocultar secciones anteriores
+  document.getElementById('sourcesSection').style.display = 'none';
+}
+
+async function scrapeSources() {
+  if (!selectedMovie) {
+    alert('Selecciona película primero');
     return;
   }
   
-  container.innerHTML = results.slice(0, 12).map(item => {
-    const title = item.title || item.name;
-    const year = item.release_date?.slice(0,4) || item.first_air_date?.slice(0,4) || 'N/A';
-    const type = item.media_type === 'movie' ? '🎬 Película' : '📺 Serie';
-    
-    return `
-      <div class="result-item" onclick="selectContent(${item.id}, '${item.media_type}', '${title.replace(/'/g, "\\'")}', '${year}')">
-        <div class="result-poster" style="${item.poster_path ? `background-image:url(https://image.tmdb.org/t/p/w200${item.poster_path})` : ''}"></div>
-        <h4>${title}</h4>
-        <p>${type} • ${year}</p>
-      </div>
-    `;
-  }).join('');
-}
-
-async function selectContent(id, mediaType, title, year) {
-  selectedContent = { id, mediaType, title, year };
-  await loadSourcesFromManifest(id, mediaType, title);
-}
-
-async function loadSourcesFromManifest(tmdbId, mediaType, title) {
   const manifestUrl = document.getElementById('manifestUrl').value.trim();
-  const sourcesDiv = document.getElementById('sourcesList');
+  if (!manifestUrl) {
+    alert('Ingresa manifest URL');
+    return;
+  }
   
-  sourcesDiv.innerHTML = '<div>🔄 Cargando streams Stremio...</div>';
+  const sourcesDiv = document.getElementById('sourcesList');
+  sourcesDiv.innerHTML = '🔄 Raspando streams...';
+  document.getElementById('sourcesSection').style.display = 'block';
   
   try {
-    // 1. Obtener manifest
+    // 1. Manifest
     const manifestRes = await fetch(manifestUrl);
     const manifest = await manifestRes.json();
     
-    // 2. ID Stremio (TMDB → IMDb-like)
-    const stremioId = mediaType === 'movie' ? 
-      `tt${tmdbId.toString().padStart(7, '0')}` : 
-      `${mediaType}:${tmdbId}`;
+    // 2. Streams para este ID específico
+    const streamPath = manifest.resources.includes('stream') ? 
+      `/stream/${selectedMovie.media_type}/${selectedMovie.id}.json` : 
+      `/catalog/${selectedMovie.media_type}.json`;
     
-    // 3. Consultar streams
-    const streamUrl = manifestUrl.replace('/manifest.json', `/stream/${mediaType}/${tmdbId}.json`);
+    const streamUrl = manifestUrl.replace('/manifest.json', streamPath);
     const streamRes = await fetch(streamUrl);
-    const streamData = await streamRes.json();
+    const streams = await streamRes.json();
     
-    stremioSources = (streamData.streams || []).filter(s => s.url);
+    stremioSources = streams.streams?.filter(s => s.url && (s.url.startsWith('http') || s.url.includes('debrid'))) || [];
     
     if (stremioSources.length === 0) {
-      throw new Error(`${manifest.name || 'Addon'} no tiene streams`);
+      throw new Error('No streams disponibles');
     }
     
-    // 4. Mostrar
-    sourcesDiv.innerHTML = stremioSources.slice(0, 8).map((stream, i) => {
-      const quality = stream.title?.split(' - ')[0] || 'HD';
-      const seeds = stream.seeds || 0;
-      
+    // Mostrar fuentes
+    sourcesDiv.innerHTML = stremioSources.slice(0, 10).map((s, i) => {
+      const q = s.title?.match(/(\d{3,4}p)/)?.[1] || 'HD';
+      const seeds = s.seeds || 0;
       return `
         <label class="source-option">
-          <input type="radio" name="selectedSource" value="${stream.url}" ${i===0?'checked':''}>
+          <input type="radio" name="selectedSource" value="${s.url}" ${i===0?'checked':''}>
           <div>
-            <strong>${quality}</strong> 
-            ${stream.flag?` ${stream.flag}`:''}
-            <span style="color:${seeds>50?'#10b981':'#f59e0b'}"> ● ${seeds}</span><br>
-            <small>${stream.provider||'Stremio'} • ${stream.size||'N/A'}</small>
+            <strong>${q}</strong> 
+            ${s.flag?` ${s.flag}`:''}
+            <span style="color:${seeds>50?'#10b981':'#f59e0b'}">●${seeds}</span><br>
+            <small>${s.provider||'Stream'} ${s.size||''}</small>
           </div>
         </label>
       `;
     }).join('');
     
-    document.getElementById('sourceSelection').style.display = 'block';
-    document.querySelector('.host-options').style.display = 'block';
-    
-  } catch (error) {
-    sourcesDiv.innerHTML = `
-      <div style="color:#f59e0b;padding:1.5rem;border-radius:12px">
-        ⚠️ ${error.message}<br>
-        <button onclick="setDefaultManifest()" style="margin-top:0.5rem">Probar Torrentio</button>
-      </div>
-    `;
+  } catch(e) {
+    sourcesDiv.innerHTML = `<div style="color:#f59e0b">Error: ${e.message}</div>`;
   }
-}
-
-function setDefaultManifest() {
-  document.getElementById('manifestUrl').value = 'https://torrentio.strem.fun/manifest.json';
 }
 
 async function createRoom() {
-  if (!selectedContent || !stremioSources.length) {
-    return alert('⚠️ Selecciona película y fuente');
-  }
+  const sourceUrl = document.querySelector('input[name="selectedSource"]:checked')?.value;
+  if (!sourceUrl) return alert('Selecciona fuente');
   
   const username = document.getElementById('username').value.trim();
   const roomName = document.getElementById('roomName').value.trim();
   const tmdbKey = document.getElementById('tmdbApiKey').value.trim();
   const manifestUrl = document.getElementById('manifestUrl').value.trim();
   const useHostSource = document.querySelector('input[name="sourceMode"]:checked').value === 'host';
-  const sourceUrl = document.querySelector('input[name="selectedSource"]:checked')?.value;
-  
-  if (!username || !roomName || !sourceUrl) {
-    return alert('⚠️ Completa todos los campos');
-  }
   
   try {
-    const response = await fetch('/api/projectorrooms/create', {
+    const res = await fetch('/api/projectorrooms/create', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         roomName, hostUsername: username,
         manifest: JSON.stringify({tmdbKey, stremioManifest: manifestUrl}),
@@ -152,7 +135,7 @@ async function createRoom() {
       })
     });
     
-    const data = await response.json();
+    const data = await res.json();
     if (data.success) {
       window.location.href = `/room.html?id=${data.projectorRoom.id}&username=${encodeURIComponent(username)}`;
     }
@@ -160,9 +143,3 @@ async function createRoom() {
     alert('Error: ' + e.message);
   }
 }
-
-document.addEventListener('keypress', e => {
-  if (e.key === 'Enter' && document.activeElement.id === 'searchQuery') {
-    searchContent();
-  }
-});
