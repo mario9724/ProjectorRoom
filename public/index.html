@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProjectorRoom</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- PANTALLA 1: Selección de película -->
+    <div id="screen1" class="screen active">
+      <div class="header">
+        <div class="logo">📺 ProjectorRoom</div>
+        <p class="subtitle">Selecciona tu fuente de proyección</p>
+      </div>
+      
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar película o serie...">
+      </div>
+      
+      <div id="searchResults" class="movie-grid"></div>
+    </div>
+    
+    <!-- PANTALLA 2: Detalles y fuentes -->
+    <div id="screen2" class="screen">
+      <div class="header">
+        <div class="logo">📺 ProjectorRoom</div>
+        <p class="subtitle">Selecciona tu fuente de proyección</p>
+      </div>
+      
+      <div class="movie-details">
+        <div class="movie-poster-container">
+          <img id="moviePoster" src="" alt="Poster">
+          <button id="btnInviteRoomies" class="btn-outline">📋 Invitar Roomies</button>
+        </div>
+        
+        <div class="movie-info">
+          <h1 id="movieTitle">-</h1>
+          <div class="movie-meta">
+            <span id="movieRating">⭐ -</span>
+            <span id="movieYear">-</span>
+            <span id="movieType">-</span>
+          </div>
+          <p id="movieOverview">-</p>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h3>Configuración de la sala</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label>Tu nombre:</label>
+            <input type="text" id="username" placeholder="Anónimo" maxlength="20">
+          </div>
+          <div class="config-item">
+            <label>Nombre de la sala:</label>
+            <input type="text" id="roomName" placeholder="Sala de proyección" maxlength="30">
+          </div>
+          <div class="config-item">
+            <label>Tipo de proyección:</label>
+            <select id="projectorType">
+              <option value="public">Predeterminado</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <label>Modo roomies:</label>
+            <select id="sourceMode">
+              <option value="individual">Proyección individual</option>
+              <option value="host">Usar mi proyección</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sources-section">
+        <h3>Fuentes disponibles</h3>
+        <p class="sources-subtitle">Selecciona la mejor calidad para tu sala</p>
+        <div id="sourcesList" class="sources-list">
+          <div class="loading">🔍 Cargando fuentes...</div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button id="btnBack" class="btn-secondary">← Volver a búsqueda</button>
+        <button id="btnCreateRoom" class="btn-primary" disabled>▶️ Comenzar Proyección</button>
+      </div>
+    </div>
+    
+    <!-- PANTALLA 3: Sala creada -->
+    <div id="screen3" class="screen">
+      <div class="room-header">
+        <h2 id="roomTitleHeader">PROYECTANDO</h2>
+        <p id="roomSubtitle">en la sala de</p>
+      </div>
+      
+      <div class="room-poster-container">
+        <img id="roomPoster" src="" alt="Poster">
+      </div>
+      
+      <div class="room-actions">
+        <button id="btnStartProjection" class="btn-primary-large">▶️ Comenzar Proyección</button>
+        <button id="btnInvite" class="btn-outline-large">📋 Invitar a la Sala</button>
+      </div>
+      
+      <div class="room-info-card">
+        <h3 id="roomMovieTitle">-</h3>
+        <div class="room-meta">
+          <span id="roomYear">📅 -</span>
+          <span id="roomType">🎬 -</span>
+          <span id="roomHost">👤 Anfitrión: -</span>
+        </div>
+        <p id="roomOverview">-</p>
+      </div>
+      
+      <div class="chat-section">
+        <h4>💬 Chat de la Sala</h4>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input-container">
+          <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
+          <button id="btnSendMessage" class="btn-send">Enviar</button>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
