@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="room-container">
-    <!-- HEADER -->
+    <!-- HEADER CON TÍTULO -->
     <div class="room-header">
       <div class="room-title-section">
         <div class="room-poster-small">
@@ -16,74 +16,65 @@
         </div>
         <div class="room-title-info">
           <h1 id="roomTitle">Cargando...</h1>
+          <div class="room-users-count">👥 <span id="usersCount">0</span> roomies en la sala</div>
         </div>
       </div>
     </div>
 
-    <!-- CONTENIDO PRINCIPAL -->
-    <div class="room-content">
-      <!-- COLUMNA IZQUIERDA: Info + Acciones -->
-      <div class="room-left">
-        <div class="room-poster">
-          <img id="roomPoster" src="" alt="Poster">
-        </div>
-        
-        <div class="room-info">
-          <h2 id="movieTitle"></h2>
-          <div class="movie-meta">
-            <span id="movieYear"></span>
-            <span id="movieType"></span>
-            <span id="movieRating"></span>
-          </div>
-          <p id="movieOverview"></p>
-        </div>
-
-        <!-- ACCIONES PRINCIPALES -->
-        <div class="room-actions">
-          <button id="btnStartProjection" class="btn-primary-large">
-            ▶️ Comenzar Proyección
-          </button>
-          <button id="btnCopyInvite" class="btn-outline-large">
-            📋 Copiar enlace de invitación
-          </button>
-        </div>
-
-        <!-- BOTÓN CAMBIAR FUENTE -->
-        <button id="btnChangeSource" class="btn-change-source">
-          🔄 Cambiar fuente de reproducción
-        </button>
-
-        <!-- BOTONES DE INTERACCIÓN -->
-        <div class="interaction-buttons">
-          <button id="btnRate" class="btn-interaction">
-            ⭐ Calificar
-          </button>
-          <button id="btnReact" class="btn-interaction">
-            💬 Reaccionar
-          </button>
-          <button id="btnViewReactions" class="btn-interaction">
-            👁️ Ver reacciones
-          </button>
-        </div>
+    <!-- PÓSTER + INFORMACIÓN -->
+    <div class="movie-section">
+      <div class="room-poster">
+        <img id="roomPoster" src="" alt="Poster">
       </div>
-
-      <!-- COLUMNA DERECHA: Usuarios + Chat -->
-      <div class="room-right">
-        <!-- USUARIOS -->
-        <div class="users-section">
-          <h3>👥 Roomies en la sala (<span id="usersCount">0</span>)</h3>
-          <div id="usersList" class="users-list"></div>
+      
+      <div class="room-info">
+        <h2 id="movieTitle"></h2>
+        <div class="movie-meta">
+          <span id="movieYear"></span>
+          <span id="movieType"></span>
+          <span id="movieRating"></span>
         </div>
+        <p id="movieOverview"></p>
+      </div>
+    </div>
 
-        <!-- CHAT -->
-        <div class="chat-section">
-          <h3>💬 Chat de la sala</h3>
-          <div id="chatMessages" class="chat-messages"></div>
-          <div class="chat-input">
-            <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
-            <button id="btnSendChat" class="btn-send">Enviar</button>
-          </div>
-        </div>
+    <!-- BOTONES DE ACCIÓN -->
+    <div class="room-actions">
+      <button id="btnStartProjection" class="btn-primary-large">
+        ▶️ Comenzar Proyección
+      </button>
+      <button id="btnCopyInvite" class="btn-outline-large">
+        📋 Copiar enlace de invitación
+      </button>
+    </div>
+
+    <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
+    <div id="changeSourceSection" style="display: none;">
+      <button id="btnChangeSource" class="btn-change-source">
+        🔄 Cambiar fuente de reproducción
+      </button>
+    </div>
+
+    <!-- BOTONES DE INTERACCIÓN -->
+    <div class="interaction-buttons">
+      <button id="btnRate" class="btn-interaction">
+        ⭐ Calificar
+      </button>
+      <button id="btnReact" class="btn-interaction">
+        💬 Reaccionar
+      </button>
+      <button id="btnViewReactions" class="btn-interaction">
+        👁️ Ver reacciones
+      </button>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-section">
+      <h3>💬 Chat de la sala</h3>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
+        <button id="btnSendChat" class="btn-send">Enviar</button>
       </div>
     </div>
   </div>
@@ -139,9 +130,7 @@
     </div>
   </div>
 
-  <!-- CARGAR SOCKET.IO PRIMERO -->
   <script src="/socket.io/socket.io.js"></script>
-  <!-- LUEGO CARGAR ROOM.JS -->
   <script src="/js/room.js"></script>
 </body>
 </html>
