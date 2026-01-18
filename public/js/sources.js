@@ -18,21 +18,21 @@ window.addEventListener('load', async () => {
   
   try {
     selectedMovie = JSON.parse(decodeURIComponent(movieData));
-    await loadSessionData();
+    loadSessionData();
     renderMovie();
-    loadSources();
+    await loadSources();
   } catch (error) {
     console.error('Error:', error);
     alert('Error cargando datos');
   }
 });
 
-async function loadSessionData() {
+function loadSessionData() {
   // Datos del localStorage (onboarding)
   const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
   
-  document.getElementById('configUsername').textContent = session.username || '';
-  document.getElementById('configRoomName').textContent = session.roomName || '';
+  document.getElementById('configUsername').textContent = session.username || '-';
+  document.getElementById('configRoomName').textContent = session.roomName || '-';
   document.getElementById('configProjectorType').textContent = 
     session.projectorType === 'custom' ? 'Personalizado' : 'Predeterminado';
   document.getElementById('configSourceMode').textContent = 
@@ -51,9 +51,10 @@ function renderMovie() {
 }
 
 async function loadSources() {
-  const projectorType = JSON.parse(localStorage.getItem('projectorSession') || '{}').projectorType || 'public';
+  const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
+  const projectorType = session.projectorType || 'public';
   const manifestUrl = projectorType === 'custom' 
-    ? JSON.parse(localStorage.getItem('projectorSession') || '{}').customManifest
+    ? session.customManifest
     : PUBLIC_MANIFEST;
   
   try {
@@ -100,7 +101,7 @@ function renderSources() {
   }
   
   container.innerHTML = sources.map((source, index) => `
-    <div class="source-card" onclick="selectSource(${index})" ${index === selectedSource ? 'data-selected="true"' : ''}>
+    <div class="source-card" onclick="selectSource(${index})" data-index="${index}" ${selectedSource === index ? 'data-selected="true"' : ''}>
       <div class="source-title">${source.title}</div>
       <div class="source-meta">
         <span>📡 ${source.provider}</span>
@@ -118,8 +119,8 @@ function selectSource(index) {
 }
 
 async function createRoom() {
-  if (!selectedSource || sources.length === 0) {
-    alert('Selecciona una fuente');
+  if (selectedSource === null || sources.length === 0) {
+    alert('Por favor, selecciona una fuente');
     return;
   }
   
@@ -163,10 +164,3 @@ async function createRoom() {
 // EVENTOS
 document.getElementById('btnBack').onclick = () => window.history.back();
 document.getElementById('btnCreate').onclick = createRoom;
-
-// Tecla Enter en fuentes
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !document.getElementById('btnCreate').disabled) {
-    createRoom();
-  }
-});
