@@ -1,91 +1,112 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProjectorRoom - Crear Sala de Proyección</title>
-  <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-  <div class="container">
-    <h1>🎬 ProjectorRoom</h1>
-    <p>Crea tu sala de proyección compartida</p>
-    
-    <div class="form-section">
-      
-      <!-- ANFITRIÓN -->
-      <div class="form-group">
-        <label>👤 Nombre del Anfitrión</label>
-        <input type="text" id="username" placeholder="Tu nombre de usuario" required maxlength="20">
-      </div>
-      
-      <!-- SALA -->
-      <div class="form-group">
-        <label>🎭 Nombre de la Sala de Proyección</label>
-        <input type="text" id="roomName" placeholder="Nombre de tu sala" required maxlength="30">
-      </div>
-      
-      <!-- PROYECTOR -->
-      <div class="form-group">
-        <label>📽️ Proyector</label>
-        <div class="projector-options">
-          <label class="radio-item">
-            <input type="radio" name="projectorType" value="public" checked onchange="toggleCustomProjector()">
-            <span>🌐 Proyector Público (HTTP directo)</span>
-          </label>
-          <label class="radio-item">
-            <input type="radio" name="projectorType" value="custom" onchange="toggleCustomProjector()">
-            <span>🎯 Usar tu proyector preferido</span>
-          </label>
-        </div>
-        <input type="url" id="customManifest" placeholder="URL de tu manifest Stremio" style="display:none; margin-top:1rem;">
-      </div>
-      
-      <!-- MODO SALA -->
-      <div class="form-group">
-        <label>⚙️ Configuración de Proyectores</label>
-        <div class="radio-group">
-          <label class="radio-item">
-            <input type="radio" name="sourceMode" value="host" checked>
-            <span>📺 Compartir el proyector con invitados</span>
-          </label>
-          <label class="radio-item">
-            <input type="radio" name="sourceMode" value="guest">
-            <span>👥 Cada roomie aporta el suyo o usa el público</span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="separator"></div>
-      
-      <!-- BÚSQUEDA -->
-      <div class="form-group">
-        <label>🔍 Buscar Película/Serie</label>
-        <div class="search-box">
-          <input type="text" id="searchQuery" placeholder="Seven, Breaking Bad, Inception...">
-          <button onclick="searchContent()" class="btn-search">Buscar</button>
-        </div>
-      </div>
-      
-      <div id="searchResults"></div>
-      
-      <!-- SELECCIONADO -->
-      <div id="selectedContent" class="selected-box" style="display:none;">
-        <label>✅ Contenido Seleccionado</label>
-        <div id="contentCard"></div>
-        <button onclick="fetchSources()" class="btn-sources">🔎 Buscar Fuentes</button>
-      </div>
-      
-      <!-- FUENTES -->
-      <div id="sourcesSection" style="display:none;">
-        <div class="separator"></div>
-        <label class="section-title">📺 Fuentes Disponibles</label>
-        <div id="sourcesList"></div>
-      </div>
-      
-    </div>
-  </div>
+const express = require('express');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+const cors = require('cors');
+const axios = require('axios');
+require('dotenv').config();
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: { origin: '*' }
+});
+
+const db = require('./db');
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
+
+// 🆕 PROXY PARA VIDEO STREAMING (soluciona CORS)
+app.get('/proxy-stream', async (req, res) => {
+  const targetUrl = req.query.url;
   
-  <script src="js/search.js"></script>
-</body>
-</html>
+  if (!targetUrl) {
+    return res.status(400).send('URL requerida');
+  }
+  
+  try {
+    const response = await axios({
+      method: 'GET',
+      url: targetUrl,
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Range': req.headers.range || 'bytes=0-',
+        'Referer': 'https://webstreamr.hayd.uk/'
+      }
+    });
+    
+    // Headers para streaming
+    res.set({
+      'Content-Type': response.headers['content-type'] || 'video/mp4',
+      'Content-Length': response.headers['content-length'],
+      'Accept-Ranges': 'bytes',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    
+    if (req.headers.range) {
+      res.status(206);
+    }
+    
+    response.data.pipe(res);
+    
+  } catch (error) {
+    console.error('Proxy error:', error.message);
+    res.status(500).send('Error al cargar video');
+  }
+});
+
+// Rutas API
+const roomsRouter = require('./routes/rooms');
+app.use('/api/projectorrooms', roomsRouter);
+
+// WebSocket para chat
+const roomUsers = {}; // Seguimiento de usuarios por sala
+
+io.on('connection', (socket) => {
+  console.log('Usuario conectado:', socket.id);
+
+  socket.on('join-room', ({ roomId, username }) => {
+    socket.join(roomId);
+    socket.username = username;
+    socket.roomId = roomId;
+    
+    // Registrar usuario
+    if (!roomUsers[roomId]) roomUsers[roomId] = new Set();
+    roomUsers[roomId].add(username);
+    
+    // Notificar a todos
+    io.to(roomId).emit('user-joined', { 
+      username,
+      users: Array.from(roomUsers[roomId])
+    });
+    
+    console.log(`${username} se unió a ${roomId}`);
+  });
+
+  socket.on('chat-message', ({ roomId, message }) => {
+    io.to(roomId).emit('message', {
+      username: socket.username,
+      message,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  socket.on('disconnect', () => {
+    if (socket.roomId && socket.username) {
+      roomUsers[socket.roomId]?.delete(socket.username);
+      io.to(socket.roomId).emit('user-left', { 
+        username: socket.username,
+        users: Array.from(roomUsers[socket.roomId] || [])
+      });
+    }
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => {
+  console.log(`ProjectorRoom corriendo en puerto ${PORT}`);
+});
