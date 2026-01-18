@@ -1,53 +1,83 @@
-const express = require('express');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const cors = require('cors');
-require('dotenv').config();
-
-const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
-
-const db = require('./db');
-
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
-
-const roomsRouter = require('./routes/rooms');
-app.use('/api/projectorrooms', roomsRouter);
-
-const roomUsers = {};
-
-io.on('connection', (socket) => {
-  socket.on('join-room', ({ roomId, username }) => {
-    socket.join(roomId);
-    socket.username = username;
-    socket.roomId = roomId;
-    if (!roomUsers[roomId]) roomUsers[roomId] = new Set();
-    roomUsers[roomId].add(username);
-    io.to(roomId).emit('user-joined', { username, users: Array.from(roomUsers[roomId]) });
-  });
-
-  socket.on('chat-message', ({ roomId, message }) => {
-    io.to(roomId).emit('message', {
-      username: socket.username,
-      message,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  socket.on('disconnect', () => {
-    if (socket.roomId && socket.username) {
-      roomUsers[socket.roomId]?.delete(socket.username);
-      io.to(socket.roomId).emit('user-left', { 
-        username: socket.username,
-        users: Array.from(roomUsers[socket.roomId] || [])
-      });
-    }
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => console.log(`✅ ProjectorRoom en puerto ${PORT}`));
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProjectorRoom</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 ProjectorRoom</h1>
+    <p>Crea tu sala de proyección</p>
+    
+    <div class="form-section">
+      <div class="form-group">
+        <label>👤 Anfitrión</label>
+        <input type="text" id="username" placeholder="Tu nombre">
+      </div>
+      
+      <div class="form-group">
+        <label>🎭 Sala</label>
+        <input type="text" id="roomName" placeholder="Nombre de sala">
+      </div>
+      
+      <div class="form-group">
+        <label>📽️ Proyector</label>
+        <div class="projector-options">
+          <label class="radio-item">
+            <input type="radio" name="projectorType" value="public" checked>
+            <span>🌐 Público</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="projectorType" value="custom">
+            <span>🎯 Personalizado</span>
+          </label>
+        </div>
+        <input type="url" id="customManifest" placeholder="URL manifest" style="display:none;margin-top:1rem">
+      </div>
+      
+      <div class="form-group">
+        <label>⚙️ Modo</label>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="sourceMode" value="host" checked>
+            <span>📺 Compartir proyector</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="sourceMode" value="guest">
+            <span>👥 Cada uno el suyo</span>
+          </label>
+        </div>
+      </div>
+      
+      <div class="separator"></div>
+      
+      <div class="form-group">
+        <label>🔍 Buscar</label>
+        <div class="search-box">
+          <input type="text" id="searchQuery" placeholder="Título...">
+          <button onclick="searchContent()">Buscar</button>
+        </div>
+      </div>
+      
+      <div id="searchResults"></div>
+      
+      <div id="selectedContent" style="display:none">
+        <div class="separator"></div>
+        <label>✅ Seleccionado</label>
+        <div id="contentCard"></div>
+        <button onclick="fetchSources()">🔎 Buscar Fuentes</button>
+      </div>
+      
+      <div id="sourcesSection" style="display:none">
+        <div class="separator"></div>
+        <label>📺 Fuentes</label>
+        <div id="sourcesList"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/search.js"></script>
+</body>
+</html>
