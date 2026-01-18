@@ -1,42 +1,114 @@
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
 
+let currentStep = 1;
 let searchTimeout = null;
 let selectedMovie = null;
 let sources = [];
 let selectedSourceIndex = null;
 let socket = null;
 let currentRoomId = null;
+let roomConfig = {
+  username: '',
+  roomName: '',
+  projectorType: 'public',
+  customManifest: '',
+  shareMode: 'host'
+};
 
-// INICIALIZACIÓN
-document.addEventListener('DOMContentLoaded', function() {
-  // Búsqueda
-  document.getElementById('searchInput').addEventListener('input', function() {
+// NAVEGACIÓN ENTRE PASOS
+function goToStep(step) {
+  // Validaciones
+  if (step === 2) {
+    const username = document.getElementById('username').value.trim();
+    if (!username) {
+      alert('Por favor, escribe tu nombre');
+      return;
+    }
+    roomConfig.username = username;
+  }
+  
+  if (step === 3) {
+    const roomName = document.getElementById('roomName').value.trim();
+    if (!roomName) {
+      alert('Por favor, escribe el nombre de la sala');
+      return;
+    }
+    roomConfig.roomName = roomName;
+  }
+  
+  if (step === 4) {
+    roomConfig.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
+    if (roomConfig.projectorType === 'custom') {
+      roomConfig.customManifest = document.getElementById('customManifest').value.trim();
+      if (!roomConfig.customManifest) {
+        alert('Por favor, introduce la URL del manifest.json');
+        return;
+      }
+    }
+  }
+  
+  if (step === 5) {
+    roomConfig.shareMode = document.querySelector('input[name="shareMode"]:checked').value;
+  }
+  
+  // Ocultar paso actual
+  document.getElementById('step' + currentStep).classList.remove('active');
+  
+  // Mostrar nuevo paso
+  currentStep = step;
+  document.getElementById('step' + step).classList.add('active');
+  
+  // Inicializar búsqueda en paso 5
+  if (step === 5) {
+    setTimeout(initSearch, 100);
+  }
+}
+
+// SELECCIÓN DE TIPO DE PROYECTOR
+function selectProjectorType(type) {
+  document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
+    radio.checked = radio.value === type;
+  });
+  
+  document.querySelectorAll('.option-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  event.currentTarget.classList.add('selected');
+  
+  const customBox = document.getElementById('customManifestBox');
+  customBox.style.display = type === 'custom' ? 'block' : 'none';
+}
+
+// SELECCIÓN DE MODO COMPARTIR
+function selectShareMode(mode) {
+  document.querySelectorAll('input[name="shareMode"]').forEach(radio => {
+    radio.checked = radio.value === mode;
+  });
+  
+  document.querySelectorAll('.option-card').forEach((card, index) => {
+    card.classList.remove('selected');
+  });
+  event.currentTarget.classList.add('selected');
+}
+
+// INICIALIZAR BÚSQUEDA
+function initSearch() {
+  const input = document.getElementById('searchInput');
+  if (!input) return;
+  
+  input.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     const query = this.value.trim();
     
     if (query.length < 2) {
-      document.getElementById('searchResults').innerHTML = '';
+      document.getElementById('searchResults').innerHTML = '<div class="loading">Escribe al menos 2 caracteres...</div>';
       return;
     }
     
     searchTimeout = setTimeout(() => searchMovies(query), 500);
   });
-  
-  // Botones pantalla 2
-  document.getElementById('btnBack').onclick = goToScreen1;
-  document.getElementById('btnCreateRoom').onclick = createRoom;
-  document.getElementById('btnInviteRoomies').onclick = copyInviteLink;
-  
-  // Botones pantalla 3
-  document.getElementById('btnStartProjection').onclick = startProjection;
-  document.getElementById('btnInvite').onclick = copyRoomLink;
-  document.getElementById('btnSendMessage').onclick = sendChatMessage;
-  
-  document.getElementById('chatInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') sendChatMessage();
-  });
-});
+}
 
 // BUSCAR PELÍCULAS
 async function searchMovies(query) {
@@ -68,7 +140,6 @@ async function searchMovies(query) {
 function renderMovieGrid(movies) {
   const container = document.getElementById('searchResults');
   container.innerHTML = '';
-  container.className = 'movie-grid';
   
   movies.forEach(movie => {
     const card = document.createElement('div');
@@ -78,7 +149,7 @@ function renderMovieGrid(movies) {
     card.innerHTML = `
       <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" alt="${movie.title || movie.name}">
       <div class="movie-card-info">
-        <div class="movie-card-title">${movie.title || movie.name}</div>
+        <div class="movie-card-title">${escapeHtml(movie.title || movie.name)}</div>
         <div class="movie-card-meta">⭐ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
       </div>
     `;
@@ -108,34 +179,27 @@ async function selectMovie(movie) {
     selectedMovie.imdbId = data.imdb_id;
     
     if (!selectedMovie.imdbId) {
-      alert('No se encontró IMDb ID para esta película');
+      alert('No se encontró IMDb ID para este contenido');
       return;
     }
     
-    goToScreen2();
+    goToStep(6);
+    renderSelectedMovie();
     loadSources();
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
-    alert('Error obteniendo información de la película');
+    alert('Error obteniendo información');
   }
 }
 
-// PANTALLA 2
-function goToScreen2() {
-  document.getElementById('screen1').classList.remove('active');
-  document.getElementById('screen2').classList.add('active');
-  
-  document.getElementById('moviePoster').src = selectedMovie.poster;
-  document.getElementById('movieTitle').textContent = selectedMovie.title;
-  document.getElementById('movieRating').textContent = `⭐ ${selectedMovie.rating}`;
-  document.getElementById('movieYear').textContent = selectedMovie.year;
-  document.getElementById('movieType').textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
-  document.getElementById('movieOverview').textContent = selectedMovie.overview;
-}
-
-function goToScreen1() {
-  document.getElementById('screen2').classList.remove('active');
-  document.getElementById('screen1').classList.add('active');
+// RENDERIZAR PELÍCULA SELECCIONADA
+function renderSelectedMovie() {
+  document.getElementById('selectedPoster').src = selectedMovie.poster;
+  document.getElementById('selectedTitle').textContent = selectedMovie.title;
+  document.getElementById('selectedRating').textContent = `⭐ ${selectedMovie.rating}`;
+  document.getElementById('selectedYear').textContent = selectedMovie.year;
+  document.getElementById('selectedType').textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
+  document.getElementById('selectedOverview').textContent = selectedMovie.overview;
 }
 
 // CARGAR FUENTES
@@ -143,9 +207,8 @@ async function loadSources() {
   const container = document.getElementById('sourcesList');
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
   
-  const projectorType = document.getElementById('projectorType').value;
-  const manifestUrl = projectorType === 'custom' 
-    ? document.getElementById('customManifest')?.value 
+  const manifestUrl = roomConfig.projectorType === 'custom' 
+    ? roomConfig.customManifest 
     : PUBLIC_MANIFEST;
   
   try {
@@ -169,6 +232,7 @@ async function loadSources() {
     
     if (sources.length === 0) {
       container.innerHTML = '<div class="loading">😕 No se encontraron fuentes disponibles</div>';
+      document.getElementById('btnCreateRoom').disabled = true;
       return;
     }
     
@@ -176,6 +240,7 @@ async function loadSources() {
   } catch (error) {
     console.error('Error cargando fuentes:', error);
     container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
+    document.getElementById('btnCreateRoom').disabled = true;
   }
 }
 
@@ -211,20 +276,18 @@ function selectSource(index) {
 // CREAR SALA
 async function createRoom() {
   if (selectedSourceIndex === null) {
-    alert('Selecciona una fuente');
+    alert('Por favor, selecciona una fuente');
     return;
   }
   
-  const username = document.getElementById('username').value.trim() || 'Anónimo';
-  const roomName = document.getElementById('roomName').value.trim() || 'Sala de Proyección';
-  const sourceMode = document.getElementById('sourceMode').value;
-  
   const roomData = {
-    roomName: roomName,
-    hostUsername: username,
+    roomName: roomConfig.roomName,
+    hostUsername: roomConfig.username,
     manifest: JSON.stringify(selectedMovie),
     sourceUrl: sources[selectedSourceIndex].url,
-    useHostSource: sourceMode === 'host'
+    useHostSource: roomConfig.shareMode === 'host',
+    projectorType: roomConfig.projectorType,
+    customManifest: roomConfig.customManifest
   };
   
   try {
@@ -238,7 +301,9 @@ async function createRoom() {
     
     if (data.success) {
       currentRoomId = data.projectorRoom.id;
-      goToScreen3(data.projectorRoom, username);
+      goToStep(7);
+      renderRoom();
+      connectSocket();
     } else {
       alert('Error creando sala');
     }
@@ -248,22 +313,24 @@ async function createRoom() {
   }
 }
 
-// PANTALLA 3
-function goToScreen3(room, username) {
-  document.getElementById('screen2').classList.remove('active');
-  document.getElementById('screen3').classList.add('active');
-  
-  document.getElementById('roomTitleHeader').textContent = `PROYECTANDO "${selectedMovie.title}"`;
-  document.getElementById('roomSubtitle').textContent = `en la sala de ${room.hostUsername}`;
+// RENDERIZAR SALA
+function renderRoom() {
+  document.getElementById('roomTitle').textContent = `PROYECTANDO "${selectedMovie.title}"`;
+  document.getElementById('roomSubtitle').textContent = `en la sala de ${roomConfig.username}`;
   document.getElementById('roomPoster').src = selectedMovie.poster;
   document.getElementById('roomMovieTitle').textContent = selectedMovie.title;
   document.getElementById('roomYear').textContent = `📅 ${selectedMovie.year}`;
   document.getElementById('roomType').textContent = `🎬 ${selectedMovie.type === 'movie' ? 'Película' : 'Serie'}`;
-  document.getElementById('roomHost').textContent = `👤 Anfitrión: ${room.hostUsername}`;
   document.getElementById('roomOverview').textContent = selectedMovie.overview;
   
-  // Conectar Socket.IO
-  connectSocket(room.id, username);
+  // Botones
+  document.getElementById('btnStartProjection').onclick = startProjection;
+  document.getElementById('btnInviteRoomies').onclick = inviteRoomies;
+  document.getElementById('btnSendChat').onclick = sendChatMessage;
+  
+  document.getElementById('chatInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') sendChatMessage();
+  });
 }
 
 // ABRIR VLC
@@ -273,7 +340,6 @@ function startProjection() {
   const vlcUrl = `vlc://${sources[selectedSourceIndex].url}`;
   window.location.href = vlcUrl;
   
-  // Fallback
   setTimeout(() => {
     const link = document.createElement('a');
     link.href = sources[selectedSourceIndex].url;
@@ -282,24 +348,25 @@ function startProjection() {
   }, 1000);
 }
 
-// COPIAR ENLACE
-function copyInviteLink() {
-  alert('Función de invitación próximamente');
-}
-
-function copyRoomLink() {
+// INVITAR ROOMIES
+function inviteRoomies() {
   const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
-  navigator.clipboard.writeText(roomUrl).then(() => {
-    alert('✅ Enlace copiado al portapapeles');
-  }).catch(() => {
-    alert('Link: ' + roomUrl);
-  });
+  
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(roomUrl).then(() => {
+      alert('✅ Enlace de invitación copiado al portapapeles');
+    }).catch(() => {
+      prompt('Copia este enlace:', roomUrl);
+    });
+  } else {
+    prompt('Copia este enlace:', roomUrl);
+  }
 }
 
 // SOCKET.IO
-function connectSocket(roomId, username) {
+function connectSocket() {
   socket = io();
-  socket.emit('join-room', { roomId, username });
+  socket.emit('join-room', { roomId: currentRoomId, username: roomConfig.username });
   
   socket.on('user-joined', data => {
     addChatMessage('Sistema', `${data.user.username} se unió a la sala`, true);
