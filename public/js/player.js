@@ -19,21 +19,10 @@ async function loadRoom() {
       isHost = username === room.host_username;
       
       // Header
-      document.getElementById('roomTitle').textContent = 
-        `Proyectando "${m.title}" en ${room.room_name} de ${room.host_username}`;
-      
-      // Póster
-      const posterUrl = m.poster || 'https://via.placeholder.com/300x450/1e1b4b/06b6d4?text=Sin+Poster';
-      document.getElementById('moviePoster').style.backgroundImage = `url(${posterUrl})`;
-      
-      // Info
-      document.getElementById('movieTitle').textContent = m.title;
-      document.getElementById('movieMeta').innerHTML = `
-        <span>📅 ${m.year}</span>
-        <span>🎭 ${m.type === 'movie' ? 'Película' : 'Serie'}</span>
-        <span>👤 Anfitrión: ${room.host_username}</span>
-      `;
-      document.getElementById('movieSynopsis').textContent = m.overview || 'Sin descripción disponible';
+      const posterUrl = m.poster || '';
+      document.getElementById('headerPoster').style.backgroundImage = `url(${posterUrl})`;
+      document.getElementById('roomTitle').textContent = `PROYECTANDO ${m.title}`;
+      document.getElementById('roomSubtitle').textContent = `en la sala de ${room.host_username}`;
       
       // Botón invitar (solo host)
       if (isHost) {
@@ -42,7 +31,6 @@ async function loadRoom() {
       
       // Setup botones
       setupButtons();
-      
     }
   } catch (error) {
     console.error('Error cargando sala:', error);
@@ -60,13 +48,10 @@ function setupButtons() {
   // BOTÓN REPRODUCIR
   btnPlay.onclick = () => {
     if (isIOS) {
-      // iOS: VLC x-callback
       window.location.href = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(streamUrl)}`;
     } else if (isAndroid) {
-      // Android: Intent implícito
       window.location.href = streamUrl;
     } else {
-      // Desktop: Abrir directo (descarga o VLC si instalado)
       window.open(streamUrl, '_blank');
     }
   };
@@ -78,8 +63,8 @@ function setupButtons() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Únete a mi sala de proyección`,
-          text: `Estoy viendo una película. ¡Únete!`,
+          title: 'Únete a mi sala de proyección',
+          text: '¡Estoy viendo una película en ProjectorRoom!',
           url: inviteUrl
         });
       } else {
@@ -87,7 +72,6 @@ function setupButtons() {
         showToast('✅ Enlace copiado al portapapeles');
       }
     } catch (e) {
-      // Fallback manual
       prompt('Copia este enlace para invitar:', inviteUrl);
     }
   };
