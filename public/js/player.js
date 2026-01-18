@@ -1,5 +1,6 @@
 let player;
 let hls;
+let ffmpeg;
 
 async function loadRoom() {
   const params = new URLSearchParams(window.location.search);
@@ -23,137 +24,267 @@ async function loadRoom() {
       document.getElementById('movieMeta').innerHTML = 
         `<p>Año: ${m.year} | Anfitrión: ${data.projectorRoom.host_username}</p>`;
       
-      // BOTÓN VLC (siempre disponible)
-      setupVLCButton(streamUrl);
-      
-      // REPRODUCIR INTEGRADO
-      console.log('🎥 Stream URL:', streamUrl);
-      initPlayer(streamUrl);
+      // PROCESAR STREAM
+      handleStream(streamUrl, m.title);
     }
   } catch (error) {
     console.error('Error cargando sala:', error);
   }
 }
 
-function setupVLCButton(url) {
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const btnVLC = document.getElementById('btnVLC');
+async function handleStream(url, title) {
+  const format = detectFormat(url);
   
-  if (isIOS) {
-    btnVLC.href = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(url)}`;
-  } else {
-    btnVLC.href = url;
-    btnVLC.setAttribute('download', '');
+  console.log('🎥 Stream:', url);
+  console.log('📦 Formato:', format.name);
+  
+  // ════════════════════════════════════════════
+  // HLS (m3u8)
+  // ════════════════════════════════════════════
+  if (format.name === 'HLS') {
+    showPlayer();
+    loadHLS(url);
+    return;
   }
+  
+  // ════════════════════════════════════════════
+  // MP4 / WebM / DASH (nativos)
+  // ════════════════════════════════════════════
+  if (['MP4', 'WebM', 'DASH'].includes(format.name)) {
+    showPlayer();
+    loadVideoJS(url, format.type);
+    return;
+  }
+  
+  // ════════════════════════════════════════════
+  // MKV (convertir con FFmpeg)
+  // ════════════════════════════════════════════
+  if (format.name === 'MKV') {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // En móvil: ofrecer conversión o VLC
+    if (isMobile) {
+      const convert = confirm(
+        '⚠️ MKV detectado.\n\n' +
+        '✅ Convertir ahora (~30s, requiere datos)\n' +
+        '❌ Cancelar y usar VLC externo'
+      );
+      
+      if (!convert) {
+        showExternal(url, title, format);
+        return;
+      }
+    }
+    
+    // Convertir MKV
+    try {
+      const convertedUrl = await convertMKV(url);
+      showPlayer();
+      loadVideoJS(convertedUrl, 'video/mp4');
+    } catch (error) {
+      console.error('❌ Error conversión:', error);
+      showExternal(url, title, format);
+    }
+    return;
+  }
+  
+  // ════════════════════════════════════════════
+  // OTROS (AVI, etc) → VLC externo
+  // ════════════════════════════════════════════
+  showExternal(url, title, format);
 }
 
-function initPlayer(url) {
+function detectFormat(url) {
+  const u = url.toLowerCase();
+  
+  if (u.includes('.m3u8') || u.includes('m3u8')) {
+    return { name: 'HLS', type: 'application/x-mpegURL' };
+  }
+  if (u.includes('.mpd') || u.includes('mpd')) {
+    return { name: 'DASH', type: 'application/dash+xml' };
+  }
+  if (u.includes('.mp4') || u.includes('mp4')) {
+    return { name: 'MP4', type: 'video/mp4' };
+  }
+  if (u.includes('.webm') || u.includes('webm')) {
+    return { name: 'WebM', type: 'video/webm' };
+  }
+  if (u.includes('.mkv') || u.includes('mkv')) {
+    return { name: 'MKV', type: null };
+  }
+  if (u.includes('.avi') || u.includes('avi')) {
+    return { name: 'AVI', type: null };
+  }
+  
+  return { name: 'Desconocido', type: 'video/mp4' };
+}
+
+// ════════════════════════════════════════════
+// HLS.js
+// ════════════════════════════════════════════
+function loadHLS(url) {
   const video = document.getElementById('videoPlayer');
   
-  // Detectar formato
-  const isHLS = url.includes('.m3u8') || url.includes('m3u8');
-  const isMKV = url.includes('.mkv') || url.includes('mkv');
-  
-  if (isHLS) {
-    loadHLS(url, video);
-  } else {
-    loadDirect(url, video);
-  }
-}
-
-// ════════════════════════════════════════════
-// HLS.js (m3u8 - Debrid)
-// ════════════════════════════════════════════
-function loadHLS(url, video) {
   if (Hls.isSupported()) {
     hls = new Hls({
       enableWorker: true,
       lowLatencyMode: true,
-      backBufferLength: 90,
-      maxBufferLength: 30,
-      maxMaxBufferLength: 600,
-      xhrSetup: (xhr) => {
-        xhr.withCredentials = false;
-      }
+      maxBufferLength: 30
     });
     
     hls.loadSource(url);
     hls.attachMedia(video);
     
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      console.log('✅ HLS cargado');
-      initPlyr(video);
+      console.log('✅ HLS listo');
+      initControls();
     });
     
-    hls.on(Hls.Events.ERROR, (event, data) => {
-      console.error('❌ HLS Error:', data);
+    hls.on(Hls.Events.ERROR, (e, data) => {
       if (data.fatal) {
-        console.log('Error fatal - usar VLC');
+        console.error('❌ HLS fatal:', data);
       }
     });
     
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari nativo
     video.src = url;
-    initPlyr(video);
+    initControls();
   }
 }
 
 // ════════════════════════════════════════════
-// Directo (MP4, MKV, HTTP)
+// Video.js (MP4/DASH/WebM)
 // ════════════════════════════════════════════
-function loadDirect(url, video) {
-  video.src = url;
-  initPlyr(video);
-  
-  video.addEventListener('error', (e) => {
-    console.error('❌ Error video:', video.error);
+function loadVideoJS(url, type) {
+  player = videojs('videoPlayer', {
+    controls: true,
+    fluid: true,
+    preload: 'auto'
   });
+  
+  player.src({ src: url, type: type });
+  console.log('✅ Video.js listo');
 }
 
 // ════════════════════════════════════════════
-// Plyr (controles bonitos)
+// FFMPEG.WASM (convertir MKV → MP4)
 // ════════════════════════════════════════════
-function initPlyr(video) {
-  player = new Plyr(video, {
-    controls: [
-      'play-large',
-      'play',
-      'progress',
-      'current-time',
-      'duration',
-      'mute',
-      'volume',
-      'captions',
-      'settings',
-      'pip',
-      'airplay',
-      'fullscreen'
-    ],
-    settings: ['quality', 'speed', 'loop'],
-    speed: { 
-      selected: 1, 
-      options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] 
-    },
-    quality: {
-      default: 'auto',
-      options: ['auto']
-    },
-    ratio: '16:9',
-    fullscreen: { 
-      enabled: true, 
-      fallback: true, 
-      iosNative: true 
-    }
-  });
+async function convertMKV(url) {
+  showConversion();
   
-  player.on('ready', () => {
-    console.log('✅ Player listo');
-  });
+  try {
+    // Cargar FFmpeg
+    updateConversion('Cargando FFmpeg WASM...', 10);
+    const { FFmpeg } = FFmpegWASM;
+    const { fetchFile } = FFmpegUtil;
+    
+    ffmpeg = new FFmpeg();
+    
+    ffmpeg.on('log', ({ message }) => {
+      console.log(message);
+    });
+    
+    ffmpeg.on('progress', ({ progress }) => {
+      const percent = Math.round(progress * 100);
+      updateConversion(`Convirtiendo... ${percent}%`, 30 + (progress * 60));
+    });
+    
+    await ffmpeg.load({
+      coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js'
+    });
+    
+    // Descargar MKV
+    updateConversion('Descargando archivo...', 20);
+    const data = await fetchFile(url);
+    
+    // Escribir input
+    updateConversion('Preparando conversión...', 30);
+    await ffmpeg.writeFile('input.mkv', data);
+    
+    // REMUX (sin recodificar video, solo container)
+    updateConversion('Convirtiendo a MP4...', 40);
+    await ffmpeg.exec([
+      '-i', 'input.mkv',
+      '-c:v', 'copy',       // Copiar video sin recodificar
+      '-c:a', 'aac',        // Audio a AAC
+      '-movflags', '+faststart',
+      'output.mp4'
+    ]);
+    
+    // Leer output
+    updateConversion('Finalizando...', 90);
+    const output = await ffmpeg.readFile('output.mp4');
+    
+    // Crear blob URL
+    const blob = new Blob([output.buffer], { type: 'video/mp4' });
+    const blobUrl = URL.createObjectURL(blob);
+    
+    updateConversion('✅ Conversión completa', 100);
+    
+    setTimeout(() => {
+      document.getElementById('conversionLoader').style.display = 'none';
+    }, 500);
+    
+    return blobUrl;
+    
+  } catch (error) {
+    console.error('❌ Error FFmpeg:', error);
+    throw error;
+  }
+}
+
+function showConversion() {
+  document.getElementById('conversionLoader').style.display = 'block';
+  document.getElementById('playerContainer').style.display = 'none';
+  document.getElementById('externalContainer').style.display = 'none';
+}
+
+function updateConversion(text, percent) {
+  document.getElementById('conversionStatus').textContent = text;
+  document.getElementById('conversionProgress').style.width = percent + '%';
+}
+
+function showPlayer() {
+  document.getElementById('playerContainer').style.display = 'block';
+  document.getElementById('conversionLoader').style.display = 'none';
+  document.getElementById('externalContainer').style.display = 'none';
+}
+
+function showExternal(url, title, format) {
+  document.getElementById('externalContainer').style.display = 'block';
+  document.getElementById('conversionLoader').style.display = 'none';
+  document.getElementById('playerContainer').style.display = 'none';
   
-  player.on('error', (e) => {
-    console.error('❌ Player error:', e);
-  });
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  document.getElementById('formatInfo').textContent = 
+    `Formato ${format.name} - Mejor experiencia con reproductor externo:`;
+  
+  document.getElementById('btnInfuse').href = 
+    `infuse://x-callback-url/play?url=${encodeURIComponent(url)}`;
+  
+  document.getElementById('btnVLC').href = isIOS 
+    ? `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(url)}`
+    : url;
+  
+  document.getElementById('btnBrowser').href = url;
+  
+  document.getElementById('btnShare').onclick = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert('✅ Enlace copiado');
+      }
+    } catch (e) {}
+  };
+}
+
+function initControls() {
+  // Controles adicionales si usas HLS.js sin Video.js
+  const video = document.getElementById('videoPlayer');
+  video.controls = true;
 }
 
 loadRoom();
