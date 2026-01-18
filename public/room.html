@@ -3,32 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProjectorRoom - Sala de Proyección</title>
+  <title>ProjectorRoom - Sala</title>
   <link rel="stylesheet" href="css/styles.css">
   <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet">
 </head>
 <body>
   <div class="room-layout">
-    
-    <!-- BANNER TÍTULO -->
     <div class="room-header">
       <h1 id="roomTitle">Cargando...</h1>
     </div>
     
-    <!-- BANNER INFO PELÍCULA -->
     <div class="room-banner">
       <div class="banner-poster" id="moviePoster"></div>
       <div class="banner-info">
         <h2 id="movieTitle"></h2>
-        <p class="banner-synopsis" id="movieSynopsis"></p>
+        <p id="movieSynopsis"></p>
         <div id="movieMeta"></div>
       </div>
     </div>
     
-    <!-- VIDEO Y CHAT -->
     <div class="room-container">
       <div class="video-section">
-        <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto"></video>
+        <video id="videoPlayer" class="video-js" controls preload="auto"></video>
       </div>
       
       <div class="chat-section">
@@ -38,12 +34,11 @@
         </div>
         <div id="chatMessages"></div>
         <div class="chat-input">
-          <input type="text" id="messageInput" placeholder="Mensaje..." onkeypress="if(event.key==='Enter') sendMessage()">
+          <input type="text" id="messageInput" placeholder="Mensaje..." onkeypress="if(event.key==='Enter')sendMessage()">
           <button onclick="sendMessage()">Enviar</button>
         </div>
       </div>
     </div>
-    
   </div>
   
   <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
