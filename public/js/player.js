@@ -17,10 +17,25 @@ async function loadRoom() {
       document.getElementById('movieSynopsis').textContent = m.overview || 'Sin descripción';
       document.getElementById('movieMeta').innerHTML = `<p>Año: ${m.year} | Anfitrión: ${data.projectorRoom.host_username}</p>`;
       
+      // 🎬 PROXY para Debrid/HTTP
+      const videoSrc = `/proxy-stream?url=${encodeURIComponent(data.projectorRoom.source_url)}`;
+      
       player = videojs('videoPlayer', {
         controls: true,
         fluid: true,
-        sources: [{ src: `/proxy-stream?url=${encodeURIComponent(data.projectorRoom.source_url)}`, type: 'video/mp4' }]
+        preload: 'auto',
+        sources: [{ src: videoSrc, type: 'video/mp4' }]
+      });
+      
+      player.ready(() => console.log('✅ Reproductor listo'));
+      
+      player.on('error', () => {
+        document.querySelector('.video-section').innerHTML = `
+          <div style="padding:3rem;text-align:center;background:#1e1b4b;border-radius:16px">
+            <h3 style="color:#ef4444">❌ Error de reproducción</h3>
+            <p style="color:#cbd5e1">La fuente puede estar caída o requerir autenticación</p>
+          </div>
+        `;
       });
     }
   } catch (e) {
