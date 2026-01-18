@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala - ProjectorRoom</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
 </head>
 <body>
   <div class="room-layout">
@@ -24,51 +25,56 @@
     
     <div class="room-container">
       <div class="video-section">
-        <div class="player-card">
-          <h3>🎬 Reproducir en tu dispositivo</h3>
-          <p style="color:#94a3b8;margin-bottom:2rem">
-            Elige tu reproductor favorito o comparte a tu TV
-          </p>
-          
-          <div class="player-buttons">
-            <!-- iOS/Mac -->
-            <a id="btnInfuse" class="player-btn infuse" target="_blank">
-              <span class="btn-icon">📱</span>
-              <div>
-                <strong>Infuse</strong>
-                <small>iOS / Mac / Apple TV</small>
-              </div>
-            </a>
-            
-            <a id="btnVLC" class="player-btn vlc" target="_blank">
-              <span class="btn-icon">🎥</span>
-              <div>
-                <strong>VLC</strong>
-                <small>iOS / Android / PC</small>
-              </div>
-            </a>
-            
-            <!-- Navegador directo -->
-            <a id="btnBrowser" class="player-btn browser" target="_blank" rel="noopener">
-              <span class="btn-icon">🌐</span>
-              <div>
-                <strong>Navegador</strong>
-                <small>Abrir directo en pestaña</small>
-              </div>
-            </a>
-            
-            <!-- Share/Cast -->
-            <button id="btnShare" class="player-btn share">
-              <span class="btn-icon">📡</span>
-              <div>
-                <strong>Compartir / Cast</strong>
-                <small>Enviar a TV o copiar enlace</small>
-              </div>
-            </button>
-          </div>
-          
-          <div id="platformHint" class="hint"></div>
+        
+        <!-- CONTENEDOR DINÁMICO -->
+        <div id="playerContainer">
+          <video id="videoPlayer" controls playsinline crossorigin="anonymous"></video>
         </div>
+        
+        <!-- BOTONES EXTERNOS (si MKV o error) -->
+        <div id="externalButtons" style="display:none">
+          <div class="player-card">
+            <h3 id="fallbackTitle">🎬 Reproducir externamente</h3>
+            <p id="fallbackMsg" style="color:#94a3b8;margin-bottom:2rem"></p>
+            
+            <div class="player-buttons">
+              <a id="btnInfuse" class="player-btn infuse">
+                <span class="btn-icon">📱</span>
+                <div>
+                  <strong>Infuse</strong>
+                  <small>iOS / Mac / Apple TV</small>
+                </div>
+              </a>
+              
+              <a id="btnVLC" class="player-btn vlc">
+                <span class="btn-icon">🎥</span>
+                <div>
+                  <strong>VLC</strong>
+                  <small>iOS / Android / PC</small>
+                </div>
+              </a>
+              
+              <a id="btnBrowser" class="player-btn browser" target="_blank">
+                <span class="btn-icon">🌐</span>
+                <div>
+                  <strong>Navegador</strong>
+                  <small>Abrir en nueva pestaña</small>
+                </div>
+              </a>
+              
+              <button id="btnShare" class="player-btn share">
+                <span class="btn-icon">📡</span>
+                <div>
+                  <strong>Compartir / Cast</strong>
+                  <small>Enviar a TV</small>
+                </div>
+              </button>
+            </div>
+            
+            <div id="platformHint" class="hint"></div>
+          </div>
+        </div>
+        
       </div>
       
       <div class="chat-section">
@@ -86,6 +92,8 @@
     
   </div>
   
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
