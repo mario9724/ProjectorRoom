@@ -1,8 +1,13 @@
+const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
+const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
+
 let roomId = null;
 let socket = null;
 let username = '';
 let roomData = null;
 let isHost = false;
+let guestSources = [];
+let guestSelectedSourceIndex = null;
 
 // INICIALIZAR SALA
 window.addEventListener('load', async function() {
@@ -32,6 +37,18 @@ window.addEventListener('load', async function() {
     
     if (alreadyConfigured) {
       username = localStorage.getItem('projectorroom_username');
+      
+      // Si el anfitrión NO comparte fuente, verificar si el invitado ya seleccionó fuente
+      if (roomData.useHostSource === false) {
+        const hasSelectedSource = localStorage.getItem('projectorroom_guest_source_' + roomId);
+        
+        if (!hasSelectedSource) {
+          // Mostrar selector de fuentes
+          showGuestSourceSelector();
+          return;
+        }
+      }
+      
       initRoom();
     } else {
       showGuestConfig();
@@ -110,7 +127,7 @@ window.selectGuestProjector = function(type) {
 };
 
 // ENVIAR CONFIGURACIÓN DE INVITADO
-window.submitGuestConfig = function() {
+window.submitGuestConfig = async function() {
   const usernameInput = document.getElementById('guestUsername');
   username = usernameInput.value.trim();
   
@@ -118,6 +135,9 @@ window.submitGuestConfig = function() {
     alert('Por favor, escribe tu nombre');
     return;
   }
+  
+  localStorage.setItem('projectorroom_username', username);
+  localStorage.setItem('projectorroom_guest_configured_' + roomId, 'true');
   
   // Si necesita configurar proyector
   if (roomData.useHostSource === false) {
@@ -133,13 +153,143 @@ window.submitGuestConfig = function() {
     }
     
     localStorage.setItem('projectorroom_guest_projector_' + roomId, projectorType);
+    
+    // Ocultar formulario y mostrar selector de fuentes
+    document.querySelector('.guest-config-container').remove();
+    showGuestSourceSelector();
+  } else {
+    // Ocultar formulario y mostrar sala directamente
+    document.querySelector('.guest-config-container').remove();
+    document.querySelector('.room-container').style.display = 'block';
+    initRoom();
+  }
+};
+
+// MOSTRAR SELECTOR DE FUENTES PARA INVITADO
+async function showGuestSourceSelector() {
+  document.querySelector('.room-container').style.display = 'none';
+  
+  const movieData = JSON.parse(roomData.manifest);
+  
+  const selectorHTML = `
+    <div class="guest-source-container">
+      <div class="step-card wide">
+        <div class="movie-header">
+          <img src="${movieData.poster}" alt="Poster">
+          <div class="movie-info">
+            <h2>${escapeHtml(movieData.title)}</h2>
+            <div class="movie-meta">
+              <span>⭐ ${movieData.rating}</span>
+              <span>${movieData.year}</span>
+              <span>${movieData.type === 'movie' ? 'Película' : 'Serie'}</span>
+            </div>
+            <p>${escapeHtml(movieData.overview)}</p>
+          </div>
+        </div>
+        
+        <h3 class="section-title">🔍 Selecciona tu fuente</h3>
+        <p class="section-subtitle">Elige la mejor calidad para tu reproducción</p>
+        
+        <div id="guestSourcesList" class="sources-list">
+          <div class="loading">Cargando fuentes...</div>
+        </div>
+        
+        <button id="btnJoinRoom" class="btn-primary" disabled onclick="joinRoomWithSource()">
+          Unirse a la sala →
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', selectorHTML);
+  
+  // Cargar fuentes
+  await loadGuestSources(movieData);
+}
+
+// CARGAR FUENTES PARA INVITADO
+async function loadGuestSources(movieData) {
+  const container = document.getElementById('guestSourcesList');
+  container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
+  
+  const projectorType = localStorage.getItem('projectorroom_guest_projector_' + roomId);
+  const manifestUrl = projectorType === 'custom'
+    ? localStorage.getItem('projectorroom_guest_manifest_' + roomId)
+    : PUBLIC_MANIFEST;
+  
+  try {
+    const manifest = await fetch(manifestUrl).then(r => r.json());
+    const baseUrl = manifestUrl.replace('/manifest.json', '');
+    const streamType = movieData.type === 'movie' ? 'movie' : 'series';
+    const streamUrl = `${baseUrl}/stream/${streamType}/${movieData.imdbId}.json`;
+    
+    const res = await fetch(streamUrl);
+    if (!res.ok) throw new Error('No se encontraron fuentes');
+    
+    const data = await res.json();
+    
+    guestSources = (data.streams || [])
+      .filter(s => s && s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')))
+      .map(s => ({
+        url: s.url,
+        title: s.title || s.name || 'Stream',
+        provider: manifest.name || 'Addon'
+      }));
+    
+    if (guestSources.length === 0) {
+      container.innerHTML = '<div class="loading">😕 No se encontraron fuentes disponibles</div>';
+      return;
+    }
+    
+    renderGuestSources();
+  } catch (error) {
+    console.error('Error cargando fuentes:', error);
+    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
+  }
+}
+
+// RENDERIZAR FUENTES PARA INVITADO
+function renderGuestSources() {
+  const container = document.getElementById('guestSourcesList');
+  container.innerHTML = '';
+  
+  guestSources.forEach((source, index) => {
+    const card = document.createElement('div');
+    card.className = 'source-card';
+    card.onclick = () => selectGuestSource(index);
+    
+    card.innerHTML = `
+      <div class="source-title">${escapeHtml(source.title)}</div>
+      <div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>
+    `;
+    
+    container.appendChild(card);
+  });
+  
+  document.getElementById('btnJoinRoom').disabled = false;
+}
+
+// SELECCIONAR FUENTE DE INVITADO
+function selectGuestSource(index) {
+  guestSelectedSourceIndex = index;
+  
+  document.querySelectorAll('.source-card').forEach((card, i) => {
+    card.classList.toggle('selected', i === index);
+  });
+}
+
+// UNIRSE A LA SALA CON FUENTE SELECCIONADA
+window.joinRoomWithSource = function() {
+  if (guestSelectedSourceIndex === null) {
+    alert('Por favor, selecciona una fuente');
+    return;
   }
   
-  localStorage.setItem('projectorroom_username', username);
-  localStorage.setItem('projectorroom_guest_configured_' + roomId, 'true');
+  // Guardar fuente seleccionada
+  localStorage.setItem('projectorroom_guest_source_' + roomId, guestSources[guestSelectedSourceIndex].url);
   
-  // Ocultar formulario y mostrar sala
-  document.querySelector('.guest-config-container').remove();
+  // Ocultar selector y mostrar sala
+  document.querySelector('.guest-source-container').remove();
   document.querySelector('.room-container').style.display = 'block';
   
   initRoom();
@@ -248,24 +398,24 @@ function sendChatMessage() {
   }
 }
 
-// ABRIR VLC (MÉTODO ORIGINAL QUE FUNCIONABA)
+// ABRIR VLC (SOLO VLC, SIN DESCARGA)
 function startProjection() {
-  if (!roomData || !roomData.sourceUrl) {
+  let sourceUrl;
+  
+  // Determinar qué fuente usar
+  if (isHost || roomData.useHostSource) {
+    sourceUrl = roomData.sourceUrl;
+  } else {
+    sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
+  }
+  
+  if (!sourceUrl) {
     alert('No se encontró la fuente de reproducción');
     return;
   }
   
-  // Método original: cambiar location
-  const vlcUrl = `vlc://${roomData.sourceUrl}`;
-  window.location.href = vlcUrl;
-  
-  // Fallback después de 1 segundo
-  setTimeout(() => {
-    const link = document.createElement('a');
-    link.href = roomData.sourceUrl;
-    link.download = '';
-    link.click();
-  }, 1000);
+  // SOLO abrir VLC (sin fallback de descarga)
+  window.location.href = `vlc://${sourceUrl}`;
 }
 
 // COPIAR ENLACE DE INVITACIÓN
