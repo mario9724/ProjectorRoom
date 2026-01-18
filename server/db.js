@@ -5,7 +5,6 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Crear tablas
 const initDB = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS rooms (
@@ -28,6 +27,8 @@ const initDB = async () => {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+  
+  console.log('✅ Base de datos inicializada');
 };
 
 initDB().catch(console.error);
