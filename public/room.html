@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala - ProjectorRoom</title>
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
 </head>
 <body>
   <div class="room-layout">
@@ -26,16 +25,27 @@
     <div class="room-container">
       <div class="video-section">
         
-        <!-- REPRODUCTOR INTEGRADO -->
+        <!-- CONTENEDOR VLC -->
         <div id="playerContainer">
-          <video id="videoPlayer" controls playsinline crossorigin="anonymous"></video>
+          <canvas id="vlcCanvas" style="width:100%;max-height:70vh;background:#000;border-radius:12px"></canvas>
           
-          <!-- BOTÓN VLC FIJO (siempre visible) -->
-          <div class="vlc-button-container">
-            <a id="btnVLC" class="btn-vlc" target="_blank">
-              🎥 Abrir en VLC si falla
-            </a>
+          <!-- CONTROLES PERSONALIZADOS -->
+          <div class="vlc-controls">
+            <button id="btnPlay" class="ctrl-btn">▶️ Play</button>
+            <button id="btnPause" class="ctrl-btn">⏸️ Pausa</button>
+            <input type="range" id="seekBar" class="seek-bar" min="0" max="100" value="0">
+            <span id="timeDisplay" class="time-display">00:00 / 00:00</span>
+            <button id="btnFullscreen" class="ctrl-btn">⛶ Fullscreen</button>
           </div>
+          
+          <div id="loadingMsg" class="loading-msg">Cargando VLC...</div>
+        </div>
+        
+        <!-- BOTÓN VLC EXTERNO (fallback) -->
+        <div class="vlc-button-container">
+          <a id="btnVLC" class="btn-vlc" target="_blank">
+            🎥 Abrir en VLC externo
+          </a>
         </div>
         
       </div>
@@ -55,8 +65,8 @@
     
   </div>
   
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+  <!-- libVLC.js (WebAssembly) -->
+  <script src="https://cdn.jsdelivr.net/npm/@rdwebrtc/libvlc.js@0.1.10/dist/libvlc.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
