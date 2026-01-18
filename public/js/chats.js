@@ -1,105 +1,49 @@
 const socket = io();
-const urlParams = new URLSearchParams(window.location.search);
-const roomId = urlParams.get('id');
-let username = urlParams.get('username');
-
-// Si no hay username, pedirlo
-if (!username) {
-  username = prompt('Tu nombre de usuario:') || 'Anónimo';
-}
+const params = new URLSearchParams(window.location.search);
+const roomId = params.get('id');
+let username = params.get('username') || prompt('Nombre:') || 'Anónimo';
 
 const users = new Set();
-users.add(username);
 
-// Unirse a sala
 socket.emit('join-room', { roomId, username });
 
-// Usuario nuevo se une
-socket.on('user-joined', ({ username: newUser, users: allUsers }) => {
-  if (allUsers) {
-    users.clear();
-    allUsers.forEach(u => users.add(u));
-  } else {
-    users.add(newUser);
-  }
-  updateUsersList();
-  if (newUser !== username) {
-    addSystemMessage(`${newUser} se unió a la sala`);
-  }
+socket.on('user-joined', ({ username: u, users: all }) => {
+  if (all) { users.clear(); all.forEach(x => users.add(x)); }
+  else users.add(u);
+  updateUsers();
+  if (u !== username) addMsg(`${u} se unió`);
 });
 
-// Usuario sale
-socket.on('user-left', ({ username: leftUser, users: allUsers }) => {
-  if (allUsers) {
-    users.clear();
-    allUsers.forEach(u => users.add(u));
-  } else {
-    users.delete(leftUser);
-  }
-  updateUsersList();
-  addSystemMessage(`${leftUser} salió de la sala`);
+socket.on('user-left', ({ username: u, users: all }) => {
+  if (all) { users.clear(); all.forEach(x => users.add(x)); }
+  else users.delete(u);
+  updateUsers();
+  addMsg(`${u} salió`);
 });
 
-// Mensaje recibido
-socket.on('message', ({ username: sender, message, timestamp }) => {
-  const messagesDiv = document.getElementById('chatMessages');
-  const time = new Date(timestamp).toLocaleTimeString('es-ES', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-  
-  messagesDiv.innerHTML += `
-    <div class="message">
-      <strong style="color:${sender === username ? '#10b981' : '#06b6d4'}">${sender}:</strong> 
-      ${escapeHtml(message)}
-      <small style="opacity:0.5;margin-left:0.5rem;font-size:0.8rem">${time}</small>
-    </div>
-  `;
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+socket.on('message', ({ username: u, message: m, timestamp: t }) => {
+  const div = document.getElementById('chatMessages');
+  div.innerHTML += `<div class="message"><strong>${u}:</strong> ${m} <small>${new Date(t).toLocaleTimeString()}</small></div>`;
+  div.scrollTop = div.scrollHeight;
 });
 
-// Enviar mensaje
 function sendMessage() {
-  const input = document.getElementById('messageInput');
-  const message = input.value.trim();
-  
-  if (message) {
-    socket.emit('chat-message', { roomId, message });
-    input.value = '';
+  const inp = document.getElementById('messageInput');
+  if (inp.value.trim()) {
+    socket.emit('chat-message', { roomId, message: inp.value });
+    inp.value = '';
   }
 }
 
-// Actualizar lista usuarios
-function updateUsersList() {
-  const usersList = document.getElementById('usersList');
-  usersList.innerHTML = Array.from(users)
-    .map(u => `<span class="user-tag">${u === username ? '👑 ' + u : u}</span>`)
-    .join('');
+function updateUsers() {
+  users.add(username);
+  document.getElementById('usersList').innerHTML = Array.from(users).map(u => `<span class="user-tag">${u}</span>`).join('');
 }
 
-// Mensaje sistema
-function addSystemMessage(msg) {
-  const messagesDiv = document.getElementById('chatMessages');
-  const time = new Date().toLocaleTimeString('es-ES', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-  
-  messagesDiv.innerHTML += `
-    <div style="text-align:center;opacity:0.6;margin:0.75rem 0;font-size:0.9rem;color:#94a3b8">
-      ${msg} • ${time}
-    </div>
-  `;
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+function addMsg(txt) {
+  const div = document.getElementById('chatMessages');
+  div.innerHTML += `<div style="text-align:center;opacity:0.6;margin:0.5rem 0">${txt}</div>`;
+  div.scrollTop = div.scrollHeight;
 }
 
-// Escape HTML para seguridad
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// Inicializar
-updateUsersList();
-addSystemMessage('Conectado a la sala');
+updateUsers();
