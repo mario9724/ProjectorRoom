@@ -14,8 +14,12 @@ let allReactions = [];
 
 // INICIALIZAR SALA
 window.addEventListener('load', async function() {
+  console.log('🚀 Inicializando sala...');
+  
   const pathParts = window.location.pathname.split('/');
   roomId = pathParts[pathParts.length - 1];
+  
+  console.log('Room ID:', roomId);
   
   if (!roomId) {
     alert('ID de sala no válido');
@@ -23,37 +27,70 @@ window.addEventListener('load', async function() {
     return;
   }
   
-  await loadRoomData();
-  
-  isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
-  
-  if (isHost) {
-    username = sessionStorage.getItem('projectorroom_host_username_' + roomId);
-    initRoom();
-  } else {
-    const alreadyConfigured = localStorage.getItem('projectorroom_guest_configured_' + roomId) === 'true';
+  try {
+    await loadRoomData();
     
-    if (alreadyConfigured) {
-      username = localStorage.getItem('projectorroom_username');
-      
-      if (roomData.useHostSource === false) {
-        const hasSelectedSource = localStorage.getItem('projectorroom_guest_source_' + roomId);
-        
-        if (!hasSelectedSource) {
-          showGuestSourceSelector();
-          return;
-        }
-      }
-      
+    isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
+    console.log('Es anfitrión:', isHost);
+    
+    if (isHost) {
+      username = sessionStorage.getItem('projectorroom_host_username_' + roomId);
+      console.log('Username anfitrión:', username);
       initRoom();
     } else {
-      showGuestConfig();
+      const alreadyConfigured = localStorage.getItem('projectorroom_guest_configured_' + roomId) === 'true';
+      console.log('Ya configurado:', alreadyConfigured);
+      
+      if (alreadyConfigured) {
+        username = localStorage.getItem('projectorroom_username');
+        
+        if (roomData.useHostSource === false) {
+          const hasSelectedSource = localStorage.getItem('projectorroom_guest_source_' + roomId);
+          
+          if (!hasSelectedSource) {
+            showGuestSourceSelector();
+            return;
+          }
+        }
+        
+        initRoom();
+      } else {
+        showGuestConfig();
+      }
     }
+  } catch (error) {
+    console.error('Error inicializando:', error);
+    alert('Error al cargar la sala: ' + error.message);
   }
 });
 
+// CARGAR DATOS DE LA SALA
+async function loadRoomData() {
+  console.log('Cargando datos de sala:', roomId);
+  
+  try {
+    const res = await fetch(`/api/projectorrooms/${roomId}`);
+    const data = await res.json();
+    
+    console.log('Respuesta del servidor:', data);
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Sala no encontrada');
+    }
+    
+    roomData = data.projectorRoom;
+    console.log('Room data cargada:', roomData);
+    
+  } catch (error) {
+    console.error('Error cargando sala:', error);
+    throw error;
+  }
+}
+
 // MOSTRAR CONFIGURACIÓN DE INVITADO
 function showGuestConfig() {
+  console.log('Mostrando config de invitado');
+  
   document.querySelector('.room-container').style.display = 'none';
   
   let configHTML = `
@@ -278,60 +315,75 @@ window.joinRoomWithSource = function() {
 
 // INICIALIZAR SALA
 function initRoom() {
-  renderRoom();
-  connectSocket();
-  setupButtons();
-  loadRatings();
-  loadReactions();
-}
-
-async function loadRoomData() {
+  console.log('Inicializando sala principal');
+  
   try {
-    const res = await fetch(`/api/projectorrooms/${roomId}`);
-    const data = await res.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Sala no encontrada');
-    }
-    
-    roomData = data.projectorRoom;
-    
+    renderRoom();
+    connectSocket();
+    setupButtons();
+    loadRatings();
+    loadReactions();
+    console.log('✅ Sala inicializada correctamente');
   } catch (error) {
-    console.error('Error cargando sala:', error);
-    alert('Error: ' + error.message);
-    window.location.href = '/';
+    console.error('Error en initRoom:', error);
+    alert('Error inicializando sala: ' + error.message);
   }
 }
 
 // RENDERIZAR SALA
 function renderRoom() {
-  const movieData = JSON.parse(roomData.manifest);
+  console.log('Renderizando sala...');
   
-  // Header con póster pequeño
-  document.getElementById('roomPosterSmall').src = movieData.poster;
-  document.getElementById('roomTitle').textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
-  
-  // Info de película
-  document.getElementById('roomPoster').src = movieData.poster;
-  document.getElementById('movieTitle').textContent = movieData.title;
-  document.getElementById('movieYear').textContent = `📅 ${movieData.year}`;
-  document.getElementById('movieType').textContent = `🎬 ${movieData.type === 'movie' ? 'Película' : 'Serie'}`;
-  document.getElementById('movieRating').textContent = `⭐ ${movieData.rating}`;
-  document.getElementById('movieOverview').textContent = movieData.overview;
+  try {
+    const movieData = JSON.parse(roomData.manifest);
+    console.log('Movie ', movieData);
+    
+    // Header con póster pequeño
+    const roomPosterSmall = document.getElementById('roomPosterSmall');
+    const roomTitle = document.getElementById('roomTitle');
+    
+    if (roomPosterSmall) roomPosterSmall.src = movieData.poster;
+    if (roomTitle) roomTitle.textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
+    
+    // Info de película
+    const roomPoster = document.getElementById('roomPoster');
+    const movieTitle = document.getElementById('movieTitle');
+    const movieYear = document.getElementById('movieYear');
+    const movieType = document.getElementById('movieType');
+    const movieRating = document.getElementById('movieRating');
+    const movieOverview = document.getElementById('movieOverview');
+    
+    if (roomPoster) roomPoster.src = movieData.poster;
+    if (movieTitle) movieTitle.textContent = movieData.title;
+    if (movieYear) movieYear.textContent = `📅 ${movieData.year}`;
+    if (movieType) movieType.textContent = `🎬 ${movieData.type === 'movie' ? 'Película' : 'Serie'}`;
+    if (movieRating) movieRating.textContent = `⭐ ${movieData.rating}`;
+    if (movieOverview) movieOverview.textContent = movieData.overview;
+    
+    console.log('✅ Sala renderizada');
+  } catch (error) {
+    console.error('Error renderizando:', error);
+    throw error;
+  }
 }
 
 // CONECTAR SOCKET.IO
 function connectSocket() {
+  console.log('Conectando socket...');
+  
   socket = io();
   
   socket.emit('join-room', { roomId, username });
+  console.log('Emitido join-room:', { roomId, username });
   
   socket.on('user-joined', data => {
+    console.log('Usuario unido:', data);
     updateUsersList(data.users);
     addChatMessage('Sistema', `${data.user.username} se unió a la sala`, true);
   });
   
   socket.on('user-left', data => {
+    console.log('Usuario salió:', data);
     updateUsersList(data.users);
     addChatMessage('Sistema', `${data.username} salió de la sala`, true);
   });
@@ -341,30 +393,38 @@ function connectSocket() {
   });
   
   socket.on('rating-added', data => {
+    console.log('Rating añadido:', data);
     allRatings.push(data);
   });
   
   socket.on('reaction-added', data => {
+    console.log('Reacción añadida:', data);
     allReactions.push(data);
   });
 }
 
 function updateUsersList(users) {
-  document.getElementById('usersCount').textContent = users.length;
+  const usersCount = document.getElementById('usersCount');
+  const usersList = document.getElementById('usersList');
   
-  const container = document.getElementById('usersList');
-  container.innerHTML = '';
+  if (usersCount) usersCount.textContent = users.length;
   
-  users.forEach(user => {
-    const userEl = document.createElement('div');
-    userEl.className = 'user-item';
-    userEl.textContent = user.username;
-    container.appendChild(userEl);
-  });
+  if (usersList) {
+    usersList.innerHTML = '';
+    
+    users.forEach(user => {
+      const userEl = document.createElement('div');
+      userEl.className = 'user-item';
+      userEl.textContent = user.username;
+      usersList.appendChild(userEl);
+    });
+  }
 }
 
 function addChatMessage(username, message, isSystem) {
   const container = document.getElementById('chatMessages');
+  if (!container) return;
+  
   const messageEl = document.createElement('div');
   messageEl.className = isSystem ? 'chat-message chat-system' : 'chat-message';
   
@@ -380,6 +440,8 @@ function addChatMessage(username, message, isSystem) {
 
 function sendChatMessage() {
   const input = document.getElementById('chatInput');
+  if (!input) return;
+  
   const message = input.value.trim();
   
   if (message && socket && roomId) {
@@ -423,7 +485,6 @@ function copyInvite() {
 
 // CAMBIAR FUENTE
 function changeSource() {
-  // Limpiar fuente actual
   if (isHost) {
     sessionStorage.removeItem('projectorroom_is_host_' + roomId);
     sessionStorage.removeItem('projectorroom_host_username_' + roomId);
@@ -431,7 +492,6 @@ function changeSource() {
     localStorage.removeItem('projectorroom_guest_source_' + roomId);
   }
   
-  // Recargar página para volver a selector
   window.location.reload();
 }
 
@@ -443,13 +503,11 @@ function openRateModal() {
   const submitBtn = document.getElementById('btnSubmitRating');
   
   if (userRating !== null) {
-    // Ya calificó, mostrar calificaciones
     starsContainer.style.display = 'none';
     submitBtn.style.display = 'none';
     ratingsList.style.display = 'block';
     renderAllRatings();
   } else {
-    // No ha calificado, mostrar estrellas
     starsContainer.style.display = 'flex';
     submitBtn.style.display = 'block';
     ratingsList.style.display = 'none';
@@ -477,25 +535,30 @@ function setupRatingStars() {
     };
   });
   
-  document.getElementById('btnSubmitRating').onclick = function() {
-    if (selectedRating === 0) {
-      alert('Selecciona una calificación');
-      return;
-    }
-    
-    userRating = selectedRating;
-    
-    if (socket && roomId) {
-      socket.emit('add-rating', { roomId, username, rating: selectedRating });
-    }
-    
-    alert(`✅ Has calificado con ${selectedRating}/10 estrellas`);
-    closeRateModal();
-  };
+  const submitBtn = document.getElementById('btnSubmitRating');
+  if (submitBtn) {
+    submitBtn.onclick = function() {
+      if (selectedRating === 0) {
+        alert('Selecciona una calificación');
+        return;
+      }
+      
+      userRating = selectedRating;
+      
+      if (socket && roomId) {
+        socket.emit('add-rating', { roomId, username, rating: selectedRating });
+      }
+      
+      alert(`✅ Has calificado con ${selectedRating}/10 estrellas`);
+      closeRateModal();
+    };
+  }
 }
 
 function renderAllRatings() {
   const container = document.getElementById('ratingsContent');
+  if (!container) return;
+  
   container.innerHTML = '';
   
   if (allRatings.length === 0) {
@@ -514,17 +577,24 @@ function renderAllRatings() {
 }
 
 function closeRateModal() {
-  document.getElementById('modalRate').style.display = 'none';
+  const modal = document.getElementById('modalRate');
+  if (modal) modal.style.display = 'none';
 }
 
 // REACCIONAR
 function openReactModal() {
-  document.getElementById('modalReact').style.display = 'flex';
+  const modal = document.getElementById('modalReact');
+  if (modal) modal.style.display = 'flex';
 }
 
 function submitReaction() {
-  const time = document.getElementById('reactionTime').value.trim();
-  const message = document.getElementById('reactionMessage').value.trim();
+  const timeInput = document.getElementById('reactionTime');
+  const messageInput = document.getElementById('reactionMessage');
+  
+  if (!timeInput || !messageInput) return;
+  
+  const time = timeInput.value.trim();
+  const message = messageInput.value.trim();
   
   if (!time || !message) {
     alert('Completa todos los campos');
@@ -540,19 +610,27 @@ function submitReaction() {
 }
 
 function closeReactModal() {
-  document.getElementById('modalReact').style.display = 'none';
-  document.getElementById('reactionTime').value = '';
-  document.getElementById('reactionMessage').value = '';
+  const modal = document.getElementById('modalReact');
+  if (modal) modal.style.display = 'none';
+  
+  const timeInput = document.getElementById('reactionTime');
+  const messageInput = document.getElementById('reactionMessage');
+  
+  if (timeInput) timeInput.value = '';
+  if (messageInput) messageInput.value = '';
 }
 
 // VER REACCIONES
 function openViewReactionsModal() {
   renderAllReactions();
-  document.getElementById('modalViewReactions').style.display = 'flex';
+  const modal = document.getElementById('modalViewReactions');
+  if (modal) modal.style.display = 'flex';
 }
 
 function renderAllReactions() {
   const container = document.getElementById('reactionsContent');
+  if (!container) return;
+  
   container.innerHTML = '';
   
   if (allReactions.length === 0) {
@@ -561,9 +639,12 @@ function renderAllReactions() {
   }
   
   allReactions.sort((a, b) => {
-    const [minA, secA] = a.time.split(':').map(Number);
-    const [minB, secB] = b.time.split(':').map(Number);
-    return (minA * 60 + secA) - (minB * 60 + secB);
+    const parseTime = (time) => {
+      const parts = time.split(':').map(Number);
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return 0;
+    };
+    return parseTime(a.time) - parseTime(b.time);
   });
   
   allReactions.forEach(reaction => {
@@ -579,44 +660,60 @@ function renderAllReactions() {
 }
 
 function closeViewReactionsModal() {
-  document.getElementById('modalViewReactions').style.display = 'none';
+  const modal = document.getElementById('modalViewReactions');
+  if (modal) modal.style.display = 'none';
 }
 
 function loadRatings() {
-  // Aquí puedes cargar ratings del servidor si los guardas
   allRatings = [];
 }
 
 function loadReactions() {
-  // Aquí puedes cargar reacciones del servidor si las guardas
   allReactions = [];
 }
 
 // CONFIGURAR BOTONES
 function setupButtons() {
-  document.getElementById('btnStartProjection').onclick = startProjection;
-  document.getElementById('btnCopyInvite').onclick = copyInvite;
-  document.getElementById('btnChangeSource').onclick = changeSource;
-  document.getElementById('btnRate').onclick = openRateModal;
-  document.getElementById('btnReact').onclick = openReactModal;
-  document.getElementById('btnViewReactions').onclick = openViewReactionsModal;
-  document.getElementById('btnSendChat').onclick = sendChatMessage;
+  console.log('Configurando botones...');
   
-  document.getElementById('btnCancelRate').onclick = closeRateModal;
-  document.getElementById('btnSubmitReaction').onclick = submitReaction;
-  document.getElementById('btnCancelReact').onclick = closeReactModal;
-  document.getElementById('btnCloseReactions').onclick = closeViewReactionsModal;
+  const btnStartProjection = document.getElementById('btnStartProjection');
+  const btnCopyInvite = document.getElementById('btnCopyInvite');
+  const btnChangeSource = document.getElementById('btnChangeSource');
+  const btnRate = document.getElementById('btnRate');
+  const btnReact = document.getElementById('btnReact');
+  const btnViewReactions = document.getElementById('btnViewReactions');
+  const btnSendChat = document.getElementById('btnSendChat');
+  const btnCancelRate = document.getElementById('btnCancelRate');
+  const btnSubmitReaction = document.getElementById('btnSubmitReaction');
+  const btnCancelReact = document.getElementById('btnCancelReact');
+  const btnCloseReactions = document.getElementById('btnCloseReactions');
+  const chatInput = document.getElementById('chatInput');
   
-  document.getElementById('chatInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendChatMessage();
-  });
+  if (btnStartProjection) btnStartProjection.onclick = startProjection;
+  if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
+  if (btnChangeSource) btnChangeSource.onclick = changeSource;
+  if (btnRate) btnRate.onclick = openRateModal;
+  if (btnReact) btnReact.onclick = openReactModal;
+  if (btnViewReactions) btnViewReactions.onclick = openViewReactionsModal;
+  if (btnSendChat) btnSendChat.onclick = sendChatMessage;
+  if (btnCancelRate) btnCancelRate.onclick = closeRateModal;
+  if (btnSubmitReaction) btnSubmitReaction.onclick = submitReaction;
+  if (btnCancelReact) btnCancelReact.onclick = closeReactModal;
+  if (btnCloseReactions) btnCloseReactions.onclick = closeViewReactionsModal;
   
-  // Cerrar modales al hacer clic fuera
+  if (chatInput) {
+    chatInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendChatMessage();
+    });
+  }
+  
   window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
       event.target.style.display = 'none';
     }
   };
+  
+  console.log('✅ Botones configurados');
 }
 
 function escapeHtml(text) {
