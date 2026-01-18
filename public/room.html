@@ -26,28 +26,20 @@
     <div class="room-container">
       <div class="video-section">
         
-        <!-- LOADING MKV CONVERSION -->
-        <div id="conversionLoader" style="display:none">
-          <div class="conversion-card">
-            <div class="spinner"></div>
-            <h3>🔄 Convirtiendo MKV a formato compatible...</h3>
-            <p id="conversionStatus">Cargando FFmpeg...</p>
-            <div class="progress-bar">
-              <div id="conversionProgress" class="progress-fill"></div>
-            </div>
+        <!-- PLAYER INTEGRADO -->
+        <div id="playerContainer" style="display:none">
+          <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto"></video>
+          <div class="pip-controls">
+            <button id="btnPiP" class="pip-btn">📺 PiP</button>
+            <a id="btnVLC" class="pip-btn" target="_blank">🎥 VLC</a>
           </div>
         </div>
         
-        <!-- REPRODUCTOR INTEGRADO -->
-        <div id="playerContainer" style="display:none">
-          <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto"></video>
-        </div>
-        
-        <!-- BOTONES EXTERNOS (fallback) -->
+        <!-- EXTERNOS -->
         <div id="externalContainer" style="display:none">
           <div class="external-card">
-            <h3>🎥 Reproducir externamente</h3>
-            <p id="formatInfo" style="color:#94a3b8;margin:1rem 0"></p>
+            <h3>🎬 Reproducir externamente</h3>
+            <p id="formatInfo"></p>
             
             <div class="external-buttons">
               <a id="btnInfuse" class="ext-btn" target="_blank">
@@ -58,11 +50,11 @@
                 </div>
               </a>
               
-              <a id="btnVLC" class="ext-btn" target="_blank">
+              <a id="btnVLCExternal" class="ext-btn" target="_blank">
                 <span class="btn-icon">🎥</span>
                 <div>
                   <strong>VLC</strong>
-                  <small>iOS / Android / PC</small>
+                  <small>Todos los dispositivos</small>
                 </div>
               </a>
               
@@ -102,14 +94,8 @@
     
   </div>
   
-  <!-- PLAYERS -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-  
-  <!-- FFMPEG WASM (para MKV) -->
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
-  
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
