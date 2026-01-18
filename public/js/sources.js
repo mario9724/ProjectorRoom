@@ -19,20 +19,20 @@ async function init() {
   
   try {
     selectedMovie = JSON.parse(decodeURIComponent(movieData));
-    console.log('✅ Película cargada:', selectedMovie);
+    console.log('Película cargada:', selectedMovie);
     loadSessionData();
     renderMovie();
     await loadSources();
   } catch (error) {
-    console.error('❌ Error inicialización:', error);
-    alert('Error cargando datos: ' + error.message);
+    console.error('Error:', error);
+    alert('Error cargando datos');
   }
 }
 
 function loadSessionData() {
   const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
   
-  console.log('📦 Session ', session);
+  console.log('Session ', session);
   
   const usernameEl = document.getElementById('configUsername');
   const roomNameEl = document.getElementById('configRoomName');
@@ -65,7 +65,7 @@ async function loadSources() {
   const container = document.getElementById('sourcesList');
   
   if (!container) {
-    console.error('❌ No se encontró el contenedor sourcesList');
+    console.error('No se encontró sourcesList');
     return;
   }
   
@@ -75,139 +75,70 @@ async function loadSources() {
   const projectorType = session.projectorType || 'public';
   const manifestUrl = projectorType === 'custom' ? session.customManifest : PUBLIC_MANIFEST;
   
-  console.log('🔗 Manifest URL:', manifestUrl);
+  console.log('Manifest URL:', manifestUrl);
   
   try {
-    console.log('📡 Descargando manifest...');
     const manifest = await fetch(manifestUrl).then(r => r.json());
-    console.log('✅ Manifest:', manifest);
+    console.log('Manifest:', manifest);
     
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const imdbId = selectedMovie.imdbId;
     
-    console.log('🎬 IMDb ID:', imdbId);
-    
     if (!imdbId) {
-      throw new Error('No se encontró IMDb ID para esta película');
+      throw new Error('No IMDb ID');
     }
     
     const streamType = selectedMovie.type === 'movie' ? 'movie' : 'series';
     const streamUrl = baseUrl + '/stream/' + streamType + '/' + imdbId + '.json';
     
-    console.log('🔗 Stream URL:', streamUrl);
-    console.log('📡 Descargando streams...');
+    console.log('Stream URL:', streamUrl);
     
     const res = await fetch(streamUrl);
-    
-    if (!res.ok) {
-      throw new Error('Error HTTP ' + res.status + ': ' + res.statusText);
-    }
-    
     const data = await res.json();
     
-    console.log('📦 RESPUESTA COMPLETA:', JSON.stringify(data, null, 2));
-    console.log('📦 Tipo de data.streams:', typeof data.streams);
-    console.log('📦 ¿Es array?:', Array.isArray(data.streams));
+    console.log('RESPUESTA COMPLETA:', data);
+    console.log('Streams:', data.streams);
     
     if (data.streams) {
-      console.log('📦 Número de streams:', data.streams.length || Object.keys(data.streams).length);
-      console.log('📦 Primer stream:', data.streams[0] || data.streams[Object.keys(data.streams)[0]]);
+      console.log('Total streams:', data.streams.length);
+      console.log('Primer stream:', data.streams[0]);
     }
     
-    // Extraer streams
-    let allStreams = [];
-    
-    if (Array.isArray(data.streams)) {
-      allStreams = data.streams;
-      console.log('✅ Streams como array:', allStreams.length);
-    } else if (data.streams && typeof data.streams === 'object') {
-      allStreams = Object.values(data.streams);
-      console.log('✅ Streams como objeto convertido a array:', allStreams.length);
-    } else {
-      console.error('❌ No se encontró data.streams o tiene formato desconocido');
-    }
-    
-    console.log('🔍 Analizando cada stream:');
-    allStreams.forEach(function(s, i) {
-      console.log('Stream #' + i + ':', {
-        title: s.title || s.name,
-        url: s.url,
-        externalUrl: s.externalUrl,
-        infoHash: s.infoHash,
-        magnetLink: s.magnetLink,
-        completo: s
-      });
-    });
-    
-    // Filtrar streams HTTP
-    sources = allStreams
+    sources = (data.streams || [])
       .filter(function(s) {
-        if (!s) return false;
-        
-        const url = s.url || s.externalUrl;
-        const isHTTP = url && (url.startsWith('http://') || url.startsWith('https://'));
-        
-        console.log('Filtrando stream:', {
-          title: s.title || s.name,
-          url: url,
-          esHTTP: isHTTP
-        });
-        
-        return isHTTP;
+        if (!s || !s.url) return false;
+        return s.url.startsWith('http://') || s.url.startsWith('https://');
       })
       .map(function(s) {
         return {
-          url: s.url || s.externalUrl,
-          title: s.title || s.name || s.description || 'Stream',
+          url: s.url,
+          title: s.title || s.name || 'Stream',
           provider: manifest.name || 'Addon'
         };
       });
     
-    console.log('✅ FUENTES VÁLIDAS FINALES:', sources.length);
-    console.log('📋 Lista de fuentes:', sources);
+    console.log('Fuentes válidas:', sources.length);
+    console.log('Lista fuentes:', sources);
     
     if (sources.length === 0) {
-      console.error('❌ No se encontraron fuentes HTTP válidas');
-      
-      container.innerHTML = 
-        '<div class="sources-empty">' +
-        '<div class="empty-icon">😕</div>' +
-        '<p>No se encontraron fuentes HTTP</p>' +
-        '<p style="font-size:0.85rem;color:#666;margin-top:0.5rem;">Abre la consola (F12) para ver los detalles</p>' +
-        '</div>';
-      
-      const btnCreate = document.getElementById('btnCreate');
-      if (btnCreate) btnCreate.disabled = true;
-      
+      container.innerHTML = '<div class="sources-empty"><div class="empty-icon">😕</div><p>No se encontraron fuentes HTTP</p></div>';
+      document.getElementById('btnCreate').disabled = true;
       return;
     }
     
-    console.log('✅ Renderizando fuentes...');
     renderSources();
     
   } catch (error) {
-    console.error('❌ ERROR:', error);
-    console.error('Stack:', error.stack);
-    
-    container.innerHTML = 
-      '<div class="sources-empty">' +
-      '<div class="empty-icon">❌</div>' +
-      '<p>Error al cargar fuentes</p>' +
-      '<p style="font-size:0.85rem;color:#666;margin-top:0.5rem;">' + error.message + '</p>' +
-      '</div>';
-    
-    const btnCreate = document.getElementById('btnCreate');
-    if (btnCreate) btnCreate.disabled = true;
+    console.error('Error:', error);
+    container.innerHTML = '<div class="sources-empty"><div class="empty-icon">❌</div><p>Error: ' + error.message + '</p></div>';
+    document.getElementById('btnCreate').disabled = true;
   }
 }
 
 function renderSources() {
   const container = document.getElementById('sourcesList');
   
-  if (!container) {
-    console.error('❌ No se encontró contenedor sourcesList');
-    return;
-  }
+  if (!container) return;
   
   if (sources.length === 0) {
     container.innerHTML = '<div class="sources-empty"><div class="empty-icon">😕</div><p>No hay fuentes</p></div>';
@@ -227,17 +158,11 @@ function renderSources() {
   }
   
   container.innerHTML = html;
-  
-  const btnCreate = document.getElementById('btnCreate');
-  if (btnCreate) {
-    btnCreate.disabled = false;
-  }
-  
-  console.log('✅ Fuentes renderizadas correctamente');
+  document.getElementById('btnCreate').disabled = false;
 }
 
 function selectSource(index) {
-  console.log('👆 Fuente seleccionada:', index, sources[index]);
+  console.log('Seleccionada:', index);
   selectedSource = index;
   renderSources();
 }
@@ -266,7 +191,7 @@ async function createRoom() {
     useHostSource: session.sourceMode === 'host'
   };
   
-  console.log('🚀 Creando sala:', roomData);
+  console.log('Creando sala:', roomData);
   
   try {
     const res = await fetch('/api/projectorrooms/create', {
@@ -277,16 +202,14 @@ async function createRoom() {
     
     const data = await res.json();
     
-    console.log('✅ Respuesta servidor:', data);
-    
     if (data.success) {
       window.location.href = '/room.html?id=' + data.projectorRoom.id + '&username=' + encodeURIComponent(session.username || 'Anónimo');
     } else {
-      alert('Error: ' + (data.message || 'No se pudo crear la sala'));
+      alert('Error: ' + (data.message || 'No se pudo crear'));
     }
   } catch (error) {
-    console.error('❌ Error creando sala:', error);
-    alert('Error creando sala: ' + error.message);
+    console.error('Error:', error);
+    alert('Error creando sala');
   }
 }
 
@@ -300,13 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const btnBack = document.getElementById('btnBack');
   const btnCreate = document.getElementById('btnCreate');
   
-  if (btnBack) {
-    btnBack.onclick = function() {
-      window.history.back();
-    };
-  }
-  
-  if (btnCreate) {
-    btnCreate.onclick = createRoom;
-  }
+  if (btnBack) btnBack.onclick = function() { window.history.back(); };
+  if (btnCreate) btnCreate.onclick = createRoom;
 });
