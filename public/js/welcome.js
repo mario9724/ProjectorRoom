@@ -6,10 +6,8 @@ let currentIndex = 0;
 let selectedMovie = null;
 
 function goToStep(step) {
-  // Obtener sesión actual
   const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
   
-  // PASO 1 → 2: Guardar username
   if (step === 2) {
     const username = document.getElementById('username').value.trim();
     if (!username) {
@@ -18,7 +16,6 @@ function goToStep(step) {
     session.username = username;
   }
   
-  // PASO 2 → 3: Guardar roomName
   if (step === 3) {
     const roomName = document.getElementById('roomName').value.trim();
     if (!roomName) {
@@ -27,29 +24,28 @@ function goToStep(step) {
     session.roomName = roomName;
   }
   
-  // PASO 3 → 4: Guardar projectorType
   if (step === 4) {
     session.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
     if (session.projectorType === 'custom') {
-      session.customManifest = document.getElementById('customManifest').value.trim();
+      const customUrl = document.getElementById('customManifest').value.trim();
+      if (!customUrl) {
+        return alert('Por favor, introduce la URL del manifest');
+      }
+      session.customManifest = customUrl;
     }
   }
   
-  // PASO 4 → 5: Guardar sourceMode
   if (step === 5) {
     session.sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
   }
   
-  // Guardar en localStorage
   localStorage.setItem('projectorSession', JSON.stringify(session));
   console.log('Session guardada:', session);
   
-  // Cambiar de paso
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  document.getElementById(`step${step}`).classList.add('active');
+  document.getElementById('step' + step).classList.add('active');
 }
 
-// TOGGLE CUSTOM MANIFEST
 document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
     document.getElementById('customManifestInput').style.display = 
@@ -57,7 +53,6 @@ document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
   });
 });
 
-// BÚSQUEDA
 let searchTimeout;
 document.getElementById('searchQuery').addEventListener('input', (e) => {
   clearTimeout(searchTimeout);
@@ -73,7 +68,7 @@ document.getElementById('searchQuery').addEventListener('input', (e) => {
 
 async function searchMovies(query) {
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=es-ES`);
+    const res = await fetch('https://api.themoviedb.org/3/search/multi?api_key=' + TMDB_API_KEY + '&query=' + encodeURIComponent(query) + '&language=es-ES');
     const data = await res.json();
     
     searchResults = data.results
@@ -97,59 +92,49 @@ async function searchMovies(query) {
 }
 
 function showEmptyState() {
-  document.getElementById('searchResults').innerHTML = `
-    <div class="carousel-empty">
-      <div class="empty-icon">🎬</div>
-      <p>Escribe algo para comenzar la búsqueda</p>
-    </div>
-  `;
+  document.getElementById('searchResults').innerHTML = 
+    '<div class="carousel-empty">' +
+    '<div class="empty-icon">🎬</div>' +
+    '<p>Escribe algo para comenzar la búsqueda</p>' +
+    '</div>';
 }
 
 function renderCarousel() {
   const container = document.getElementById('searchResults');
   
   if (searchResults.length === 0) {
-    container.innerHTML = `
-      <div class="carousel-empty">
-        <div class="empty-icon">😕</div>
-        <p>No se encontraron resultados</p>
-      </div>
-    `;
+    container.innerHTML = 
+      '<div class="carousel-empty">' +
+      '<div class="empty-icon">😕</div>' +
+      '<p>No se encontraron resultados</p>' +
+      '</div>';
     return;
   }
   
   const movie = searchResults[currentIndex];
   
-  container.innerHTML = `
-    <div class="carousel-item active">
-      <div class="movie-card">
-        <div class="movie-poster-container" style="background-image:url(${movie.poster})">
-          <div class="movie-rating">⭐ ${movie.rating}</div>
-        </div>
-        <div class="movie-info">
-          <h3 class="movie-title">${movie.title}</h3>
-          <div class="movie-meta">
-            <span>${movie.type === 'movie' ? '🎬 Película' : '📺 Serie'}</span>
-            <span>📅 ${movie.year}</span>
-          </div>
-          <p class="movie-synopsis">${movie.overview}</p>
-          <button onclick="selectMovie()" class="btn-select">Seleccionar y buscar fuentes</button>
-        </div>
-      </div>
-      
-      <div class="carousel-controls">
-        <button class="carousel-btn" onclick="prevMovie()" ${currentIndex === 0 ? 'disabled' : ''}>
-          ← Anterior
-        </button>
-        <div class="carousel-indicator">
-          ${currentIndex + 1} de ${searchResults.length}
-        </div>
-        <button class="carousel-btn" onclick="nextMovie()" ${currentIndex === searchResults.length - 1 ? 'disabled' : ''}>
-          Siguiente →
-        </button>
-      </div>
-    </div>
-  `;
+  container.innerHTML = 
+    '<div class="carousel-item active">' +
+    '<div class="movie-card">' +
+    '<div class="movie-poster-container" style="background-image:url(' + movie.poster + ')">' +
+    '<div class="movie-rating">⭐ ' + movie.rating + '</div>' +
+    '</div>' +
+    '<div class="movie-info">' +
+    '<h3 class="movie-title">' + movie.title + '</h3>' +
+    '<div class="movie-meta">' +
+    '<span>' + (movie.type === 'movie' ? '🎬 Película' : '📺 Serie') + '</span>' +
+    '<span>📅 ' + movie.year + '</span>' +
+    '</div>' +
+    '<p class="movie-synopsis">' + movie.overview + '</p>' +
+    '<button onclick="selectMovie()" class="btn-select">Seleccionar y buscar fuentes</button>' +
+    '</div>' +
+    '</div>' +
+    '<div class="carousel-controls">' +
+    '<button class="carousel-btn" onclick="prevMovie()" ' + (currentIndex === 0 ? 'disabled' : '') + '>← Anterior</button>' +
+    '<div class="carousel-indicator">' + (currentIndex + 1) + ' de ' + searchResults.length + '</div>' +
+    '<button class="carousel-btn" onclick="nextMovie()" ' + (currentIndex === searchResults.length - 1 ? 'disabled' : '') + '>Siguiente →</button>' +
+    '</div>' +
+    '</div>';
 }
 
 function prevMovie() {
@@ -169,20 +154,42 @@ function nextMovie() {
 async function selectMovie() {
   selectedMovie = searchResults[currentIndex];
   
+  console.log('Película seleccionada:', selectedMovie);
+  
+  // Mostrar loading
+  const container = document.getElementById('searchResults');
+  container.innerHTML = 
+    '<div class="carousel-empty">' +
+    '<div class="empty-icon">⏳</div>' +
+    '<p>Obteniendo información...</p>' +
+    '</div>';
+  
   try {
     const ep = selectedMovie.type === 'movie' ? 'movie' : 'tv';
-    const [details, externalIds] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/${ep}/${selectedMovie.id}?api_key=${TMDB_API_KEY}&language=es-ES`).then(r => r.json()),
-      fetch(`https://api.themoviedb.org/3/${ep}/${selectedMovie.id}/external_ids?api_key=${TMDB_API_KEY}`).then(r => r.json())
-    ]);
+    
+    console.log('Obteniendo IMDb ID para:', ep, selectedMovie.id);
+    
+    const externalIds = await fetch('https://api.themoviedb.org/3/' + ep + '/' + selectedMovie.id + '/external_ids?api_key=' + TMDB_API_KEY)
+      .then(r => r.json());
+    
+    console.log('External IDs recibidos:', externalIds);
     
     selectedMovie.imdbId = externalIds.imdb_id;
-    selectedMovie.details = details;
     
-    window.location.href = `/sources.html?movie=${encodeURIComponent(JSON.stringify(selectedMovie))}`;
+    if (!selectedMovie.imdbId) {
+      alert('Esta película no tiene IMDb ID. Prueba con otra.');
+      renderCarousel();
+      return;
+    }
+    
+    console.log('IMDb ID obtenido:', selectedMovie.imdbId);
+    console.log('Redirigiendo a sources.html con:', selectedMovie);
+    
+    window.location.href = '/sources.html?movie=' + encodeURIComponent(JSON.stringify(selectedMovie));
     
   } catch (error) {
-    console.error('Error:', error);
-    alert('Error al obtener información de la película');
+    console.error('Error obteniendo IMDb ID:', error);
+    alert('Error al obtener información: ' + error.message);
+    renderCarousel();
   }
 }
