@@ -1,16 +1,13 @@
 {
   "name": "projectorroom",
   "version": "1.0.0",
-  "main": "server/index.js",
+  "description": "Salas de proyección sincronizadas",
+  "main": "server.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "pg": "^8.11.3",
-    "socket.io": "^4.6.1",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5",
-    "axios": "^1.6.0"
+    "socket.io": "^4.6.1"
   }
 }
