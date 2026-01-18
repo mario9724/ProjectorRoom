@@ -5,10 +5,20 @@ let selectedContent = null;
 let imdbId = null;
 let movieDetails = null;
 
-function toggleProjector() {
-  const isCustom = document.querySelector('input[name="projectorType"]:checked').value === 'custom';
-  document.getElementById('customManifest').style.display = isCustom ? 'block' : 'none';
-}
+document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.getElementById('customManifest').style.display = 
+      radio.value === 'custom' ? 'block' : 'none';
+  });
+});
+
+document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') searchContent();
+});
+
+document.getElementById('messageInput')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
 
 async function searchContent() {
   const query = document.getElementById('searchQuery').value.trim();
@@ -64,7 +74,6 @@ async function selectContent(c) {
         </div>
       </div>
     `;
-    
     document.getElementById('sourcesSection').style.display = 'none';
   } catch (e) {
     alert('Error: ' + e.message);
@@ -86,35 +95,23 @@ async function fetchSources() {
     const base = url.replace('/manifest.json', '');
     const streams = await fetch(`${base}/stream/${selectedContent.type === 'movie' ? 'movie' : 'series'}/${imdbId}.json`).then(r => r.json());
     
-    // ✅ FILTRAR SOLO HTTP (Debrid + WebStreamr directo)
     const httpStreams = (streams.streams || []).filter(s => {
       if (!s.url || typeof s.url !== 'string') return false;
-      // Solo HTTP/HTTPS (no torrents)
       return s.url.startsWith('http://') || s.url.startsWith('https://');
     });
     
-    if (httpStreams.length === 0) {
-      throw new Error('Sin fuentes HTTP/Debrid. Solo torrents disponibles.');
-    }
+    if (httpStreams.length === 0) throw new Error('Sin fuentes HTTP');
     
     const roomName = document.getElementById('roomName').value || 'Mi Sala';
-    const addonName = manifest.name || 'Proyector';
     
-    div.innerHTML = httpStreams.slice(0, 15).map(s => {
-      const resolution = s.title?.split('\n')[0].split(' - ')[0] || 'HD';
-      const isDebrid = s.url.includes('debrid') || s.url.includes('torbox');
-      
-      return `
-        <div class="source-item" onclick='createRoom(${JSON.stringify(s.url)})'>
-          <div style="font-weight:600;color:#06b6d4">
-            Proyectar en ${resolution} desde ${addonName}
-          </div>
-          <div style="color:#94a3b8">
-            @${roomName} ${isDebrid ? '• 🔥 Debrid' : '• 🌐 HTTP'}
-          </div>
+    div.innerHTML = httpStreams.slice(0, 15).map(s => `
+      <div class="source-item" onclick='createRoom(${JSON.stringify(s.url)})'>
+        <div style="font-weight:600;color:#06b6d4">
+          Proyectar ${s.title?.split('\n')[0] || 'HD'} desde ${manifest.name || 'Proyector'}
         </div>
-      `;
-    }).join('');
+        <div style="color:#94a3b8">@${roomName}</div>
+      </div>
+    `).join('');
     
   } catch (e) {
     div.innerHTML = `<div style="color:#ef4444;padding:2rem;text-align:center">❌ ${e.message}</div>`;
