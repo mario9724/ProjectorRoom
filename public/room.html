@@ -5,97 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala - ProjectorRoom</title>
   <link rel="stylesheet" href="css/styles.css">
-  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
 </head>
 <body>
   <div class="room-layout">
     
+    <!-- HEADER -->
     <div class="room-header">
       <h1 id="roomTitle">Cargando...</h1>
     </div>
     
-    <div class="room-banner">
-      <div class="banner-poster" id="moviePoster"></div>
-      <div class="banner-info">
-        <h2 id="movieTitle"></h2>
-        <p id="movieSynopsis"></p>
-        <div id="movieMeta"></div>
-      </div>
-    </div>
-    
-    <div class="room-container">
-      <div class="video-section">
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="room-grid">
+      
+      <!-- COLUMNA IZQUIERDA: Póster + Controles -->
+      <div class="movie-section">
         
-        <!-- PLAYER INTEGRADO -->
-        <div id="playerContainer" style="display:none">
-          <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto"></video>
-          <div class="pip-controls">
-            <button id="btnPiP" class="pip-btn">📺 PiP</button>
-            <a id="btnVLC" class="pip-btn" target="_blank">🎥 VLC</a>
-          </div>
+        <!-- Póster -->
+        <div class="movie-poster" id="moviePoster"></div>
+        
+        <!-- Botones de acción -->
+        <div class="action-buttons">
+          <button id="btnPlay" class="btn-primary">
+            ▶️ Comenzar Proyección
+          </button>
+          
+          <button id="btnInvite" class="btn-secondary" style="display:none">
+            📋 Invitar a la Sala
+          </button>
         </div>
         
-        <!-- EXTERNOS -->
-        <div id="externalContainer" style="display:none">
-          <div class="external-card">
-            <h3>🎬 Reproducir externamente</h3>
-            <p id="formatInfo"></p>
-            
-            <div class="external-buttons">
-              <a id="btnInfuse" class="ext-btn" target="_blank">
-                <span class="btn-icon">📱</span>
-                <div>
-                  <strong>Infuse</strong>
-                  <small>iOS / Mac / Apple TV</small>
-                </div>
-              </a>
-              
-              <a id="btnVLCExternal" class="ext-btn" target="_blank">
-                <span class="btn-icon">🎥</span>
-                <div>
-                  <strong>VLC</strong>
-                  <small>Todos los dispositivos</small>
-                </div>
-              </a>
-              
-              <a id="btnBrowser" class="ext-btn" target="_blank">
-                <span class="btn-icon">🌐</span>
-                <div>
-                  <strong>Navegador</strong>
-                  <small>Intentar directo</small>
-                </div>
-              </a>
-              
-              <button id="btnShare" class="ext-btn">
-                <span class="btn-icon">📡</span>
-                <div>
-                  <strong>Compartir / Cast</strong>
-                  <small>Enviar a TV</small>
-                </div>
-              </button>
-            </div>
+      </div>
+      
+      <!-- COLUMNA DERECHA: Info + Chat -->
+      <div class="content-section">
+        
+        <!-- Info película -->
+        <div class="movie-info">
+          <h2 id="movieTitle"></h2>
+          <div id="movieMeta" class="movie-meta"></div>
+          <p id="movieSynopsis" class="movie-synopsis"></p>
+        </div>
+        
+        <!-- Chat -->
+        <div class="chat-container">
+          <div class="chat-header">
+            <h3>💬 Chat de la Sala</h3>
+            <div id="usersList" class="users-online"></div>
+          </div>
+          
+          <div id="chatMessages" class="chat-messages"></div>
+          
+          <div class="chat-input-container">
+            <input 
+              type="text" 
+              id="messageInput" 
+              placeholder="Escribe un mensaje..." 
+              autocomplete="off"
+            >
+            <button onclick="sendMessage()" class="btn-send">Enviar</button>
           </div>
         </div>
         
       </div>
       
-      <div class="chat-section">
-        <div class="users-list">
-          <strong>👥 Roomies:</strong>
-          <div id="usersList"></div>
-        </div>
-        <div id="chatMessages"></div>
-        <div class="chat-input">
-          <input type="text" id="messageInput" placeholder="Mensaje...">
-          <button onclick="sendMessage()">Enviar</button>
-        </div>
-      </div>
     </div>
     
   </div>
   
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
