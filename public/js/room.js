@@ -352,6 +352,16 @@ function initRoom() {
   console.log('🎯 Es anfitrión:', isHost);
   
   renderRoom();
+  
+  // MOSTRAR BOTÓN "CAMBIAR FUENTE" SOLO PARA INVITADOS QUE NO USAN FUENTE DEL HOST
+  if (!isHost && roomData.useHostSource === false) {
+    const changeSourceSection = document.getElementById('changeSourceSection');
+    if (changeSourceSection) {
+      changeSourceSection.style.display = 'block';
+    }
+    console.log('🔄 Botón "Cambiar fuente" habilitado para invitado');
+  }
+  
   connectSocket();
   setupButtons();
   loadRatings();
@@ -416,21 +426,16 @@ function connectSocket() {
 }
 
 function updateUsersList(users) {
-  document.getElementById('usersCount').textContent = users.length;
-  
-  const container = document.getElementById('usersList');
-  container.innerHTML = '';
-  
-  users.forEach(user => {
-    const userEl = document.createElement('div');
-    userEl.className = 'user-item';
-    userEl.textContent = user.username;
-    container.appendChild(userEl);
-  });
+  const usersCount = document.getElementById('usersCount');
+  if (usersCount) {
+    usersCount.textContent = users.length;
+  }
 }
 
 function addChatMessage(username, message, isSystem) {
   const container = document.getElementById('chatMessages');
+  if (!container) return;
+  
   const messageEl = document.createElement('div');
   messageEl.className = isSystem ? 'chat-message chat-system' : 'chat-message';
   
@@ -446,6 +451,8 @@ function addChatMessage(username, message, isSystem) {
 
 function sendChatMessage() {
   const input = document.getElementById('chatInput');
+  if (!input) return;
+  
   const message = input.value.trim();
   
   if (message && socket && roomId) {
@@ -496,7 +503,11 @@ function changeSource() {
   }
   
   console.log('🔄 Reiniciando selección de fuente...');
+  
+  // Borrar la fuente guardada
   localStorage.removeItem('projectorroom_guest_source_' + roomId);
+  
+  // Recargar la página para volver a la selección de fuente
   window.location.reload();
 }
 
@@ -656,21 +667,36 @@ function loadReactions() {
 
 // ==================== CONFIGURAR BOTONES ====================
 function setupButtons() {
-  document.getElementById('btnStartProjection').onclick = startProjection;
-  document.getElementById('btnCopyInvite').onclick = copyInvite;
-  document.getElementById('btnChangeSource').onclick = changeSource;
-  document.getElementById('btnRate').onclick = openRateModal;
-  document.getElementById('btnReact').onclick = openReactModal;
-  document.getElementById('btnViewReactions').onclick = openViewReactionsModal;
-  document.getElementById('btnSendChat').onclick = sendChatMessage;
-  document.getElementById('btnCancelRate').onclick = closeRateModal;
-  document.getElementById('btnSubmitReaction').onclick = submitReaction;
-  document.getElementById('btnCancelReact').onclick = closeReactModal;
-  document.getElementById('btnCloseReactions').onclick = closeViewReactionsModal;
+  const btnStartProjection = document.getElementById('btnStartProjection');
+  const btnCopyInvite = document.getElementById('btnCopyInvite');
+  const btnChangeSource = document.getElementById('btnChangeSource');
+  const btnRate = document.getElementById('btnRate');
+  const btnReact = document.getElementById('btnReact');
+  const btnViewReactions = document.getElementById('btnViewReactions');
+  const btnSendChat = document.getElementById('btnSendChat');
+  const btnCancelRate = document.getElementById('btnCancelRate');
+  const btnSubmitReaction = document.getElementById('btnSubmitReaction');
+  const btnCancelReact = document.getElementById('btnCancelReact');
+  const btnCloseReactions = document.getElementById('btnCloseReactions');
+  const chatInput = document.getElementById('chatInput');
   
-  document.getElementById('chatInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendChatMessage();
-  });
+  if (btnStartProjection) btnStartProjection.onclick = startProjection;
+  if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
+  if (btnChangeSource) btnChangeSource.onclick = changeSource;
+  if (btnRate) btnRate.onclick = openRateModal;
+  if (btnReact) btnReact.onclick = openReactModal;
+  if (btnViewReactions) btnViewReactions.onclick = openViewReactionsModal;
+  if (btnSendChat) btnSendChat.onclick = sendChatMessage;
+  if (btnCancelRate) btnCancelRate.onclick = closeRateModal;
+  if (btnSubmitReaction) btnSubmitReaction.onclick = submitReaction;
+  if (btnCancelReact) btnCancelReact.onclick = closeReactModal;
+  if (btnCloseReactions) btnCloseReactions.onclick = closeViewReactionsModal;
+  
+  if (chatInput) {
+    chatInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendChatMessage();
+    });
+  }
   
   window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
