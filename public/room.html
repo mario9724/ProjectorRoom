@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ProjectorRoom - Sala</title>
   <link rel="stylesheet" href="css/styles.css">
-  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet">
 </head>
 <body>
   <div class="room-layout">
+    
     <div class="room-header">
       <h1 id="roomTitle">Cargando...</h1>
     </div>
@@ -24,7 +24,21 @@
     
     <div class="room-container">
       <div class="video-section">
-        <video id="videoPlayer" class="video-js" controls preload="auto"></video>
+        <!-- REPRODUCTOR NATIVO HTML5 -->
+        <video id="videoPlayer" controls preload="metadata" playsinline>
+          <source id="videoSource" type="video/mp4">
+          Tu navegador no soporta reproducción de video
+        </video>
+        
+        <!-- ALTERNATIVA: IFRAME (si video falla) -->
+        <div id="iframeContainer" style="display:none">
+          <iframe id="videoIframe" allowfullscreen></iframe>
+        </div>
+        
+        <div class="player-controls">
+          <button onclick="togglePlayer()">🔄 Cambiar reproductor</button>
+          <button onclick="openExternal()">🔗 Abrir en nueva pestaña</button>
+        </div>
       </div>
       
       <div class="chat-section">
@@ -39,9 +53,9 @@
         </div>
       </div>
     </div>
+    
   </div>
   
-  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
