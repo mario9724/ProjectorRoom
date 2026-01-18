@@ -25,7 +25,14 @@
     
     <!-- PELÍCULA SELECCIONADA -->
     <div class="movie-header">
-      <div class="movie-poster" id="moviePoster"></div>
+      <div>
+        <div class="movie-poster" id="moviePoster"></div>
+        <!-- BOTÓN INVITAR DEBAJO DEL PÓSTER -->
+        <button id="btnInvitePreview" class="btn-invite-preview">
+          📋 Invitar Roomies
+        </button>
+      </div>
+      
       <div class="movie-details">
         <h1 id="movieTitle"></h1>
         <div class="movie-meta">
@@ -86,5 +93,12 @@
   </main>
 
   <script src="js/sources.js"></script>
+  <script>
+    // Botón invitar (modal temporal)
+    document.getElementById('btnInvitePreview').onclick = () => {
+      const url = window.location.origin + '/room.html?id=PENDIENTE';
+      alert('⚠️ La sala aún no está creada.\n\nPrimero selecciona una fuente y crea la sala. Luego podrás compartir el enlace.');
+    };
+  </script>
 </body>
 </html>
