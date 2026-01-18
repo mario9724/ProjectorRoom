@@ -6,8 +6,6 @@ let searchTimeout = null;
 let selectedMovie = null;
 let sources = [];
 let selectedSourceIndex = null;
-let socket = null;
-let currentRoomId = null;
 let roomConfig = {
   username: '',
   roomName: '',
@@ -71,7 +69,7 @@ function selectProjectorType(type) {
     radio.checked = radio.value === type;
   });
   
-  document.querySelectorAll('.option-card').forEach(card => {
+  document.querySelectorAll('#step3 .option-card').forEach(card => {
     card.classList.remove('selected');
   });
   event.currentTarget.classList.add('selected');
@@ -86,7 +84,7 @@ function selectShareMode(mode) {
     radio.checked = radio.value === mode;
   });
   
-  document.querySelectorAll('.option-card').forEach((card, index) => {
+  document.querySelectorAll('#step4 .option-card').forEach(card => {
     card.classList.remove('selected');
   });
   event.currentTarget.classList.add('selected');
@@ -273,7 +271,7 @@ function selectSource(index) {
   });
 }
 
-// CREAR SALA
+// CREAR SALA Y REDIRIGIR
 async function createRoom() {
   if (selectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
@@ -300,10 +298,13 @@ async function createRoom() {
     const data = await res.json();
     
     if (data.success) {
-      currentRoomId = data.projectorRoom.id;
-      goToStep(7);
-      renderRoom();
-      connectSocket();
+      const roomId = data.projectorRoom.id;
+      
+      // Guardar username en localStorage para la sala
+      localStorage.setItem('projectorroom_username', roomConfig.username);
+      
+      // REDIRIGIR A LA SALA PERMANENTE
+      window.location.href = `/sala/${roomId}`;
     } else {
       alert('Error creando sala');
     }
@@ -311,99 +312,6 @@ async function createRoom() {
     console.error('Error:', error);
     alert('Error creando sala');
   }
-}
-
-// RENDERIZAR SALA
-function renderRoom() {
-  document.getElementById('roomTitle').textContent = `PROYECTANDO "${selectedMovie.title}"`;
-  document.getElementById('roomSubtitle').textContent = `en la sala de ${roomConfig.username}`;
-  document.getElementById('roomPoster').src = selectedMovie.poster;
-  document.getElementById('roomMovieTitle').textContent = selectedMovie.title;
-  document.getElementById('roomYear').textContent = `📅 ${selectedMovie.year}`;
-  document.getElementById('roomType').textContent = `🎬 ${selectedMovie.type === 'movie' ? 'Película' : 'Serie'}`;
-  document.getElementById('roomOverview').textContent = selectedMovie.overview;
-  
-  // Botones
-  document.getElementById('btnStartProjection').onclick = startProjection;
-  document.getElementById('btnInviteRoomies').onclick = inviteRoomies;
-  document.getElementById('btnSendChat').onclick = sendChatMessage;
-  
-  document.getElementById('chatInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendChatMessage();
-  });
-}
-
-// ABRIR VLC
-function startProjection() {
-  if (selectedSourceIndex === null) return;
-  
-  const vlcUrl = `vlc://${sources[selectedSourceIndex].url}`;
-  window.location.href = vlcUrl;
-  
-  setTimeout(() => {
-    const link = document.createElement('a');
-    link.href = sources[selectedSourceIndex].url;
-    link.download = '';
-    link.click();
-  }, 1000);
-}
-
-// INVITAR ROOMIES
-function inviteRoomies() {
-  const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
-  
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(roomUrl).then(() => {
-      alert('✅ Enlace de invitación copiado al portapapeles');
-    }).catch(() => {
-      prompt('Copia este enlace:', roomUrl);
-    });
-  } else {
-    prompt('Copia este enlace:', roomUrl);
-  }
-}
-
-// SOCKET.IO
-function connectSocket() {
-  socket = io();
-  socket.emit('join-room', { roomId: currentRoomId, username: roomConfig.username });
-  
-  socket.on('user-joined', data => {
-    addChatMessage('Sistema', `${data.user.username} se unió a la sala`, true);
-  });
-  
-  socket.on('user-left', data => {
-    addChatMessage('Sistema', `${data.username} salió de la sala`, true);
-  });
-  
-  socket.on('chat-message', data => {
-    addChatMessage(data.username, data.message, false);
-  });
-}
-
-function sendChatMessage() {
-  const input = document.getElementById('chatInput');
-  const message = input.value.trim();
-  
-  if (message && socket && currentRoomId) {
-    socket.emit('chat-message', { roomId: currentRoomId, message });
-    input.value = '';
-  }
-}
-
-function addChatMessage(username, message, isSystem) {
-  const container = document.getElementById('chatMessages');
-  const messageEl = document.createElement('div');
-  messageEl.className = isSystem ? 'chat-message chat-system' : 'chat-message';
-  
-  if (isSystem) {
-    messageEl.textContent = message;
-  } else {
-    messageEl.innerHTML = `<span class="chat-username">${escapeHtml(username)}:</span> ${escapeHtml(message)}`;
-  }
-  
-  container.appendChild(messageEl);
-  container.scrollTop = container.scrollHeight;
 }
 
 // UTILIDADES
