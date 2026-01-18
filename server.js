@@ -19,12 +19,19 @@ app.use(express.static('public'));
 
 const projectorRooms = {};
 
+// Ruta principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Ruta de sala individual
+app.get('/sala/:roomId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'room.html'));
+});
+
+// API: Crear sala
 app.post('/api/projectorrooms/create', (req, res) => {
-  const { roomName, hostUsername, manifest, sourceUrl, useHostSource } = req.body;
+  const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
   
   const roomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
@@ -35,6 +42,8 @@ app.post('/api/projectorrooms/create', (req, res) => {
     manifest: manifest,
     sourceUrl: sourceUrl,
     useHostSource: useHostSource,
+    projectorType: projectorType,
+    customManifest: customManifest,
     users: [],
     createdAt: new Date().toISOString()
   };
@@ -47,6 +56,7 @@ app.post('/api/projectorrooms/create', (req, res) => {
   });
 });
 
+// API: Obtener sala
 app.get('/api/projectorrooms/:id', (req, res) => {
   const room = projectorRooms[req.params.id];
   
@@ -63,6 +73,7 @@ app.get('/api/projectorrooms/:id', (req, res) => {
   });
 });
 
+// Socket.IO
 io.on('connection', (socket) => {
   console.log('🔌 Usuario conectado:', socket.id);
   
