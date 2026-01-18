@@ -28,10 +28,9 @@ window.addEventListener('load', async () => {
 });
 
 function loadSessionData() {
-  // Datos del localStorage (onboarding)
   const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
   
-  console.log('Session ', session); // DEBUG
+  console.log('Session ', session);
   
   document.getElementById('configUsername').textContent = session.username || '-';
   document.getElementById('configRoomName').textContent = session.roomName || '-';
@@ -67,7 +66,6 @@ async function loadSources() {
     const res = await fetch(`${baseUrl}/stream/${selectedMovie.type === 'movie' ? 'movie' : 'series'}/${imdbId}.json`);
     const data = await res.json();
     
-    // Filtrar streams HTTP
     sources = (data.streams || [])
       .filter(s => s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')))
       .map(s => ({
@@ -111,7 +109,6 @@ function renderSources() {
     </div>
   `).join('');
   
-  // Habilitar botón crear si hay fuentes
   document.getElementById('btnCreate').disabled = sources.length === 0;
 }
 
@@ -154,7 +151,6 @@ async function createRoom() {
     const data = await res.json();
     
     if (data.success) {
-      // Redirigir a sala
       window.location.href = `/room.html?id=${data.projectorRoom.id}&username=${encodeURIComponent(session.username || 'Anónimo')}`;
     }
   } catch (error) {
@@ -163,6 +159,5 @@ async function createRoom() {
   }
 }
 
-// EVENTOS
 document.getElementById('btnBack').onclick = () => window.history.back();
 document.getElementById('btnCreate').onclick = createRoom;
