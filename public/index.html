@@ -9,118 +9,160 @@
 <body>
   <div class="app-container">
     
-    <!-- PANTALLA 1: Selección de película -->
-    <div id="screen1" class="screen active">
-      <div class="header">
-        <div class="logo">📺 ProjectorRoom</div>
-        <p class="subtitle">Selecciona tu fuente de proyección</p>
+    <!-- PASO 1: Nombre de usuario -->
+    <div id="step1" class="step active">
+      <div class="step-card">
+        <h1>👋 Ey roomie, ¿cómo te llamas?</h1>
+        <input type="text" id="username" placeholder="Tu nombre..." maxlength="20" autofocus>
+        <button class="btn-primary" onclick="goToStep(2)">Continuar →</button>
       </div>
-      
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Buscar película o serie...">
-      </div>
-      
-      <div id="searchResults" class="movie-grid"></div>
     </div>
     
-    <!-- PANTALLA 2: Detalles y fuentes -->
-    <div id="screen2" class="screen">
-      <div class="header">
-        <div class="logo">📺 ProjectorRoom</div>
-        <p class="subtitle">Selecciona tu fuente de proyección</p>
+    <!-- PASO 2: Nombre de la sala -->
+    <div id="step2" class="step">
+      <div class="step-card">
+        <h1>🏠 ¿Cómo quieres llamar a tu sala?</h1>
+        <input type="text" id="roomName" placeholder="Nombre de la sala..." maxlength="30">
+        <button class="btn-primary" onclick="goToStep(3)">Continuar →</button>
+        <button class="btn-secondary" onclick="goToStep(1)">← Volver</button>
       </div>
-      
-      <div class="movie-details">
-        <div class="movie-poster-container">
-          <img id="moviePoster" src="" alt="Poster">
-          <button id="btnInviteRoomies" class="btn-outline">📋 Invitar Roomies</button>
+    </div>
+    
+    <!-- PASO 3: Tipo de proyector -->
+    <div id="step3" class="step">
+      <div class="step-card">
+        <h1>🎬 ¿Qué proyector quieres usar?</h1>
+        
+        <div class="option-card" onclick="selectProjectorType('public')">
+          <input type="radio" name="projectorType" value="public" checked>
+          <div class="option-content">
+            <div class="option-title">🌐 Proyector público</div>
+            <div class="option-desc">Se usará el predeterminado ya configurado</div>
+          </div>
         </div>
         
-        <div class="movie-info">
-          <h1 id="movieTitle">-</h1>
-          <div class="movie-meta">
-            <span id="movieRating">⭐ -</span>
-            <span id="movieYear">-</span>
-            <span id="movieType">-</span>
-          </div>
-          <p id="movieOverview">-</p>
-        </div>
-      </div>
-      
-      <div class="config-section">
-        <h3>Configuración de la sala</h3>
-        <div class="config-grid">
-          <div class="config-item">
-            <label>Tu nombre:</label>
-            <input type="text" id="username" placeholder="Anónimo" maxlength="20">
-          </div>
-          <div class="config-item">
-            <label>Nombre de la sala:</label>
-            <input type="text" id="roomName" placeholder="Sala de proyección" maxlength="30">
-          </div>
-          <div class="config-item">
-            <label>Tipo de proyección:</label>
-            <select id="projectorType">
-              <option value="public">Predeterminado</option>
-              <option value="custom">Personalizado</option>
-            </select>
-          </div>
-          <div class="config-item">
-            <label>Modo roomies:</label>
-            <select id="sourceMode">
-              <option value="individual">Proyección individual</option>
-              <option value="host">Usar mi proyección</option>
-            </select>
+        <div class="option-card" onclick="selectProjectorType('custom')">
+          <input type="radio" name="projectorType" value="custom">
+          <div class="option-content">
+            <div class="option-title">⚙️ Proyector personalizado</div>
+            <div class="option-desc">Introduce tu manifest.json custom</div>
           </div>
         </div>
-      </div>
-      
-      <div class="sources-section">
-        <h3>Fuentes disponibles</h3>
-        <p class="sources-subtitle">Selecciona la mejor calidad para tu sala</p>
-        <div id="sourcesList" class="sources-list">
-          <div class="loading">🔍 Cargando fuentes...</div>
+        
+        <div id="customManifestBox" style="display:none;">
+          <input type="url" id="customManifest" placeholder="https://tu-manifest.json">
         </div>
-      </div>
-      
-      <div class="actions">
-        <button id="btnBack" class="btn-secondary">← Volver a búsqueda</button>
-        <button id="btnCreateRoom" class="btn-primary" disabled>▶️ Comenzar Proyección</button>
+        
+        <button class="btn-primary" onclick="goToStep(4)">Continuar →</button>
+        <button class="btn-secondary" onclick="goToStep(2)">← Volver</button>
       </div>
     </div>
     
-    <!-- PANTALLA 3: Sala creada -->
-    <div id="screen3" class="screen">
-      <div class="room-header">
-        <h2 id="roomTitleHeader">PROYECTANDO</h2>
-        <p id="roomSubtitle">en la sala de</p>
-      </div>
-      
-      <div class="room-poster-container">
-        <img id="roomPoster" src="" alt="Poster">
-      </div>
-      
-      <div class="room-actions">
-        <button id="btnStartProjection" class="btn-primary-large">▶️ Comenzar Proyección</button>
-        <button id="btnInvite" class="btn-outline-large">📋 Invitar a la Sala</button>
-      </div>
-      
-      <div class="room-info-card">
-        <h3 id="roomMovieTitle">-</h3>
-        <div class="room-meta">
-          <span id="roomYear">📅 -</span>
-          <span id="roomType">🎬 -</span>
-          <span id="roomHost">👤 Anfitrión: -</span>
+    <!-- PASO 4: Compartir proyector -->
+    <div id="step4" class="step">
+      <div class="step-card">
+        <h1>🔗 ¿Quieres compartir tu proyector?</h1>
+        <p class="step-subtitle">¿Compartirás tu fuente o cada roomie usará la suya?</p>
+        
+        <div class="option-card" onclick="selectShareMode('host')">
+          <input type="radio" name="shareMode" value="host" checked>
+          <div class="option-content">
+            <div class="option-title">📡 Compartir mi proyector</div>
+            <div class="option-desc">Tu fuente se usará para todos (compartes tu Debrid)</div>
+          </div>
         </div>
-        <p id="roomOverview">-</p>
+        
+        <div class="option-card" onclick="selectShareMode('individual')">
+          <input type="radio" name="shareMode" value="individual">
+          <div class="option-content">
+            <div class="option-title">👤 Cada roomie usa el suyo</div>
+            <div class="option-desc">Cada uno buscará sus propias fuentes</div>
+          </div>
+        </div>
+        
+        <button class="btn-primary" onclick="goToStep(5)">Continuar →</button>
+        <button class="btn-secondary" onclick="goToStep(3)">← Volver</button>
       </div>
-      
-      <div class="chat-section">
-        <h4>💬 Chat de la Sala</h4>
-        <div id="chatMessages" class="chat-messages"></div>
-        <div class="chat-input-container">
-          <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
-          <button id="btnSendMessage" class="btn-send">Enviar</button>
+    </div>
+    
+    <!-- PASO 5: Búsqueda de película -->
+    <div id="step5" class="step">
+      <div class="step-card wide">
+        <h1>🎬 Busca tu película o serie</h1>
+        
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Matrix, Breaking Bad...">
+        </div>
+        
+        <div id="searchResults" class="movie-grid"></div>
+        
+        <button class="btn-secondary" onclick="goToStep(4)">← Volver</button>
+      </div>
+    </div>
+    
+    <!-- PASO 6: Selección de fuentes -->
+    <div id="step6" class="step">
+      <div class="step-card wide">
+        <div class="movie-header">
+          <img id="selectedPoster" src="" alt="Poster">
+          <div class="movie-info">
+            <h2 id="selectedTitle">-</h2>
+            <div class="movie-meta">
+              <span id="selectedRating">⭐ -</span>
+              <span id="selectedYear">-</span>
+              <span id="selectedType">-</span>
+            </div>
+            <p id="selectedOverview">-</p>
+          </div>
+        </div>
+        
+        <h3 class="section-title">🔍 Fuentes disponibles</h3>
+        <p class="section-subtitle">Selecciona la mejor calidad para tu sala</p>
+        
+        <div id="sourcesList" class="sources-list">
+          <div class="loading">Cargando fuentes...</div>
+        </div>
+        
+        <div class="actions">
+          <button class="btn-secondary" onclick="goToStep(5)">← Volver</button>
+          <button id="btnCreateRoom" class="btn-primary" disabled onclick="createRoom()">Crear sala →</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- PASO 7: Sala creada -->
+    <div id="step7" class="step">
+      <div class="step-card wide">
+        <div class="room-header">
+          <h2 id="roomTitle">PROYECTANDO</h2>
+          <p id="roomSubtitle">en la sala de</p>
+        </div>
+        
+        <div class="room-poster">
+          <img id="roomPoster" src="" alt="Poster">
+        </div>
+        
+        <div class="room-info">
+          <h3 id="roomMovieTitle">-</h3>
+          <div class="room-meta">
+            <span id="roomYear">📅 -</span>
+            <span id="roomType">🎬 -</span>
+          </div>
+          <p id="roomOverview">-</p>
+        </div>
+        
+        <div class="room-actions">
+          <button id="btnStartProjection" class="btn-primary-large">▶️ Comenzar Proyección</button>
+          <button id="btnInviteRoomies" class="btn-outline-large">📋 Invitar Roomies</button>
+        </div>
+        
+        <div class="chat-section">
+          <h4>💬 Chat de la sala</h4>
+          <div id="chatMessages" class="chat-messages"></div>
+          <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
+            <button id="btnSendChat" class="btn-send">Enviar</button>
+          </div>
         </div>
       </div>
     </div>
