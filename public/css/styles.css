@@ -903,3 +903,129 @@ button:hover {
   font-weight: 600;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
+/* CONVERSION LOADER */
+.conversion-card {
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f0f23 100%);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 2rem;
+  border: 4px solid rgba(79, 70, 229, 0.2);
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.conversion-card h3 {
+  color: #06b6d4;
+  margin-bottom: 1rem;
+}
+
+.conversion-card p {
+  color: #94a3b8;
+  margin-bottom: 2rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(79, 70, 229, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #06b6d4);
+  border-radius: 4px;
+  transition: width 0.3s;
+  width: 0%;
+}
+
+/* VIDEO.JS */
+.video-js {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 12px;
+}
+
+.vjs-big-play-button {
+  border-color: #4f46e5;
+  background-color: rgba(79, 70, 229, 0.8);
+}
+
+/* BOTONES EXTERNOS */
+.external-card {
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f0f23 100%);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.external-card h3 {
+  color: #06b6d4;
+  margin-bottom: 0.5rem;
+}
+
+.external-buttons {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.ext-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: rgba(79, 70, 229, 0.1);
+  border: 2px solid #3730a3;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #e0e7ff;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.ext-btn:hover {
+  background: rgba(79, 70, 229, 0.3);
+  border-color: #4f46e5;
+  transform: translateY(-2px);
+}
+
+.btn-icon {
+  font-size: 2rem;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(79, 70, 229, 0.2);
+  border-radius: 8px;
+}
+
+.ext-btn div {
+  text-align: left;
+  flex: 1;
+}
+
+.ext-btn strong {
+  display: block;
+  font-size: 1.1rem;
+  color: #06b6d4;
+}
+
+.ext-btn small {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
