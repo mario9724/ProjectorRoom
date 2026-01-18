@@ -300,10 +300,11 @@ async function createRoom() {
     if (data.success) {
       const roomId = data.projectorRoom.id;
       
-      // Guardar username en localStorage para la sala
-      localStorage.setItem('projectorroom_username', roomConfig.username);
+      // MARCAR COMO ANFITRIÓN (no mostrar configuración de invitado)
+      sessionStorage.setItem('projectorroom_is_host_' + roomId, 'true');
+      sessionStorage.setItem('projectorroom_host_username_' + roomId, roomConfig.username);
       
-      // REDIRIGIR A LA SALA PERMANENTE
+      // REDIRIGIR A LA SALA
       window.location.href = `/sala/${roomId}`;
     } else {
       alert('Error creando sala');
