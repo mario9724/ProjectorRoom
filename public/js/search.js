@@ -86,16 +86,38 @@ async function fetchSources() {
     const base = url.replace('/manifest.json', '');
     const streams = await fetch(`${base}/stream/${selectedContent.type === 'movie' ? 'movie' : 'series'}/${imdbId}.json`).then(r => r.json());
     
-    const roomName = document.getElementById('roomName').value || 'Mi Sala';
+    // ✅ FILTRAR SOLO HTTP (Debrid + WebStreamr directo)
+    const httpStreams = (streams.streams || []).filter(s => {
+      if (!s.url || typeof s.url !== 'string') return false;
+      // Solo HTTP/HTTPS (no torrents)
+      return s.url.startsWith('http://') || s.url.startsWith('https://');
+    });
     
-    div.innerHTML = (streams.streams || []).slice(0, 12).map(s => `
-      <div class="source-item" onclick='createRoom("${s.url}")'>
-        <div style="font-weight:600;color:#06b6d4">Proyectar en ${s.title?.split(' - ')[0] || 'HD'} desde ${manifest.name || 'Público'}</div>
-        <div style="color:#94a3b8">@${roomName}</div>
-      </div>
-    `).join('');
+    if (httpStreams.length === 0) {
+      throw new Error('Sin fuentes HTTP/Debrid. Solo torrents disponibles.');
+    }
+    
+    const roomName = document.getElementById('roomName').value || 'Mi Sala';
+    const addonName = manifest.name || 'Proyector';
+    
+    div.innerHTML = httpStreams.slice(0, 15).map(s => {
+      const resolution = s.title?.split('\n')[0].split(' - ')[0] || 'HD';
+      const isDebrid = s.url.includes('debrid') || s.url.includes('torbox');
+      
+      return `
+        <div class="source-item" onclick='createRoom(${JSON.stringify(s.url)})'>
+          <div style="font-weight:600;color:#06b6d4">
+            Proyectar en ${resolution} desde ${addonName}
+          </div>
+          <div style="color:#94a3b8">
+            @${roomName} ${isDebrid ? '• 🔥 Debrid' : '• 🌐 HTTP'}
+          </div>
+        </div>
+      `;
+    }).join('');
+    
   } catch (e) {
-    div.innerHTML = '<div style="color:red">Error: ' + e.message + '</div>';
+    div.innerHTML = `<div style="color:#ef4444;padding:2rem;text-align:center">❌ ${e.message}</div>`;
   }
 }
 
