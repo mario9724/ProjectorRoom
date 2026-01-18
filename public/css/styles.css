@@ -406,3 +406,22 @@ button:hover {
   .room-container { grid-template-columns: 1fr; }
   .room-banner { flex-direction: column; text-align: center; }
 }
+/* Mensajes de chat mejorados */
+.message {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(79, 70, 229, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #4f46e5;
+  word-wrap: break-word;
+}
+
+.message strong {
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+#chatMessages {
+  scrollbar-width: thin;
+  scrollbar-color: #4f46e5 #1e1b4b;
+}
