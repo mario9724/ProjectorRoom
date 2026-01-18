@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// PROXY MEJORADO - Sigue redirects
+// PROXY CORREGIDO - Maneja headers undefined
 app.get('/proxy-stream', (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('URL requerida');
@@ -39,31 +39,41 @@ app.get('/proxy-stream', (req, res) => {
       }
     }, (proxyRes) => {
       
-      // 🔄 SEGUIR REDIRECTS (301, 302, 303, 307, 308)
+      // SEGUIR REDIRECTS
       if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode)) {
         const redirectUrl = proxyRes.headers.location;
         console.log(`🔄 Redirect ${proxyRes.statusCode} → ${redirectUrl}`);
-        proxyRes.resume(); // Consumir response
+        proxyRes.resume();
         return followRedirect(redirectUrl, depth + 1);
       }
       
-      // ✅ Streaming directo
+      // ✅ HEADERS SEGUROS (solo si existen)
       const statusCode = req.headers.range && proxyRes.statusCode === 206 ? 206 : 200;
       
-      res.writeHead(statusCode, {
+      const headers = {
         'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
-        'Content-Length': proxyRes.headers['content-length'],
-        'Content-Range': proxyRes.headers['content-range'],
         'Accept-Ranges': 'bytes',
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'public, max-age=3600'
-      });
+      };
       
+      // Solo añadir si existen
+      if (proxyRes.headers['content-length']) {
+        headers['Content-Length'] = proxyRes.headers['content-length'];
+      }
+      
+      if (proxyRes.headers['content-range']) {
+        headers['Content-Range'] = proxyRes.headers['content-range'];
+      }
+      
+      res.writeHead(statusCode, headers);
       proxyRes.pipe(res);
       
     }).on('error', (err) => {
       console.error('❌ Proxy error:', err.message);
-      res.status(500).send('Error proxy');
+      if (!res.headersSent) {
+        res.status(500).send('Error proxy');
+      }
     });
   };
   
