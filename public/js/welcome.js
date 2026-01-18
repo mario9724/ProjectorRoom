@@ -15,6 +15,27 @@ function goToStep(step) {
     return alert('Por favor, nombra tu sala');
   }
   
+  // GUARDAR EN LOCALSTORAGE
+  const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
+  
+  if (step >= 2) {
+    session.username = document.getElementById('username').value.trim();
+  }
+  if (step >= 3) {
+    session.roomName = document.getElementById('roomName').value.trim();
+  }
+  if (step >= 4) {
+    session.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
+    if (session.projectorType === 'custom') {
+      session.customManifest = document.getElementById('customManifest').value.trim();
+    }
+  }
+  if (step >= 5) {
+    session.sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
+  }
+  
+  localStorage.setItem('projectorSession', JSON.stringify(session));
+  
   // Ocultar todos
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
   
