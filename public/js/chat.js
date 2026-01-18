@@ -8,22 +8,31 @@ const users = new Set();
 socket.emit('join-room', { roomId, username });
 
 socket.on('user-joined', ({ username: u, users: all }) => {
-  if (all) { users.clear(); all.forEach(x => users.add(x)); }
-  else users.add(u);
+  if (all) {
+    users.clear();
+    all.forEach(x => users.add(x));
+  } else {
+    users.add(u);
+  }
   updateUsers();
   if (u !== username) addMsg(`${u} se unió`);
 });
 
 socket.on('user-left', ({ username: u, users: all }) => {
-  if (all) { users.clear(); all.forEach(x => users.add(x)); }
-  else users.delete(u);
+  if (all) {
+    users.clear();
+    all.forEach(x => users.add(x));
+  } else {
+    users.delete(u);
+  }
   updateUsers();
   addMsg(`${u} salió`);
 });
 
 socket.on('message', ({ username: u, message: m, timestamp: t }) => {
   const div = document.getElementById('chatMessages');
-  div.innerHTML += `<div class="message"><strong>${u}:</strong> ${m} <small>${new Date(t).toLocaleTimeString()}</small></div>`;
+  const time = new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML += `<div class="message"><strong>${u}:</strong> ${m} <small>${time}</small></div>`;
   div.scrollTop = div.scrollHeight;
 });
 
@@ -37,7 +46,8 @@ function sendMessage() {
 
 function updateUsers() {
   users.add(username);
-  document.getElementById('usersList').innerHTML = Array.from(users).map(u => `<span class="user-tag">${u}</span>`).join('');
+  document.getElementById('usersList').innerHTML = 
+    Array.from(users).map(u => `<span class="user-tag">${u}</span>`).join('');
 }
 
 function addMsg(txt) {
