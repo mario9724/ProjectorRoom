@@ -5,7 +5,6 @@ let selectedMovie = {};
 let sources = [];
 let selectedSource = null;
 
-// Cargar datos desde URL
 window.addEventListener('load', async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const movieData = urlParams.get('movie');
@@ -42,9 +41,9 @@ function loadSessionData() {
 
 function renderMovie() {
   document.getElementById('moviePoster').style.backgroundImage = 
-    `url(${selectedMovie.poster})`;
+    'url(' + selectedMovie.poster + ')';
   document.getElementById('movieTitle').textContent = selectedMovie.title;
-  document.getElementById('movieRating').innerHTML = `⭐ ${selectedMovie.rating}`;
+  document.getElementById('movieRating').innerHTML = '⭐ ' + selectedMovie.rating;
   document.getElementById('movieYear').textContent = selectedMovie.year;
   document.getElementById('movieType').textContent = 
     selectedMovie.type === 'movie' ? 'Película' : 'Serie';
@@ -63,53 +62,67 @@ async function loadSources() {
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const imdbId = selectedMovie.imdbId;
     
-    const res = await fetch(`${baseUrl}/stream/${selectedMovie.type === 'movie' ? 'movie' : 'series'}/${imdbId}.json`);
+    const streamUrl = baseUrl + '/stream/' + 
+      (selectedMovie.type === 'movie' ? 'movie' : 'series') + 
+      '/' + imdbId + '.json';
+    
+    const res = await fetch(streamUrl);
     const data = await res.json();
     
     sources = (data.streams || [])
-      .filter(s => s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')))
-      .map(s => ({
-        url: s.url,
-        title: s.title || s.name || 'Stream',
-        provider: manifest.name || 'Addon'
-      }));
+      .filter(function(s) {
+        return s.url && (s.url.startsWith('http://') || s.url.startsWith('https://'));
+      })
+      .map(function(s) {
+        return {
+          url: s.url,
+          title: s.title || s.name || 'Stream',
+          provider: manifest.name || 'Addon'
+        };
+      });
     
     renderSources();
     
   } catch (error) {
     console.error('Error fuentes:', error);
-    document.getElementById('sourcesList').innerHTML = `
-      <div class="sources-empty">
-        <div class="empty-icon">😕</div>
-        <p>No se encontraron fuentes disponibles</p>
-      </div>
-    `;
+    
+    var container = document.getElementById('sourcesList');
+    container.innerHTML = 
+      '<div class="sources-empty">' +
+      '<div class="empty-icon">😕</div>' +
+      '<p>No se encontraron fuentes disponibles</p>' +
+      '</div>';
   }
 }
 
 function renderSources() {
-  const container = document.getElementById('sourcesList');
+  var container = document.getElementById('sourcesList');
   
   if (sources.length === 0) {
-    container.innerHTML = `
-      <div class="sources-empty">
-        <div class="empty-icon">😕</div>
-        <p>No hay fuentes disponibles</p>
-      </div>
-    `;
+    container.innerHTML = 
+      '<div class="sources-empty">' +
+      '<div class="empty-icon">😕</div>' +
+      '<p>No hay fuentes disponibles</p>' +
+      '</div>';
     return;
   }
   
-  container.innerHTML = sources.map((source, index) => `
-    <div class="source-card" onclick="selectSource(${index})" data-index="${index}" ${selectedSource === index ? 'data-selected="true"' : ''}>
-      <div class="source-title">${source.title}</div>
-      <div class="source-meta">
-        <span>📡 ${source.provider}</span>
-      </div>
-    </div>
-  `).join('');
+  var html = '';
+  for (var i = 0; i < sources.length; i++) {
+    var source = sources[i];
+    var isSelected = selectedSource === i ? 'data-selected="true"' : '';
+    
+    html += 
+      '<div class="source-card" onclick="selectSource(' + i + ')" data-index="' + i + '" ' + isSelected + '>' +
+      '<div class="source-title">' + source.title + '</div>' +
+      '<div class="source-meta">' +
+      '<span>📡 ' + source.provider + '</span>' +
+      '</div>' +
+      '</div>';
+  }
   
-  document.getElementById('btnCreate').disabled = sources.length === 0;
+  container.innerHTML = html;
+  document.getElementById('btnCreate').disabled = false;
 }
 
 function selectSource(index) {
@@ -151,7 +164,8 @@ async function createRoom() {
     const data = await res.json();
     
     if (data.success) {
-      window.location.href = `/room.html?id=${data.projectorRoom.id}&username=${encodeURIComponent(session.username || 'Anónimo')}`;
+      window.location.href = '/room.html?id=' + data.projectorRoom.id + 
+        '&username=' + encodeURIComponent(session.username || 'Anónimo');
     }
   } catch (error) {
     console.error('Error:', error);
@@ -159,5 +173,8 @@ async function createRoom() {
   }
 }
 
-document.getElementById('btnBack').onclick = () => window.history.back();
+document.getElementById('btnBack').onclick = function() {
+  window.history.back();
+};
+
 document.getElementById('btnCreate').onclick = createRoom;
