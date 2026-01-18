@@ -795,3 +795,111 @@ button:hover {
 .source-room strong {
   color: #06b6d4;
 }
+/* ════════════════════════════════════════════
+   FUENTES SIMPLES (sin badges) - AGREGAR AL FINAL
+   ════════════════════════════════════════════ */
+.source-card {
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f0f23 100%);
+  border: 2px solid #3730a3;
+  border-radius: 12px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 1rem;
+}
+
+.source-card:hover {
+  border-color: #4f46e5;
+  background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+  transform: translateX(4px);
+}
+
+.source-title {
+  color: #e0e7ff;
+  font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.source-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  flex-wrap: wrap;
+}
+
+.source-meta strong {
+  color: #06b6d4;
+}
+
+/* ════════════════════════════════════════════
+   VIDEO PLAYER + BOTÓN VLC - AGREGAR AL FINAL
+   ════════════════════════════════════════════ */
+#videoPlayer {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 12px 12px 0 0;
+  background: #000;
+}
+
+.plyr {
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+}
+
+.plyr__control--overlaid {
+  background: rgba(79, 70, 229, 0.9);
+}
+
+.plyr__control:hover {
+  background: #4f46e5;
+}
+
+/* BOTÓN VLC FIJO (siempre visible abajo) */
+.vlc-button-container {
+  background: linear-gradient(135deg, #1e1b4b, #0f0f23);
+  padding: 1rem;
+  border-radius: 0 0 12px 12px;
+  border-top: 1px solid #3730a3;
+}
+
+.btn-vlc {
+  display: block;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: rgba(79, 70, 229, 0.2);
+  border: 2px solid #3730a3;
+  border-radius: 8px;
+  color: #e0e7ff;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s;
+  font-size: 0.95rem;
+}
+
+.btn-vlc:hover {
+  background: rgba(79, 70, 229, 0.4);
+  border-color: #4f46e5;
+  transform: translateY(-2px);
+}
+
+/* ════════════════════════════════════════════
+   TOAST (copiar enlace)
+   ════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4f46e5;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  z-index: 9999;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
