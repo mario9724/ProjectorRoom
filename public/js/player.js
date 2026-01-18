@@ -1,150 +1,104 @@
-let player;
-let hls;
+let streamUrl = '';
+let isHost = false;
+let roomId = '';
+let username = '';
 
 async function loadRoom() {
   const params = new URLSearchParams(window.location.search);
-  const roomId = params.get('id');
+  roomId = params.get('id');
+  username = params.get('username') || 'Invitado';
   
   try {
     const res = await fetch(`/api/projectorrooms/${roomId}`);
     const data = await res.json();
     
     if (data.success) {
-      const m = JSON.parse(data.projectorRoom.manifest);
-      const streamUrl = data.projectorRoom.source_url;
+      const room = data.projectorRoom;
+      const m = JSON.parse(room.manifest);
+      streamUrl = room.source_url;
+      isHost = username === room.host_username;
       
-      // Banner
+      // Header
       document.getElementById('roomTitle').textContent = 
-        `Proyectando "${m.title}" en ${data.projectorRoom.room_name} de ${data.projectorRoom.host_username}`;
-      document.getElementById('moviePoster').style.backgroundImage = 
-        m.poster ? `url(${m.poster})` : '';
-      document.getElementById('movieTitle').textContent = m.title;
-      document.getElementById('movieSynopsis').textContent = m.overview || 'Sin descripción';
-      document.getElementById('movieMeta').innerHTML = 
-        `<p>Año: ${m.year} | Anfitrión: ${data.projectorRoom.host_username}</p>`;
+        `Proyectando "${m.title}" en ${room.room_name} de ${room.host_username}`;
       
-      // PROCESAR STREAM
-      handleStream(streamUrl, m.title);
+      // Póster
+      const posterUrl = m.poster || 'https://via.placeholder.com/300x450/1e1b4b/06b6d4?text=Sin+Poster';
+      document.getElementById('moviePoster').style.backgroundImage = `url(${posterUrl})`;
+      
+      // Info
+      document.getElementById('movieTitle').textContent = m.title;
+      document.getElementById('movieMeta').innerHTML = `
+        <span>📅 ${m.year}</span>
+        <span>🎭 ${m.type === 'movie' ? 'Película' : 'Serie'}</span>
+        <span>👤 Anfitrión: ${room.host_username}</span>
+      `;
+      document.getElementById('movieSynopsis').textContent = m.overview || 'Sin descripción disponible';
+      
+      // Botón invitar (solo host)
+      if (isHost) {
+        document.getElementById('btnInvite').style.display = 'block';
+      }
+      
+      // Setup botones
+      setupButtons();
+      
     }
   } catch (error) {
     console.error('Error cargando sala:', error);
+    alert('Error al cargar la sala');
   }
 }
 
-function handleStream(url, title) {
-  const format = detectFormat(url);
-  
-  console.log('🎥 Stream:', url);
-  console.log('📦 Formato:', format.name);
-  
-  if (format.canPlay) {
-    showPlayer();
-    loadPlayer(url, format);
-  } else {
-    showExternal(url, title, format);
-  }
-}
-
-function detectFormat(url) {
-  const u = url.toLowerCase();
-  
-  if (u.includes('.m3u8') || u.includes('m3u8')) return { name: 'HLS', type: 'application/x-mpegURL', canPlay: true };
-  if (u.includes('.mpd') || u.includes('mpd')) return { name: 'DASH', type: 'application/dash+xml', canPlay: true };
-  if (u.includes('.mp4') || u.includes('mp4')) return { name: 'MP4', type: 'video/mp4', canPlay: true };
-  if (u.includes('.webm') || u.includes('webm')) return { name: 'WebM', type: 'video/webm', canPlay: true };
-  
-  // MKV/AVI/otros → Externo
-  if (u.includes('.mkv') || u.includes('mkv')) return { name: 'MKV', type: null, canPlay: false };
-  if (u.includes('.avi') || u.includes('avi')) return { name: 'AVI', type: null, canPlay: false };
-  
-  // Desconocido → Intentar MP4
-  return { name: 'Desconocido', type: 'video/mp4', canPlay: true };
-}
-
-function loadPlayer(url, format) {
-  const video = document.getElementById('videoPlayer');
-  
-  // HLS
-  if (format.name === 'HLS') {
-    if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-      hls.loadSource(url);
-      hls.attachMedia(video);
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url;
-    }
-    return;
-  }
-  
-  // Otros
-  video.src = url;
-}
-
-function showPlayer() {
-  document.getElementById('playerContainer').style.display = 'block';
-  document.getElementById('externalContainer').style.display = 'none';
-  
-  // Inicializar Video.js
-  player = videojs('videoPlayer', {
-    controls: true,
-    fluid: true,
-    preload: 'auto'
-  });
-  
-  player.on('error', () => {
-    console.error('❌ Player error → Fallback externo');
-    showExternal(streamUrl, 'Video', { name: 'Error', canPlay: false });
-  });
-  
-  setupPiP();
-}
-
-function setupPiP() {
-  const video = document.getElementById('videoPlayer');
-  const btnPiP = document.getElementById('btnPiP');
-  
-  if (document.pictureInPictureEnabled) {
-    btnPiP.onclick = async () => {
-      try {
-        if (document.pictureInPictureElement) {
-          await document.exitPictureInPicture();
-          btnPiP.textContent = '📺 PiP';
-        } else {
-          await video.requestPictureInPicture();
-          btnPiP.textContent = '🔳 Salir PiP';
-        }
-      } catch (e) {
-        console.error('PiP error:', e);
-      }
-    };
-  }
-}
-
-function showExternal(url, title, format) {
-  document.getElementById('externalContainer').style.display = 'block';
-  document.getElementById('playerContainer').style.display = 'none';
+function setupButtons() {
+  const btnPlay = document.getElementById('btnPlay');
+  const btnInvite = document.getElementById('btnInvite');
   
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
   
-  document.getElementById('formatInfo').textContent = 
-    `Formato ${format.name} → Usa reproductor externo:`;
+  // BOTÓN REPRODUCIR
+  btnPlay.onclick = () => {
+    if (isIOS) {
+      // iOS: VLC x-callback
+      window.location.href = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(streamUrl)}`;
+    } else if (isAndroid) {
+      // Android: Intent implícito
+      window.location.href = streamUrl;
+    } else {
+      // Desktop: Abrir directo (descarga o VLC si instalado)
+      window.open(streamUrl, '_blank');
+    }
+  };
   
-  document.getElementById('btnInfuse').href = `infuse://x-callback-url/play?url=${encodeURIComponent(url)}`;
-  document.getElementById('btnVLC').href = isIOS 
-    ? `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(url)}`
-    : url;
-  document.getElementById('btnBrowser').href = url;
-  
-  document.getElementById('btnShare').onclick = async () => {
+  // BOTÓN INVITAR
+  btnInvite.onclick = async () => {
+    const inviteUrl = window.location.href;
+    
     try {
       if (navigator.share) {
-        await navigator.share({ title, url });
+        await navigator.share({
+          title: `Únete a mi sala de proyección`,
+          text: `Estoy viendo una película. ¡Únete!`,
+          url: inviteUrl
+        });
       } else {
-        await navigator.clipboard.writeText(url);
-        alert('✅ Copiado');
+        await navigator.clipboard.writeText(inviteUrl);
+        showToast('✅ Enlace copiado al portapapeles');
       }
-    } catch (e) {}
+    } catch (e) {
+      // Fallback manual
+      prompt('Copia este enlace para invitar:', inviteUrl);
+    }
   };
+}
+
+function showToast(msg) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 loadRoom();
