@@ -3,65 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fuentes - ProjectorRoom</title>
-  <link rel="stylesheet" href="css/sources.css">
+  <title>ProjectorRoom - Bienvenida</title>
+  <link rel="stylesheet" href="css/welcome.css">
 </head>
 <body>
-  
-  <!-- HEADER PELÍCULA -->
-  <div class="movie-header">
-    <div id="moviePoster" class="movie-poster"></div>
-    <div class="movie-details">
-      <h1 id="movieTitle">Cargando...</h1>
-      <div class="movie-meta">
-        <span id="movieRating">⭐ -</span>
-        <span id="movieYear">-</span>
-        <span id="movieType">-</span>
-      </div>
-      <p id="movieOverview" class="movie-overview">Cargando información...</p>
+
+  <!-- PASO 1: Bienvenida -->
+  <div id="step1" class="step active">
+    <div class="welcome-container">
+      <div class="logo">📺</div>
+      <h1>ProjectorRoom</h1>
+      <p class="subtitle">Crea salas de proyección compartidas</p>
+      <button onclick="goToStep(2)" class="btn-primary">Comenzar</button>
     </div>
   </div>
 
-  <!-- CONFIGURACIÓN SALA -->
-  <div class="config-section">
-    <h2>Configuración de la sala</h2>
-    <div class="config-grid">
-      <div class="config-item">
-        <label>Tu nombre:</label>
-        <span id="configUsername">-</span>
+  <!-- PASO 2: Nombre de usuario -->
+  <div id="step2" class="step">
+    <div class="form-container">
+      <h2>¿Cómo te llamas?</h2>
+      <p class="description">Este será tu nombre en la sala</p>
+      <input 
+        type="text" 
+        id="username" 
+        placeholder="Ej: Mario" 
+        autocomplete="name"
+        maxlength="20"
+      >
+      <button onclick="goToStep(3)" class="btn-primary">Continuar</button>
+    </div>
+  </div>
+
+  <!-- PASO 3: Nombre de la sala -->
+  <div id="step3" class="step">
+    <div class="form-container">
+      <h2>Nombra tu sala</h2>
+      <p class="description">Tus amigos verán este nombre</p>
+      <input 
+        type="text" 
+        id="roomName" 
+        placeholder="Ej: Noche de películas" 
+        maxlength="30"
+      >
+      <button onclick="goToStep(4)" class="btn-primary">Continuar</button>
+    </div>
+  </div>
+
+  <!-- PASO 4: Tipo de proyección -->
+  <div id="step4" class="step">
+    <div class="form-container">
+      <h2>Selecciona tu fuente de proyección</h2>
+      <p class="description">¿De dónde obtendrás las películas?</p>
+      
+      <div class="radio-group">
+        <label class="radio-card">
+          <input type="radio" name="projectorType" value="public" checked>
+          <div class="radio-content">
+            <div class="radio-title">🌐 Predeterminado</div>
+            <div class="radio-description">Usa el addon público recomendado</div>
+          </div>
+        </label>
+        
+        <label class="radio-card">
+          <input type="radio" name="projectorType" value="custom">
+          <div class="radio-content">
+            <div class="radio-title">⚙️ Personalizado</div>
+            <div class="radio-description">Introduce tu propio manifest.json</div>
+          </div>
+        </label>
       </div>
-      <div class="config-item">
-        <label>Nombre de la sala:</label>
-        <span id="configRoomName">-</span>
+
+      <div id="customManifestInput" style="display:none; margin-top:1rem;">
+        <input 
+          type="url" 
+          id="customManifest" 
+          placeholder="https://tu-addon.com/manifest.json"
+        >
       </div>
-      <div class="config-item">
-        <label>Tipo de proyección:</label>
-        <span id="configProjectorType">-</span>
+
+      <button onclick="goToStep(5)" class="btn-primary">Continuar</button>
+    </div>
+  </div>
+
+  <!-- PASO 5: Modo roomies -->
+  <div id="step5" class="step">
+    <div class="form-container">
+      <h2>Modo roomies</h2>
+      <p class="description">¿Cómo se reproducirá el contenido?</p>
+      
+      <div class="radio-group">
+        <label class="radio-card">
+          <input type="radio" name="sourceMode" value="individual" checked>
+          <div class="radio-content">
+            <div class="radio-title">👤 Proyección individual</div>
+            <div class="radio-description">Cada usuario usa su propia conexión</div>
+          </div>
+        </label>
+        
+        <label class="radio-card">
+          <input type="radio" name="sourceMode" value="host">
+          <div class="radio-content">
+            <div class="radio-title">🎬 Usar mi proyección</div>
+            <div class="radio-description">Todos ven desde tu stream (experimental)</div>
+          </div>
+        </label>
       </div>
-      <div class="config-item">
-        <label>Modo roomies:</label>
-        <span id="configSourceMode">-</span>
+
+      <button onclick="goToStep(6)" class="btn-primary">Continuar</button>
+    </div>
+  </div>
+
+  <!-- PASO 6: Búsqueda de película -->
+  <div id="step6" class="step">
+    <div class="search-container">
+      <h2>Busca tu película o serie</h2>
+      
+      <div class="search-box">
+        <input 
+          type="text" 
+          id="searchQuery" 
+          placeholder="Ej: Matrix, Breaking Bad..." 
+          autocomplete="off"
+        >
+      </div>
+
+      <div id="searchResults" class="search-results">
+        <div class="carousel-empty">
+          <div class="empty-icon">🎬</div>
+          <p>Escribe algo para comenzar la búsqueda</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- FUENTES DISPONIBLES -->
-  <div class="sources-section">
-    <h2>Fuentes disponibles</h2>
-    <div id="sourcesList" class="sources-list">
-      <div class="sources-empty">
-        <div class="empty-icon">🔍</div>
-        <p>Cargando fuentes...</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- BOTONES -->
-  <div class="actions-bar">
-    <button id="btnBack" class="btn-secondary">← Volver</button>
-    <button id="btnCreate" class="btn-primary" disabled>Crear Sala</button>
-  </div>
-
-  <script src="js/sources.js"></script>
+  <script src="js/welcome.js"></script>
 </body>
 </html>
