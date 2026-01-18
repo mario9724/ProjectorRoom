@@ -8,10 +8,12 @@ let roomData = null;
 let isHost = false;
 let guestSources = [];
 let guestSelectedSourceIndex = null;
+let userRating = null;
+let allRatings = [];
+let allReactions = [];
 
 // INICIALIZAR SALA
 window.addEventListener('load', async function() {
-  // Obtener roomId de la URL
   const pathParts = window.location.pathname.split('/');
   roomId = pathParts[pathParts.length - 1];
   
@@ -21,29 +23,23 @@ window.addEventListener('load', async function() {
     return;
   }
   
-  // Cargar datos de la sala primero
   await loadRoomData();
   
-  // Verificar si es ANFITRIÓN (viene de crear sala)
   isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
   
   if (isHost) {
-    // ES ANFITRIÓN - Acceso directo sin configuración
     username = sessionStorage.getItem('projectorroom_host_username_' + roomId);
     initRoom();
   } else {
-    // ES INVITADO - Verificar si ya se configuró
     const alreadyConfigured = localStorage.getItem('projectorroom_guest_configured_' + roomId) === 'true';
     
     if (alreadyConfigured) {
       username = localStorage.getItem('projectorroom_username');
       
-      // Si el anfitrión NO comparte fuente, verificar si el invitado ya seleccionó fuente
       if (roomData.useHostSource === false) {
         const hasSelectedSource = localStorage.getItem('projectorroom_guest_source_' + roomId);
         
         if (!hasSelectedSource) {
-          // Mostrar selector de fuentes
           showGuestSourceSelector();
           return;
         }
@@ -58,10 +54,8 @@ window.addEventListener('load', async function() {
 
 // MOSTRAR CONFIGURACIÓN DE INVITADO
 function showGuestConfig() {
-  // Ocultar sala y mostrar formulario
   document.querySelector('.room-container').style.display = 'none';
   
-  // Crear formulario según configuración del anfitrión
   let configHTML = `
     <div class="guest-config-container">
       <div class="step-card">
@@ -69,7 +63,6 @@ function showGuestConfig() {
         <input type="text" id="guestUsername" placeholder="Tu nombre..." maxlength="20" autofocus>
   `;
   
-  // Si el anfitrión NO comparte su proyector, mostrar selector
   if (roomData.useHostSource === false) {
     configHTML += `
       <div style="margin-top: 30px;">
@@ -109,7 +102,6 @@ function showGuestConfig() {
   document.body.insertAdjacentHTML('beforeend', configHTML);
 }
 
-// SELECCIONAR PROYECTOR DE INVITADO
 window.selectGuestProjector = function(type) {
   document.querySelectorAll('input[name="guestProjectorType"]').forEach(radio => {
     radio.checked = radio.value === type;
@@ -126,7 +118,6 @@ window.selectGuestProjector = function(type) {
   }
 };
 
-// ENVIAR CONFIGURACIÓN DE INVITADO
 window.submitGuestConfig = async function() {
   const usernameInput = document.getElementById('guestUsername');
   username = usernameInput.value.trim();
@@ -139,7 +130,6 @@ window.submitGuestConfig = async function() {
   localStorage.setItem('projectorroom_username', username);
   localStorage.setItem('projectorroom_guest_configured_' + roomId, 'true');
   
-  // Si necesita configurar proyector
   if (roomData.useHostSource === false) {
     const projectorType = document.querySelector('input[name="guestProjectorType"]:checked').value;
     
@@ -154,11 +144,9 @@ window.submitGuestConfig = async function() {
     
     localStorage.setItem('projectorroom_guest_projector_' + roomId, projectorType);
     
-    // Ocultar formulario y mostrar selector de fuentes
     document.querySelector('.guest-config-container').remove();
     showGuestSourceSelector();
   } else {
-    // Ocultar formulario y mostrar sala directamente
     document.querySelector('.guest-config-container').remove();
     document.querySelector('.room-container').style.display = 'block';
     initRoom();
@@ -203,11 +191,9 @@ async function showGuestSourceSelector() {
   
   document.body.insertAdjacentHTML('beforeend', selectorHTML);
   
-  // Cargar fuentes
   await loadGuestSources(movieData);
 }
 
-// CARGAR FUENTES PARA INVITADO
 async function loadGuestSources(movieData) {
   const container = document.getElementById('guestSourcesList');
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
@@ -248,7 +234,6 @@ async function loadGuestSources(movieData) {
   }
 }
 
-// RENDERIZAR FUENTES PARA INVITADO
 function renderGuestSources() {
   const container = document.getElementById('guestSourcesList');
   container.innerHTML = '';
@@ -269,7 +254,6 @@ function renderGuestSources() {
   document.getElementById('btnJoinRoom').disabled = false;
 }
 
-// SELECCIONAR FUENTE DE INVITADO
 function selectGuestSource(index) {
   guestSelectedSourceIndex = index;
   
@@ -278,17 +262,14 @@ function selectGuestSource(index) {
   });
 }
 
-// UNIRSE A LA SALA CON FUENTE SELECCIONADA
 window.joinRoomWithSource = function() {
   if (guestSelectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
     return;
   }
   
-  // Guardar fuente seleccionada
   localStorage.setItem('projectorroom_guest_source_' + roomId, guestSources[guestSelectedSourceIndex].url);
   
-  // Ocultar selector y mostrar sala
   document.querySelector('.guest-source-container').remove();
   document.querySelector('.room-container').style.display = 'block';
   
@@ -300,9 +281,10 @@ function initRoom() {
   renderRoom();
   connectSocket();
   setupButtons();
+  loadRatings();
+  loadReactions();
 }
 
-// CARGAR DATOS DE LA SALA
 async function loadRoomData() {
   try {
     const res = await fetch(`/api/projectorrooms/${roomId}`);
@@ -325,8 +307,11 @@ async function loadRoomData() {
 function renderRoom() {
   const movieData = JSON.parse(roomData.manifest);
   
-  document.getElementById('roomTitle').textContent = `PROYECTANDO "${movieData.title}"`;
-  document.getElementById('roomSubtitle').textContent = `en la sala de ${roomData.hostUsername}`;
+  // Header con póster pequeño
+  document.getElementById('roomPosterSmall').src = movieData.poster;
+  document.getElementById('roomTitle').textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
+  
+  // Info de película
   document.getElementById('roomPoster').src = movieData.poster;
   document.getElementById('movieTitle').textContent = movieData.title;
   document.getElementById('movieYear').textContent = `📅 ${movieData.year}`;
@@ -354,9 +339,16 @@ function connectSocket() {
   socket.on('chat-message', data => {
     addChatMessage(data.username, data.message, false);
   });
+  
+  socket.on('rating-added', data => {
+    allRatings.push(data);
+  });
+  
+  socket.on('reaction-added', data => {
+    allReactions.push(data);
+  });
 }
 
-// ACTUALIZAR LISTA DE USUARIOS
 function updateUsersList(users) {
   document.getElementById('usersCount').textContent = users.length;
   
@@ -371,7 +363,6 @@ function updateUsersList(users) {
   });
 }
 
-// AGREGAR MENSAJE AL CHAT
 function addChatMessage(username, message, isSystem) {
   const container = document.getElementById('chatMessages');
   const messageEl = document.createElement('div');
@@ -387,7 +378,6 @@ function addChatMessage(username, message, isSystem) {
   container.scrollTop = container.scrollHeight;
 }
 
-// ENVIAR MENSAJE
 function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
@@ -398,11 +388,10 @@ function sendChatMessage() {
   }
 }
 
-// ABRIR VLC (SOLO VLC, SIN DESCARGA)
+// ABRIR VLC
 function startProjection() {
   let sourceUrl;
   
-  // Determinar qué fuente usar
   if (isHost || roomData.useHostSource) {
     sourceUrl = roomData.sourceUrl;
   } else {
@@ -414,11 +403,10 @@ function startProjection() {
     return;
   }
   
-  // SOLO abrir VLC (sin fallback de descarga)
   window.location.href = `vlc://${sourceUrl}`;
 }
 
-// COPIAR ENLACE DE INVITACIÓN
+// COPIAR ENLACE
 function copyInvite() {
   const roomUrl = `${window.location.origin}/sala/${roomId}`;
   
@@ -433,18 +421,204 @@ function copyInvite() {
   }
 }
 
+// CAMBIAR FUENTE
+function changeSource() {
+  // Limpiar fuente actual
+  if (isHost) {
+    sessionStorage.removeItem('projectorroom_is_host_' + roomId);
+    sessionStorage.removeItem('projectorroom_host_username_' + roomId);
+  } else {
+    localStorage.removeItem('projectorroom_guest_source_' + roomId);
+  }
+  
+  // Recargar página para volver a selector
+  window.location.reload();
+}
+
+// CALIFICAR
+function openRateModal() {
+  const modal = document.getElementById('modalRate');
+  const ratingsList = document.getElementById('ratingsList');
+  const starsContainer = document.getElementById('ratingStars');
+  const submitBtn = document.getElementById('btnSubmitRating');
+  
+  if (userRating !== null) {
+    // Ya calificó, mostrar calificaciones
+    starsContainer.style.display = 'none';
+    submitBtn.style.display = 'none';
+    ratingsList.style.display = 'block';
+    renderAllRatings();
+  } else {
+    // No ha calificado, mostrar estrellas
+    starsContainer.style.display = 'flex';
+    submitBtn.style.display = 'block';
+    ratingsList.style.display = 'none';
+    setupRatingStars();
+  }
+  
+  modal.style.display = 'flex';
+}
+
+function setupRatingStars() {
+  const stars = document.querySelectorAll('.star');
+  let selectedRating = 0;
+  
+  stars.forEach(star => {
+    star.onclick = function() {
+      selectedRating = parseInt(this.dataset.value);
+      
+      stars.forEach((s, i) => {
+        if (i < selectedRating) {
+          s.classList.add('selected');
+        } else {
+          s.classList.remove('selected');
+        }
+      });
+    };
+  });
+  
+  document.getElementById('btnSubmitRating').onclick = function() {
+    if (selectedRating === 0) {
+      alert('Selecciona una calificación');
+      return;
+    }
+    
+    userRating = selectedRating;
+    
+    if (socket && roomId) {
+      socket.emit('add-rating', { roomId, username, rating: selectedRating });
+    }
+    
+    alert(`✅ Has calificado con ${selectedRating}/10 estrellas`);
+    closeRateModal();
+  };
+}
+
+function renderAllRatings() {
+  const container = document.getElementById('ratingsContent');
+  container.innerHTML = '';
+  
+  if (allRatings.length === 0) {
+    container.innerHTML = '<p style="color: #888;">Aún no hay calificaciones</p>';
+    return;
+  }
+  
+  allRatings.forEach(rating => {
+    const ratingEl = document.createElement('div');
+    ratingEl.className = 'rating-item';
+    ratingEl.innerHTML = `
+      <strong>${escapeHtml(rating.username)}:</strong> ${'★'.repeat(rating.rating)}${'☆'.repeat(10 - rating.rating)} (${rating.rating}/10)
+    `;
+    container.appendChild(ratingEl);
+  });
+}
+
+function closeRateModal() {
+  document.getElementById('modalRate').style.display = 'none';
+}
+
+// REACCIONAR
+function openReactModal() {
+  document.getElementById('modalReact').style.display = 'flex';
+}
+
+function submitReaction() {
+  const time = document.getElementById('reactionTime').value.trim();
+  const message = document.getElementById('reactionMessage').value.trim();
+  
+  if (!time || !message) {
+    alert('Completa todos los campos');
+    return;
+  }
+  
+  if (socket && roomId) {
+    socket.emit('add-reaction', { roomId, username, time, message });
+  }
+  
+  alert('✅ Reacción enviada');
+  closeReactModal();
+}
+
+function closeReactModal() {
+  document.getElementById('modalReact').style.display = 'none';
+  document.getElementById('reactionTime').value = '';
+  document.getElementById('reactionMessage').value = '';
+}
+
+// VER REACCIONES
+function openViewReactionsModal() {
+  renderAllReactions();
+  document.getElementById('modalViewReactions').style.display = 'flex';
+}
+
+function renderAllReactions() {
+  const container = document.getElementById('reactionsContent');
+  container.innerHTML = '';
+  
+  if (allReactions.length === 0) {
+    container.innerHTML = '<p style="color: #888;">Aún no hay reacciones</p>';
+    return;
+  }
+  
+  allReactions.sort((a, b) => {
+    const [minA, secA] = a.time.split(':').map(Number);
+    const [minB, secB] = b.time.split(':').map(Number);
+    return (minA * 60 + secA) - (minB * 60 + secB);
+  });
+  
+  allReactions.forEach(reaction => {
+    const reactionEl = document.createElement('div');
+    reactionEl.className = 'reaction-item';
+    reactionEl.innerHTML = `
+      <div class="reaction-time">⏱️ ${escapeHtml(reaction.time)}</div>
+      <div class="reaction-user">${escapeHtml(reaction.username)}</div>
+      <div class="reaction-message">${escapeHtml(reaction.message)}</div>
+    `;
+    container.appendChild(reactionEl);
+  });
+}
+
+function closeViewReactionsModal() {
+  document.getElementById('modalViewReactions').style.display = 'none';
+}
+
+function loadRatings() {
+  // Aquí puedes cargar ratings del servidor si los guardas
+  allRatings = [];
+}
+
+function loadReactions() {
+  // Aquí puedes cargar reacciones del servidor si las guardas
+  allReactions = [];
+}
+
 // CONFIGURAR BOTONES
 function setupButtons() {
   document.getElementById('btnStartProjection').onclick = startProjection;
   document.getElementById('btnCopyInvite').onclick = copyInvite;
+  document.getElementById('btnChangeSource').onclick = changeSource;
+  document.getElementById('btnRate').onclick = openRateModal;
+  document.getElementById('btnReact').onclick = openReactModal;
+  document.getElementById('btnViewReactions').onclick = openViewReactionsModal;
   document.getElementById('btnSendChat').onclick = sendChatMessage;
+  
+  document.getElementById('btnCancelRate').onclick = closeRateModal;
+  document.getElementById('btnSubmitReaction').onclick = submitReaction;
+  document.getElementById('btnCancelReact').onclick = closeReactModal;
+  document.getElementById('btnCloseReactions').onclick = closeViewReactionsModal;
   
   document.getElementById('chatInput').addEventListener('keypress', e => {
     if (e.key === 'Enter') sendChatMessage();
   });
+  
+  // Cerrar modales al hacer clic fuera
+  window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+      event.target.style.display = 'none';
+    }
+  };
 }
 
-// UTILIDADES
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
