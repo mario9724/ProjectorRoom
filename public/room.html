@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala - ProjectorRoom</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
 </head>
 <body>
   <div class="room-layout">
@@ -25,27 +26,63 @@
     <div class="room-container">
       <div class="video-section">
         
-        <!-- CONTENEDOR VLC -->
-        <div id="playerContainer">
-          <canvas id="vlcCanvas" style="width:100%;max-height:70vh;background:#000;border-radius:12px"></canvas>
-          
-          <!-- CONTROLES PERSONALIZADOS -->
-          <div class="vlc-controls">
-            <button id="btnPlay" class="ctrl-btn">▶️ Play</button>
-            <button id="btnPause" class="ctrl-btn">⏸️ Pausa</button>
-            <input type="range" id="seekBar" class="seek-bar" min="0" max="100" value="0">
-            <span id="timeDisplay" class="time-display">00:00 / 00:00</span>
-            <button id="btnFullscreen" class="ctrl-btn">⛶ Fullscreen</button>
+        <!-- LOADING MKV CONVERSION -->
+        <div id="conversionLoader" style="display:none">
+          <div class="conversion-card">
+            <div class="spinner"></div>
+            <h3>🔄 Convirtiendo MKV a formato compatible...</h3>
+            <p id="conversionStatus">Cargando FFmpeg...</p>
+            <div class="progress-bar">
+              <div id="conversionProgress" class="progress-fill"></div>
+            </div>
           </div>
-          
-          <div id="loadingMsg" class="loading-msg">Cargando VLC...</div>
         </div>
         
-        <!-- BOTÓN VLC EXTERNO (fallback) -->
-        <div class="vlc-button-container">
-          <a id="btnVLC" class="btn-vlc" target="_blank">
-            🎥 Abrir en VLC externo
-          </a>
+        <!-- REPRODUCTOR INTEGRADO -->
+        <div id="playerContainer" style="display:none">
+          <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto"></video>
+        </div>
+        
+        <!-- BOTONES EXTERNOS (fallback) -->
+        <div id="externalContainer" style="display:none">
+          <div class="external-card">
+            <h3>🎥 Reproducir externamente</h3>
+            <p id="formatInfo" style="color:#94a3b8;margin:1rem 0"></p>
+            
+            <div class="external-buttons">
+              <a id="btnInfuse" class="ext-btn" target="_blank">
+                <span class="btn-icon">📱</span>
+                <div>
+                  <strong>Infuse</strong>
+                  <small>iOS / Mac / Apple TV</small>
+                </div>
+              </a>
+              
+              <a id="btnVLC" class="ext-btn" target="_blank">
+                <span class="btn-icon">🎥</span>
+                <div>
+                  <strong>VLC</strong>
+                  <small>iOS / Android / PC</small>
+                </div>
+              </a>
+              
+              <a id="btnBrowser" class="ext-btn" target="_blank">
+                <span class="btn-icon">🌐</span>
+                <div>
+                  <strong>Navegador</strong>
+                  <small>Intentar directo</small>
+                </div>
+              </a>
+              
+              <button id="btnShare" class="ext-btn">
+                <span class="btn-icon">📡</span>
+                <div>
+                  <strong>Compartir / Cast</strong>
+                  <small>Enviar a TV</small>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
         
       </div>
@@ -65,8 +102,14 @@
     
   </div>
   
-  <!-- libVLC.js (WebAssembly) -->
-  <script src="https://cdn.jsdelivr.net/npm/@rdwebrtc/libvlc.js@0.1.10/dist/libvlc.js"></script>
+  <!-- PLAYERS -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+  
+  <!-- FFMPEG WASM (para MKV) -->
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
