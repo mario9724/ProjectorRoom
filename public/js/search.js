@@ -91,7 +91,6 @@ async function fetchSources() {
     const base = url.replace('/manifest.json', '');
     const streams = await fetch(`${base}/stream/${selectedContent.type === 'movie' ? 'movie' : 'series'}/${imdbId}.json`).then(r => r.json());
     
-    // Filtrar solo HTTP/HTTPS
     const httpStreams = (streams.streams || []).filter(s => {
       if (!s.url || typeof s.url !== 'string') return false;
       return s.url.startsWith('http://') || s.url.startsWith('https://');
@@ -103,28 +102,15 @@ async function fetchSources() {
     
     const roomName = document.getElementById('roomName').value || 'Mi Sala';
     
-    // PARSEAR FORMATO ADDON (como Stremio)
+    // TEXTO LIMPIO DEL ADDON
     div.innerHTML = httpStreams.slice(0, 20).map(s => {
-      const info = parseStreamInfo(s, manifest.name);
+      const addonText = s.title || s.name || 'Stream';
       return `
-        <div class="source-card" onclick='createRoom(${JSON.stringify(s.url)}, ${JSON.stringify(info)})'>
-          <div class="source-header">
-            <span class="source-quality">${info.quality}</span>
-            <span class="source-format ${info.formatClass}">${info.format}</span>
-            ${info.seeders ? `<span class="source-seeds">👥 ${info.seeders}</span>` : ''}
-          </div>
-          
-          <div class="source-title">${info.title}</div>
-          
+        <div class="source-card" onclick='createRoom(${JSON.stringify(s.url)})'>
+          <div class="source-title">${addonText}</div>
           <div class="source-meta">
-            ${info.size ? `<span>📦 ${info.size}</span>` : ''}
-            ${info.audio ? `<span>🔊 ${info.audio}</span>` : ''}
-            ${info.lang ? `<span>🌐 ${info.lang}</span>` : ''}
-            ${info.provider ? `<span>📡 ${info.provider}</span>` : ''}
-          </div>
-          
-          <div class="source-room">
-            Crear sala: <strong>${roomName}</strong>
+            <span>📡 ${manifest.name || 'Addon'}</span>
+            <span>→ Sala: <strong>${roomName}</strong></span>
           </div>
         </div>
       `;
@@ -135,86 +121,7 @@ async function fetchSources() {
   }
 }
 
-// ════════════════════════════════════════════
-// PARSEAR INFO DEL STREAM (formato Stremio)
-// ════════════════════════════════════════════
-function parseStreamInfo(stream, addonName) {
-  const title = stream.title || stream.name || 'Stream';
-  const lines = title.split('\n');
-  
-  const info = {
-    title: lines[0] || 'Stream',
-    quality: 'HD',
-    format: 'HTTP',
-    formatClass: 'format-http',
-    size: null,
-    audio: null,
-    lang: null,
-    seeders: null,
-    provider: addonName || 'Addon'
-  };
-  
-  // Detectar calidad (4K, 1080p, 720p, etc)
-  const qualityMatch = title.match(/(4K|2160p|1080p|720p|480p|HD|SD|UHD|FHD)/i);
-  if (qualityMatch) {
-    info.quality = qualityMatch[1].toUpperCase();
-  }
-  
-  // Detectar formato archivo
-  const url = stream.url.toLowerCase();
-  if (url.includes('.m3u8')) {
-    info.format = 'HLS';
-    info.formatClass = 'format-hls';
-  } else if (url.includes('.mkv')) {
-    info.format = 'MKV';
-    info.formatClass = 'format-mkv';
-  } else if (url.includes('.mp4')) {
-    info.format = 'MP4';
-    info.formatClass = 'format-mp4';
-  } else if (url.includes('.avi')) {
-    info.format = 'AVI';
-    info.formatClass = 'format-avi';
-  } else if (url.includes('debrid')) {
-    info.format = 'Debrid';
-    info.formatClass = 'format-debrid';
-  }
-  
-  // Detectar tamaño
-  const sizeMatch = title.match(/(\d+\.?\d*\s?(GB|MB|TB))/i);
-  if (sizeMatch) {
-    info.size = sizeMatch[1];
-  }
-  
-  // Detectar audio
-  const audioMatch = title.match(/(AAC|AC3|DDP|ATMOS|DTS|TrueHD|5\.1|7\.1)/i);
-  if (audioMatch) {
-    info.audio = audioMatch[1];
-  }
-  
-  // Detectar idioma
-  const langMatch = title.match(/(DUAL|LATINO|SPANISH|ENGLISH|MULTI)/i);
-  if (langMatch) {
-    info.lang = langMatch[1];
-  }
-  
-  // Detectar seeders (si es torrent convertido)
-  const seedMatch = title.match(/👤\s*(\d+)/);
-  if (seedMatch) {
-    info.seeders = seedMatch[1];
-  }
-  
-  // Detectar proveedor específico
-  if (url.includes('real-debrid')) info.provider = 'RealDebrid';
-  else if (url.includes('alldebrid')) info.provider = 'AllDebrid';
-  else if (url.includes('torbox')) info.provider = 'TorBox';
-  else if (url.includes('premiumize')) info.provider = 'Premiumize';
-  else if (url.includes('pixeldrain')) info.provider = 'PixelDrain';
-  else if (url.includes('streamtape')) info.provider = 'StreamTape';
-  
-  return info;
-}
-
-async function createRoom(url, streamInfo) {
+async function createRoom(url) {
   const user = document.getElementById('username').value.trim();
   const room = document.getElementById('roomName').value.trim();
   const mode = document.querySelector('input[name="sourceMode"]:checked').value === 'host';
@@ -235,8 +142,7 @@ async function createRoom(url, streamInfo) {
           poster: selectedContent.poster, 
           type: selectedContent.type,
           overview: movieDetails.overview, 
-          year: selectedContent.year,
-          streamInfo: streamInfo // GUARDAR INFO DEL STREAM
+          year: selectedContent.year
         }),
         sourceUrl: url, 
         useHostSource: mode
