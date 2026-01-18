@@ -17,32 +17,57 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// PROXY para Debrid + WebStreamr HTTP
+// PROXY MEJORADO - Sigue redirects
 app.get('/proxy-stream', (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('URL requerida');
   
-  const protocol = targetUrl.startsWith('https') ? https : http;
+  console.log('📹 Proxy stream:', targetUrl);
   
-  const options = {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Range': req.headers.range || 'bytes=0-'
+  const followRedirect = (url, depth = 0) => {
+    if (depth > 5) {
+      console.error('❌ Demasiados redirects');
+      return res.status(500).send('Redirect loop');
     }
+    
+    const protocol = url.startsWith('https') ? https : http;
+    
+    protocol.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Range': req.headers.range || 'bytes=0-'
+      }
+    }, (proxyRes) => {
+      
+      // 🔄 SEGUIR REDIRECTS (301, 302, 303, 307, 308)
+      if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode)) {
+        const redirectUrl = proxyRes.headers.location;
+        console.log(`🔄 Redirect ${proxyRes.statusCode} → ${redirectUrl}`);
+        proxyRes.resume(); // Consumir response
+        return followRedirect(redirectUrl, depth + 1);
+      }
+      
+      // ✅ Streaming directo
+      const statusCode = req.headers.range && proxyRes.statusCode === 206 ? 206 : 200;
+      
+      res.writeHead(statusCode, {
+        'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
+        'Content-Length': proxyRes.headers['content-length'],
+        'Content-Range': proxyRes.headers['content-range'],
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      
+      proxyRes.pipe(res);
+      
+    }).on('error', (err) => {
+      console.error('❌ Proxy error:', err.message);
+      res.status(500).send('Error proxy');
+    });
   };
   
-  protocol.get(targetUrl, options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, {
-      'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
-      'Content-Length': proxyRes.headers['content-length'],
-      'Accept-Ranges': 'bytes',
-      'Access-Control-Allow-Origin': '*'
-    });
-    proxyRes.pipe(res);
-  }).on('error', (err) => {
-    console.error('Proxy error:', err.message);
-    res.status(500).end();
-  });
+  followRedirect(targetUrl);
 });
 
 const roomsRouter = require('./routes/rooms');
@@ -80,4 +105,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => console.log(`ProjectorRoom en puerto ${PORT}`));
+httpServer.listen(PORT, () => console.log(`✅ ProjectorRoom en puerto ${PORT}`));
