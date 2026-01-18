@@ -3,45 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProjectorRoom</title>
+  <title>ProjectorRoom - Crear Sala</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <div class="container">
     <h1>🎬 ProjectorRoom</h1>
+    <p>Crea tu sala de cine sincronizada</p>
     
     <div class="form-section">
-      <!-- Paso 1: Usuario y Sala -->
-      <h2>👤 Configuración Básica</h2>
-      <input type="text" id="username" placeholder="Tu nombre" required maxlength="20">
-      <input type="text" id="roomName" placeholder="Nombre ProjectorRoom" required maxlength="30">
       
-      <!-- Paso 2: Buscador TMDB Compacto -->
-      <h2>🔍 Selecciona Película/Serie</h2>
-      <div class="search-compact">
-        <input type="text" id="searchQuery" placeholder="Seven, Inception..." maxlength="80">
-        <button onclick="searchContent()">Buscar</button>
-      </div>
-      <div id="movieGrid" class="movie-grid"></div>
-      <div id="selectedMovie" style="display:none;"></div>
-      
-      <!-- Paso 3: Manifest (aparece después de seleccionar) -->
-      <div id="manifestSection" style="display:none;">
-        <h2>🔌 Stremio Manifest</h2>
-        <input type="url" id="manifestUrl" placeholder="https://torrentio.strem.fun/manifest.json">
-        <button onclick="scrapeSources()">🔄 Raspear Fuentes</button>
+      <!-- 1. NOMBRE USUARIO -->
+      <div class="form-group">
+        <label>👤 Nombre de Usuario</label>
+        <input type="text" id="username" placeholder="Tu nombre" required maxlength="20">
       </div>
       
-      <!-- Paso 4: Fuentes (aparece después de raspear) -->
-      <div id="sourcesSection" style="display:none;">
-        <h3>📺 Fuentes encontradas</h3>
-        <div id="sourcesList"></div>
-        <div class="host-options">
-          <label><input type="radio" name="sourceMode" value="host" checked> 🎯 Mi fuente</label>
-          <label><input type="radio" name="sourceMode" value="guest"> 👥 Invitados fuentes</label>
-          <br><button onclick="createRoom()" id="createBtn">🚀 Crear Sala</button>
+      <!-- 2. NOMBRE SALA -->
+      <div class="form-group">
+        <label>🎭 Nombre de la Sala</label>
+        <input type="text" id="roomName" placeholder="Nombre de tu ProjectorRoom" required maxlength="30">
+      </div>
+      
+      <!-- 3. TMDB API -->
+      <div class="form-group">
+        <label>🔑 TMDB API Key</label>
+        <input type="text" id="tmdbApiKey" placeholder="Ingresa tu API Key de TMDB" required>
+        <small><a href="https://www.themoviedb.org/settings/api" target="_blank">Obtener gratis aquí</a></small>
+      </div>
+      
+      <!-- 4. MANIFEST STREMIO -->
+      <div class="form-group">
+        <label>🔌 Stremio Manifest URL</label>
+        <input type="url" id="manifestUrl" placeholder="https://torrentio.strem.fun/manifest.json" value="https://torrentio.strem.fun/manifest.json">
+        <small>Torrentio • Debridio • Juan Carlos</small>
+      </div>
+      
+      <div class="separator"></div>
+      
+      <!-- 5. BÚSQUEDA PELÍCULAS -->
+      <div class="form-group">
+        <label>🔍 Buscar Película/Serie</label>
+        <div class="search-box">
+          <input type="text" id="searchQuery" placeholder="Seven, Breaking Bad, Inception...">
+          <button onclick="searchContent()" class="btn-search">Buscar</button>
         </div>
       </div>
+      
+      <!-- RESULTADOS BÚSQUEDA -->
+      <div id="searchResults"></div>
+      
+      <!-- 6. PELÍCULA SELECCIONADA -->
+      <div id="selectedContent" class="selected-box" style="display:none;">
+        <label>✅ Contenido Seleccionado</label>
+        <div id="contentCard"></div>
+      </div>
+      
+      <div class="separator"></div>
+      
+      <!-- 7. BÚSQUEDA FUENTES -->
+      <div id="sourcesSection" style="display:none;">
+        <div class="form-group">
+          <label>📺 Fuentes Disponibles</label>
+          <button onclick="fetchSources()" class="btn-sources">🔎 Buscar Fuentes con Manifest</button>
+        </div>
+        
+        <div id="sourcesList"></div>
+      </div>
+      
+      <!-- 8. OPCIONES DE SALA -->
+      <div id="roomOptions" style="display:none;">
+        <div class="form-group">
+          <label>⚙️ Modo de Sala</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="sourceMode" value="host" checked>
+              <span>🎯 Usar mi fuente para todos los invitados</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="sourceMode" value="guest">
+              <span>👥 Cada invitado usa su propia fuente</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <!-- 9. CREAR SALA -->
+        <button onclick="createRoom()" id="createBtn" class="btn-create">
+          🚀 Crear ProjectorRoom
+        </button>
+      </div>
+      
     </div>
   </div>
   
