@@ -1,195 +1,317 @@
-const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
-const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
-
-let searchResults = [];
-let currentIndex = 0;
-let selectedMovie = null;
-
-function goToStep(step) {
-  const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
+// MOSTRAR CONSOLA EN PANTALLA (DEBUG)
+(function() {
+  const consoleDiv = document.createElement('div');
+  consoleDiv.id = 'mobileConsole';
+  consoleDiv.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:150px;overflow-y:auto;background:#000;color:#0f0;font-family:monospace;font-size:9px;padding:5px;z-index:99999;border-top:2px solid #0f0;';
+  document.body.appendChild(consoleDiv);
   
-  if (step === 2) {
-    const username = document.getElementById('username').value.trim();
-    if (!username) {
-      return alert('Por favor, escribe tu nombre');
-    }
-    session.username = username;
+  function log(type, ...args) {
+    const line = document.createElement('div');
+    line.textContent = type + ': ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
+    line.style.color = type === 'ERROR' ? '#f00' : type === 'WARN' ? '#ff0' : '#0f0';
+    consoleDiv.appendChild(line);
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
   }
   
+  window.mobileLog = (...args) => log('LOG', ...args);
+  window.mobileError = (...args) => log('ERR', ...args);
+  window.mobileWarn = (...args) => log('WARN', ...args);
+  
+  window.addEventListener('error', e => {
+    mobileError('ERROR:', e.message);
+  });
+})();
+
+mobileLog('✅ welcome.js cargado');
+
+const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
+let currentStep = 1;
+let searchTimeout = null;
+
+// Navegación entre pasos
+function goToStep(step) {
+  mobileLog('📍 Navegando a paso', step);
+  
+  // Validaciones
   if (step === 3) {
-    const roomName = document.getElementById('roomName').value.trim();
-    if (!roomName) {
-      return alert('Por favor, nombra tu sala');
+    const username = document.getElementById('username').value.trim();
+    if (!username) {
+      alert('Por favor, escribe tu nombre');
+      return;
     }
-    session.roomName = roomName;
+    mobileLog('👤 Username:', username);
   }
   
   if (step === 4) {
-    session.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
-    if (session.projectorType === 'custom') {
-      const customUrl = document.getElementById('customManifest').value.trim();
-      if (!customUrl) {
-        return alert('Por favor, introduce la URL del manifest');
-      }
-      session.customManifest = customUrl;
+    const roomName = document.getElementById('roomName').value.trim();
+    if (!roomName) {
+      alert('Por favor, escribe el nombre de la sala');
+      return;
     }
+    mobileLog('🏠 Room name:', roomName);
   }
   
-  if (step === 5) {
-    session.sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
+  // Ocultar paso actual
+  const currentStepEl = document.getElementById('step' + currentStep);
+  if (currentStepEl) {
+    currentStepEl.classList.remove('active');
   }
   
-  localStorage.setItem('projectorSession', JSON.stringify(session));
-  console.log('Session guardada:', session);
+  // Mostrar nuevo paso
+  currentStep = step;
+  const newStepEl = document.getElementById('step' + step);
+  if (newStepEl) {
+    newStepEl.classList.add('active');
+  }
   
-  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  document.getElementById('step' + step).classList.add('active');
+  // Si llegamos al paso de búsqueda, activar listener
+  if (step === 6) {
+    mobileLog('🔍 Paso de búsqueda activado');
+    setTimeout(initSearch, 100);
+  }
 }
 
-document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
-  radio.addEventListener('change', (e) => {
-    document.getElementById('customManifestInput').style.display = 
-      e.target.value === 'custom' ? 'block' : 'none';
-  });
-});
-
-let searchTimeout;
-document.getElementById('searchQuery').addEventListener('input', (e) => {
-  clearTimeout(searchTimeout);
-  const query = e.target.value.trim();
-  
-  if (!query) {
-    showEmptyState();
+// Inicializar búsqueda
+function initSearch() {
+  const input = document.getElementById('searchQuery');
+  if (!input) {
+    mobileError('❌ No se encontró #searchQuery');
     return;
   }
   
-  searchTimeout = setTimeout(() => searchMovies(query), 500);
-});
-
-async function searchMovies(query) {
-  try {
-    const res = await fetch('https://api.themoviedb.org/3/search/multi?api_key=' + TMDB_API_KEY + '&query=' + encodeURIComponent(query) + '&language=es-ES');
-    const data = await res.json();
-    
-    searchResults = data.results
-      .filter(i => (i.media_type === 'movie' || i.media_type === 'tv') && i.poster_path)
-      .map(i => ({
-        id: i.id,
-        type: i.media_type,
-        title: i.title || i.name,
-        year: (i.release_date || i.first_air_date || '').slice(0, 4),
-        poster: i.poster_path ? 'https://image.tmdb.org/t/p/w500' + i.poster_path : '',
-        rating: i.vote_average ? i.vote_average.toFixed(1) : 'N/A',
-        overview: i.overview || 'Sin descripción disponible'
-      }));
-    
-    currentIndex = 0;
-    renderCarousel();
-    
-  } catch (error) {
-    console.error('Error búsqueda:', error);
-  }
-}
-
-function showEmptyState() {
-  document.getElementById('searchResults').innerHTML = 
-    '<div class="carousel-empty">' +
-    '<div class="empty-icon">🎬</div>' +
-    '<p>Escribe algo para comenzar la búsqueda</p>' +
-    '</div>';
-}
-
-function renderCarousel() {
-  const container = document.getElementById('searchResults');
+  mobileLog('✅ Input de búsqueda encontrado');
   
-  if (searchResults.length === 0) {
-    container.innerHTML = 
-      '<div class="carousel-empty">' +
-      '<div class="empty-icon">😕</div>' +
-      '<p>No se encontraron resultados</p>' +
-      '</div>';
-    return;
-  }
-  
-  const movie = searchResults[currentIndex];
-  
-  container.innerHTML = 
-    '<div class="carousel-item active">' +
-    '<div class="movie-card">' +
-    '<div class="movie-poster-container" style="background-image:url(' + movie.poster + ')">' +
-    '<div class="movie-rating">⭐ ' + movie.rating + '</div>' +
-    '</div>' +
-    '<div class="movie-info">' +
-    '<h3 class="movie-title">' + movie.title + '</h3>' +
-    '<div class="movie-meta">' +
-    '<span>' + (movie.type === 'movie' ? '🎬 Película' : '📺 Serie') + '</span>' +
-    '<span>📅 ' + movie.year + '</span>' +
-    '</div>' +
-    '<p class="movie-synopsis">' + movie.overview + '</p>' +
-    '<button onclick="selectMovie()" class="btn-select">Seleccionar y buscar fuentes</button>' +
-    '</div>' +
-    '</div>' +
-    '<div class="carousel-controls">' +
-    '<button class="carousel-btn" onclick="prevMovie()" ' + (currentIndex === 0 ? 'disabled' : '') + '>← Anterior</button>' +
-    '<div class="carousel-indicator">' + (currentIndex + 1) + ' de ' + searchResults.length + '</div>' +
-    '<button class="carousel-btn" onclick="nextMovie()" ' + (currentIndex === searchResults.length - 1 ? 'disabled' : '') + '>Siguiente →</button>' +
-    '</div>' +
-    '</div>';
-}
-
-function prevMovie() {
-  if (currentIndex > 0) {
-    currentIndex--;
-    renderCarousel();
-  }
-}
-
-function nextMovie() {
-  if (currentIndex < searchResults.length - 1) {
-    currentIndex++;
-    renderCarousel();
-  }
-}
-
-async function selectMovie() {
-  selectedMovie = searchResults[currentIndex];
-  
-  console.log('Película seleccionada:', selectedMovie);
-  
-  // Mostrar loading
-  const container = document.getElementById('searchResults');
-  container.innerHTML = 
-    '<div class="carousel-empty">' +
-    '<div class="empty-icon">⏳</div>' +
-    '<p>Obteniendo información...</p>' +
-    '</div>';
-  
-  try {
-    const ep = selectedMovie.type === 'movie' ? 'movie' : 'tv';
+  input.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
     
-    console.log('Obteniendo IMDb ID para:', ep, selectedMovie.id);
+    mobileLog('⌨️ Texto escrito:', query);
     
-    const externalIds = await fetch('https://api.themoviedb.org/3/' + ep + '/' + selectedMovie.id + '/external_ids?api_key=' + TMDB_API_KEY)
-      .then(r => r.json());
-    
-    console.log('External IDs recibidos:', externalIds);
-    
-    selectedMovie.imdbId = externalIds.imdb_id;
-    
-    if (!selectedMovie.imdbId) {
-      alert('Esta película no tiene IMDb ID. Prueba con otra.');
-      renderCarousel();
+    if (query.length < 2) {
+      const container = document.getElementById('searchResults');
+      if (container) {
+        container.innerHTML = '<div class="carousel-empty"><div class="empty-icon">🎬</div><p>Escribe al menos 2 caracteres</p></div>';
+      }
       return;
     }
     
-    console.log('IMDb ID obtenido:', selectedMovie.imdbId);
-    console.log('Redirigiendo a sources.html con:', selectedMovie);
+    searchTimeout = setTimeout(function() {
+      searchTMDB(query);
+    }, 500);
+  });
+}
+
+// Buscar en TMDB
+async function searchTMDB(query) {
+  mobileLog('🔎 Buscando:', query);
+  
+  const container = document.getElementById('searchResults');
+  if (!container) {
+    mobileError('❌ No se encontró #searchResults');
+    return;
+  }
+  
+  container.innerHTML = '<div class="carousel-empty"><div class="empty-icon">⏳</div><p>Buscando...</p></div>';
+  
+  try {
+    const url = 'https://api.themoviedb.org/3/search/multi?api_key=' + TMDB_API_KEY + '&language=es-ES&query=' + encodeURIComponent(query);
+    mobileLog('📡 URL TMDB:', url);
     
-    window.location.href = '/sources.html?movie=' + encodeURIComponent(JSON.stringify(selectedMovie));
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    mobileLog('📦 Resultados:', data.results ? data.results.length : 0);
+    
+    const filtered = (data.results || []).filter(function(item) {
+      return (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path;
+    });
+    
+    mobileLog('✅ Resultados filtrados:', filtered.length);
+    
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="carousel-empty"><div class="empty-icon">😕</div><p>No se encontraron resultados</p></div>';
+      return;
+    }
+    
+    renderResults(filtered);
     
   } catch (error) {
-    console.error('Error obteniendo IMDb ID:', error);
-    alert('Error al obtener información: ' + error.message);
-    renderCarousel();
+    mobileError('❌ Error buscando:', error.message);
+    container.innerHTML = '<div class="carousel-empty"><div class="empty-icon">❌</div><p>Error en la búsqueda</p></div>';
   }
 }
+
+// Renderizar resultados
+function renderResults(results) {
+  mobileLog('🎨 Renderizando', results.length, 'resultados');
+  
+  const container = document.getElementById('searchResults');
+  if (!container) return;
+  
+  let html = '<div class="carousel-container"><div class="carousel-track">';
+  
+  for (let i = 0; i < results.length; i++) {
+    const item = results[i];
+    const title = item.title || item.name || 'Sin título';
+    const year = (item.release_date || item.first_air_date || '').substring(0, 4);
+    const poster = 'https://image.tmdb.org/t/p/w500' + item.poster_path;
+    const type = item.media_type === 'movie' ? 'movie' : 'tv';
+    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+    
+    html += '<div class="carousel-item" onclick="selectMovie(' + i + ')" data-index="' + i + '">';
+    html += '<div class="carousel-poster" style="background-image:url(' + poster + ')"></div>';
+    html += '<div class="carousel-info">';
+    html += '<div class="carousel-title">' + escapeHtml(title) + '</div>';
+    html += '<div class="carousel-meta">⭐ ' + rating + ' • ' + year + '</div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  
+  html += '</div></div>';
+  html += '<button id="btnSelectMovie" class="btn-primary" style="margin-top:1rem;" disabled>Seleccionar y buscar fuentes</button>';
+  
+  container.innerHTML = html;
+  
+  // Guardar resultados en global
+  window.searchResults = results;
+  window.selectedMovieIndex = null;
+  
+  mobileLog('✅ Resultados renderizados');
+}
+
+// Seleccionar película
+function selectMovie(index) {
+  mobileLog('👆 Película seleccionada:', index);
+  
+  window.selectedMovieIndex = index;
+  
+  // Marcar visualmente
+  const items = document.querySelectorAll('.carousel-item');
+  items.forEach(function(item, i) {
+    if (i === index) {
+      item.style.border = '3px solid #007bff';
+    } else {
+      item.style.border = '1px solid #ddd';
+    }
+  });
+  
+  // Habilitar botón
+  const btn = document.getElementById('btnSelectMovie');
+  if (btn) {
+    btn.disabled = false;
+    btn.onclick = proceedToSources;
+  }
+}
+
+// Proceder a fuentes
+async function proceedToSources() {
+  mobileLog('🚀 Procediendo a fuentes...');
+  
+  if (window.selectedMovieIndex === null || !window.searchResults) {
+    mobileError('❌ No hay película seleccionada');
+    alert('Por favor, selecciona una película');
+    return;
+  }
+  
+  const item = window.searchResults[window.selectedMovieIndex];
+  mobileLog('📦 Item seleccionado:', item);
+  
+  // Obtener IMDb ID
+  try {
+    const imdbId = await getIMDbId(item.id, item.media_type);
+    mobileLog('🎬 IMDb ID:', imdbId);
+    
+    if (!imdbId) {
+      throw new Error('No se encontró IMDb ID');
+    }
+    
+    // Guardar sesión
+    const username = document.getElementById('username').value.trim();
+    const roomName = document.getElementById('roomName').value.trim();
+    const projectorType = document.querySelector('input[name="projectorType"]:checked').value;
+    const sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
+    const customManifest = document.getElementById('customManifest') ? document.getElementById('customManifest').value : '';
+    
+    const session = {
+      username: username,
+      roomName: roomName,
+      projectorType: projectorType,
+      sourceMode: sourceMode,
+      customManifest: customManifest
+    };
+    
+    mobileLog('💾 Guardando session:', session);
+    localStorage.setItem('projectorSession', JSON.stringify(session));
+    
+    // Preparar datos de película
+    const movieData = {
+      id: item.id,
+      imdbId: imdbId,
+      type: item.media_type === 'movie' ? 'movie' : 'series',
+      title: item.title || item.name,
+      poster: 'https://image.tmdb.org/t/p/w500' + item.poster_path,
+      rating: item.vote_average ? item.vote_average.toFixed(1) : 'N/A',
+      year: (item.release_date || item.first_air_date || '').substring(0, 4),
+      overview: item.overview || 'Sin descripción disponible'
+    };
+    
+    mobileLog('🎬 Movie ', movieData);
+    
+    // Codificar para URL
+    const movieParam = encodeURIComponent(JSON.stringify(movieData));
+    const url = '/sources.html?movie=' + movieParam;
+    
+    mobileLog('🔗 URL generada:', url);
+    mobileLog('📏 URL length:', url.length);
+    
+    // Redirigir
+    window.location.href = url;
+    
+  } catch (error) {
+    mobileError('❌ Error:', error.message);
+    alert('Error: ' + error.message);
+  }
+}
+
+// Obtener IMDb ID
+async function getIMDbId(tmdbId, mediaType) {
+  mobileLog('🔍 Obteniendo IMDb ID para TMDB:', tmdbId, 'tipo:', mediaType);
+  
+  const type = mediaType === 'movie' ? 'movie' : 'tv';
+  const url = 'https://api.themoviedb.org/3/' + type + '/' + tmdbId + '/external_ids?api_key=' + TMDB_API_KEY;
+  
+  mobileLog('📡 URL External IDs:', url);
+  
+  const res = await fetch(url);
+  const data = await res.json();
+  
+  mobileLog('📦 External IDs:', data);
+  
+  return data.imdb_id || null;
+}
+
+// Escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Listener para tipo de proyector
+document.addEventListener('DOMContentLoaded', function() {
+  mobileLog('✅ DOM loaded');
+  
+  const radios = document.querySelectorAll('input[name="projectorType"]');
+  radios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      const customInput = document.getElementById('customManifestInput');
+      if (this.value === 'custom') {
+        if (customInput) customInput.style.display = 'block';
+      } else {
+        if (customInput) customInput.style.display = 'none';
+      }
+    });
+  });
+});
+
+mobileLog('✅ welcome.js completamente cargado');
