@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala - ProjectorRoom</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
 </head>
 <body>
   <div class="room-layout">
@@ -24,9 +25,22 @@
     
     <div class="room-container">
       <div class="video-section">
-        <video id="videoPlayer" controls crossorigin="anonymous" playsinline></video>
-        <div class="player-info">
-          <small id="videoStatus">Cargando...</small>
+        <div id="playerContainer">
+          <video id="videoPlayer" playsinline controls></video>
+        </div>
+        
+        <div id="errorContainer" style="display:none">
+          <div style="padding:3rem;text-align:center;background:#1e1b4b;border-radius:16px">
+            <h3 style="color:#ef4444;margin-bottom:1rem">❌ Error de Reproducción</h3>
+            <p style="color:#cbd5e1;margin-bottom:1.5rem">El video no se puede reproducir por restricciones CORS</p>
+            <a id="externalLink" target="_blank" 
+              style="display:inline-block;padding:1rem 2rem;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600">
+              🔗 Abrir video en nueva pestaña
+            </a>
+            <p style="color:#94a3b8;margin-top:1rem;font-size:0.9rem">
+              Reproduce el video directamente desde el servicio
+            </p>
+          </div>
         </div>
       </div>
       
@@ -45,6 +59,7 @@
     
   </div>
   
+  <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/player.js"></script>
   <script src="js/chat.js"></script>
