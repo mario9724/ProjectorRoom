@@ -422,3 +422,155 @@ body {
   background: #2a2a2a;
   border-radius: 3px;
 }
+/* SOURCES.HTML */
+.movie-header {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+  align-items: start;
+}
+
+.movie-poster {
+  aspect-ratio: 2/3;
+  background: #1a1a1a center/cover;
+  border-radius: 20px;
+  border: 2px solid #2a2a2a;
+}
+
+.movie-details h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.movie-meta {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  color: #888888;
+  font-size: 1.1rem;
+}
+
+.movie-details p {
+  color: #cccccc;
+  line-height: 1.7;
+  max-width: 600px;
+}
+
+.config-section {
+  background: #0a0a0a;
+  padding: 2rem;
+  border-radius: 20px;
+  border: 2px solid #2a2a2a;
+  margin-bottom: 2rem;
+}
+
+.config-section h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.config-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.config-row:last-child {
+  border-bottom: none;
+}
+
+.config-row label {
+  font-weight: 600;
+}
+
+.sources-section {
+  margin-bottom: 3rem;
+}
+
+.sources-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-desc {
+  color: #888888;
+  margin-bottom: 2rem;
+}
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.source-card {
+  background: #000000;
+  border: 2px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.source-card[data-selected="true"] {
+  border-color: #ffffff;
+  background: #0a0a0a;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+}
+
+.source-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.source-meta {
+  color: #888888;
+  font-size: 0.95rem;
+}
+
+.sources-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #555555;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-secondary {
+  flex: 1;
+}
+
+.btn-primary {
+  flex: 2;
+}
+
+/* SCROLLBAR SOURCES */
+.sources-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sources-list::-webkit-scrollbar-track {
+  background: #0a0a0a;
+  border-radius: 4px;
+}
+
+.sources-list::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
