@@ -425,3 +425,47 @@ button:hover {
   scrollbar-width: thin;
   scrollbar-color: #4f46e5 #1e1b4b;
 }
+/* REPRODUCTOR */
+#videoPlayer {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  border-radius: 12px;
+}
+
+#iframeContainer {
+  width: 100%;
+  height: 70vh;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#videoIframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+}
+
+.player-controls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.player-controls button {
+  flex: 1;
+  padding: 0.75rem;
+  background: #0f0f23;
+  color: #06b6d4;
+  border: 1px solid #3730a3;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.player-controls button:hover {
+  background: rgba(79, 70, 229, 0.2);
+  border-color: #4f46e5;
+}
