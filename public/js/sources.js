@@ -31,6 +31,8 @@ function loadSessionData() {
   // Datos del localStorage (onboarding)
   const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
   
+  console.log('Session ', session); // DEBUG
+  
   document.getElementById('configUsername').textContent = session.username || '-';
   document.getElementById('configRoomName').textContent = session.roomName || '-';
   document.getElementById('configProjectorType').textContent = 
