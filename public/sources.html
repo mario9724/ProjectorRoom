@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuentes - ProjectorRoom</title>
+  <link rel="stylesheet" href="css/welcome.css">
+</head>
+<body>
+  
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+        <polyline points="17 2 12 7 7 2"></polyline>
+      </svg>
+      <h1>ProjectorRoom</h1>
+    </div>
+    <p class="tagline">Selecciona tu fuente de proyección</p>
+  </header>
+
+  <!-- CONTAINER -->
+  <main class="container">
+    
+    <!-- PELÍCULA SELECCIONADA -->
+    <div class="movie-header">
+      <div class="movie-poster" id="moviePoster"></div>
+      <div class="movie-details">
+        <h1 id="movieTitle"></h1>
+        <div class="movie-meta">
+          <span id="movieRating"></span>
+          <span id="movieYear"></span>
+          <span id="movieType"></span>
+        </div>
+        <p id="movieOverview"></p>
+      </div>
+    </div>
+
+    <!-- CONFIGURACIÓN -->
+    <div class="config-section">
+      <h2>Configuración de la sala</h2>
+      
+      <div class="config-row">
+        <label>Tu nombre:</label>
+        <span id="configUsername">-</span>
+      </div>
+      
+      <div class="config-row">
+        <label>Nombre de la sala:</label>
+        <span id="configRoomName">-</span>
+      </div>
+      
+      <div class="config-row">
+        <label>Tipo de proyección:</label>
+        <span id="configProjectorType">-</span>
+      </div>
+      
+      <div class="config-row">
+        <label>Modo roomies:</label>
+        <span id="configSourceMode">-</span>
+      </div>
+    </div>
+
+    <!-- FUENTES -->
+    <div class="sources-section">
+      <h2>Fuentes disponibles</h2>
+      <p class="section-desc">Selecciona la mejor calidad para tu sala</p>
+      
+      <div id="sourcesList" class="sources-list">
+        <div class="sources-empty">
+          <div class="empty-icon">🔍</div>
+          <p>Cargando fuentes...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCIONES -->
+    <div class="actions">
+      <button id="btnBack" class="btn-secondary">← Volver a búsqueda</button>
+      <button id="btnCreate" class="btn-primary" disabled>
+        ▶️ Comenzar Proyección
+      </button>
+    </div>
+
+  </main>
+
+  <script src="js/sources.js"></script>
+</body>
+</html>
