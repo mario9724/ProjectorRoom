@@ -4,80 +4,140 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ProjectorRoom</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/welcome.css">
 </head>
 <body>
-  <div class="container">
-    <h1>🎬 ProjectorRoom</h1>
-    <p>Crea tu sala de proyección</p>
-    
-    <div class="form-section">
-      <div class="form-group">
-        <label>👤 Anfitrión</label>
-        <input type="text" id="username" placeholder="Tu nombre">
-      </div>
-      
-      <div class="form-group">
-        <label>🎭 Sala</label>
-        <input type="text" id="roomName" placeholder="Nombre de sala">
-      </div>
-      
-      <div class="form-group">
-        <label>📽️ Proyector</label>
-        <div class="projector-options">
-          <label class="radio-item">
-            <input type="radio" name="projectorType" value="public" checked>
-            <span>🌐 Público</span>
-          </label>
-          <label class="radio-item">
-            <input type="radio" name="projectorType" value="custom">
-            <span>🎯 Personalizado</span>
-          </label>
-        </div>
-        <input type="url" id="customManifest" placeholder="URL manifest" style="display:none;margin-top:1rem">
-      </div>
-      
-      <div class="form-group">
-        <label>⚙️ Modo</label>
-        <div class="radio-group">
-          <label class="radio-item">
-            <input type="radio" name="sourceMode" value="host" checked>
-            <span>📺 Compartir proyector</span>
-          </label>
-          <label class="radio-item">
-            <input type="radio" name="sourceMode" value="guest">
-            <span>👥 Cada uno el suyo</span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="separator"></div>
-      
-      <div class="form-group">
-        <label>🔍 Buscar</label>
-        <div class="search-box">
-          <input type="text" id="searchQuery" placeholder="Título...">
-          <button onclick="searchContent()">Buscar</button>
-        </div>
-      </div>
-      
-      <div id="searchResults"></div>
-      
-      <div id="selectedContent" style="display:none">
-        <div class="separator"></div>
-        <label>✅ Seleccionado</label>
-        <div id="contentCard"></div>
-        <button onclick="fetchSources()">🔎 Buscar Fuentes</button>
-      </div>
-      
-      <div id="sourcesSection" style="display:none">
-        <div class="separator"></div>
-        <label>📺 Fuentes</label>
-        <div id="sourcesList"></div>
-      </div>
-    </div>
-  </div>
   
-  <script src="js/search.js"></script>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+        <polyline points="17 2 12 7 7 2"></polyline>
+      </svg>
+      <h1>ProjectorRoom</h1>
+    </div>
+    <p class="tagline">Tu sala de cine compartida</p>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main class="container">
+    
+    <!-- PASO 1: NOMBRE -->
+    <section id="step1" class="step active">
+      <div class="step-number">1</div>
+      <h2>¿Cómo te llamas?</h2>
+      <p class="step-description">Así te verán los demás en el chat</p>
+      <input type="text" id="username" placeholder="Tu nombre" class="input-field" autocomplete="off">
+      <button onclick="goToStep(2)" class="btn-primary">Continuar</button>
+    </section>
+
+    <!-- PASO 2: NOMBRE SALA -->
+    <section id="step2" class="step">
+      <div class="step-number">2</div>
+      <h2>¿Cómo quieres llamar tu sala?</h2>
+      <p class="step-description">Dale un nombre único a tu proyección</p>
+      <input type="text" id="roomName" placeholder="Ej: Cine de Mario" class="input-field" autocomplete="off">
+      <div class="step-nav">
+        <button onclick="goToStep(1)" class="btn-secondary">← Atrás</button>
+        <button onclick="goToStep(3)" class="btn-primary">Continuar</button>
+      </div>
+    </section>
+
+    <!-- PASO 3: TIPO PROYECCIÓN -->
+    <section id="step3" class="step">
+      <div class="step-number">3</div>
+      <h2>¿Cómo quieres proyectar?</h2>
+      <p class="step-description">Selecciona tu fuente de contenido</p>
+      
+      <div class="options-grid">
+        <label class="option-card">
+          <input type="radio" name="projectorType" value="public" checked>
+          <div class="option-content">
+            <div class="option-icon">🌐</div>
+            <h3>Predeterminado</h3>
+            <p>Addon público con contenido variado</p>
+          </div>
+        </label>
+        
+        <label class="option-card">
+          <input type="radio" name="projectorType" value="custom">
+          <div class="option-content">
+            <div class="option-icon">⚙️</div>
+            <h3>Personalizado</h3>
+            <p>Usa tu propio manifest.json</p>
+          </div>
+        </label>
+      </div>
+      
+      <div id="customManifestInput" class="custom-input" style="display:none">
+        <input type="url" id="customManifest" placeholder="https://tu-addon.com/manifest.json" class="input-field">
+      </div>
+      
+      <div class="step-nav">
+        <button onclick="goToStep(2)" class="btn-secondary">← Atrás</button>
+        <button onclick="goToStep(4)" class="btn-primary">Continuar</button>
+      </div>
+    </section>
+
+    <!-- PASO 4: MODO ROOMIES -->
+    <section id="step4" class="step">
+      <div class="step-number">4</div>
+      <h2>¿Y los roomies invitados?</h2>
+      <p class="step-description">¿Cómo reproducirán el contenido?</p>
+      
+      <div class="options-grid">
+        <label class="option-card">
+          <input type="radio" name="sourceMode" value="host" checked>
+          <div class="option-content">
+            <div class="option-icon">👑</div>
+            <h3>Usar tu proyección</h3>
+            <p>Todos usan tu configuración</p>
+          </div>
+        </label>
+        
+        <label class="option-card">
+          <input type="radio" name="sourceMode" value="individual">
+          <div class="option-content">
+            <div class="option-icon">🎭</div>
+            <h3>Proyección individual</h3>
+            <p>Cada uno elige su fuente</p>
+          </div>
+        </label>
+      </div>
+      
+      <div class="step-nav">
+        <button onclick="goToStep(3)" class="btn-secondary">← Atrás</button>
+        <button onclick="goToStep(5)" class="btn-primary">Buscar película</button>
+      </div>
+    </section>
+
+    <!-- PASO 5: BÚSQUEDA -->
+    <section id="step5" class="step">
+      <div class="step-number">5</div>
+      <h2>¿Qué quieres proyectar?</h2>
+      <p class="step-description">Busca tu película o serie favorita</p>
+      
+      <div class="search-box">
+        <input type="text" id="searchQuery" placeholder="Escribe para buscar..." class="input-field search-input" autocomplete="off">
+        <div class="search-icon">🔍</div>
+      </div>
+      
+      <!-- CARRUSEL RESULTADOS -->
+      <div id="searchResults" class="carousel">
+        <div class="carousel-empty">
+          <div class="empty-icon">🎬</div>
+          <p>Escribe algo para comenzar la búsqueda</p>
+        </div>
+      </div>
+      
+      <div class="step-nav">
+        <button onclick="goToStep(4)" class="btn-secondary">← Atrás</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/welcome.js"></script>
 </body>
 </html>
