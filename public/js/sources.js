@@ -1,3 +1,10 @@
+console.log('✅ sources.js cargado correctamente');
+console.log('URL actual:', window.location.href);
+console.log('Parámetros URL:', window.location.search);
+
+const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
+// ... resto del código
+
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
 
