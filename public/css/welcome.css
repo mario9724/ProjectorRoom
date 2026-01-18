@@ -574,3 +574,42 @@ body {
   background: #2a2a2a;
   border-radius: 4px;
 }
+/* ... código existente ... */
+
+/* BOTÓN INVITAR DEBAJO PÓSTER */
+.btn-invite-preview {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: 2px solid #2a2a2a;
+  border-radius: 12px;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-invite-preview:hover {
+  border-color: #ffffff;
+  background: #0a0a0a;
+}
+
+/* SOURCES.HTML */
+.movie-header {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+  align-items: start;
+}
+
+.movie-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  background: #1a1a1a center/cover;
+  border-radius: 20px;
+  border: 2px solid #2a2a2a;
+}
+
+/* ... resto del código ... */
