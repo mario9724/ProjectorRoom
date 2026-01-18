@@ -24,20 +24,9 @@
     
     <div class="room-container">
       <div class="video-section">
-        <!-- REPRODUCTOR NATIVO HTML5 -->
-        <video id="videoPlayer" controls preload="metadata" playsinline>
-          <source id="videoSource" type="video/mp4">
-          Tu navegador no soporta reproducción de video
-        </video>
-        
-        <!-- ALTERNATIVA: IFRAME (si video falla) -->
-        <div id="iframeContainer" style="display:none">
-          <iframe id="videoIframe" allowfullscreen></iframe>
-        </div>
-        
-        <div class="player-controls">
-          <button onclick="togglePlayer()">🔄 Cambiar reproductor</button>
-          <button onclick="openExternal()">🔗 Abrir en nueva pestaña</button>
+        <video id="videoPlayer" controls crossorigin="anonymous" playsinline></video>
+        <div class="player-info">
+          <small id="videoStatus">Cargando video...</small>
         </div>
       </div>
       
