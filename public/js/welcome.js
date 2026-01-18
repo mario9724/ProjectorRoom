@@ -5,41 +5,47 @@ let searchResults = [];
 let currentIndex = 0;
 let selectedMovie = null;
 
-// NAVEGACIÓN PASOS
 function goToStep(step) {
-  // Validaciones
-  if (step === 2 && !document.getElementById('username').value.trim()) {
-    return alert('Por favor, escribe tu nombre');
-  }
-  if (step === 3 && !document.getElementById('roomName').value.trim()) {
-    return alert('Por favor, nombra tu sala');
-  }
-  
-  // GUARDAR EN LOCALSTORAGE
+  // Obtener sesión actual
   const session = JSON.parse(localStorage.getItem('projectorSession') || '{}');
   
-  if (step >= 2) {
-    session.username = document.getElementById('username').value.trim();
+  // PASO 1 → 2: Guardar username
+  if (step === 2) {
+    const username = document.getElementById('username').value.trim();
+    if (!username) {
+      return alert('Por favor, escribe tu nombre');
+    }
+    session.username = username;
   }
-  if (step >= 3) {
-    session.roomName = document.getElementById('roomName').value.trim();
+  
+  // PASO 2 → 3: Guardar roomName
+  if (step === 3) {
+    const roomName = document.getElementById('roomName').value.trim();
+    if (!roomName) {
+      return alert('Por favor, nombra tu sala');
+    }
+    session.roomName = roomName;
   }
-  if (step >= 4) {
+  
+  // PASO 3 → 4: Guardar projectorType
+  if (step === 4) {
     session.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
     if (session.projectorType === 'custom') {
       session.customManifest = document.getElementById('customManifest').value.trim();
     }
   }
-  if (step >= 5) {
+  
+  // PASO 4 → 5: Guardar sourceMode
+  if (step === 5) {
     session.sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
   }
   
+  // Guardar en localStorage
   localStorage.setItem('projectorSession', JSON.stringify(session));
+  console.log('Session guardada:', session);
   
-  // Ocultar todos
+  // Cambiar de paso
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  
-  // Mostrar paso actual
   document.getElementById(`step${step}`).classList.add('active');
 }
 
@@ -51,7 +57,7 @@ document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
   });
 });
 
-// BÚSQUEDA EN TIEMPO REAL
+// BÚSQUEDA
 let searchTimeout;
 document.getElementById('searchQuery').addEventListener('input', (e) => {
   clearTimeout(searchTimeout);
@@ -163,7 +169,6 @@ function nextMovie() {
 async function selectMovie() {
   selectedMovie = searchResults[currentIndex];
   
-  // Obtener IMDb ID
   try {
     const ep = selectedMovie.type === 'movie' ? 'movie' : 'tv';
     const [details, externalIds] = await Promise.all([
@@ -174,7 +179,6 @@ async function selectMovie() {
     selectedMovie.imdbId = externalIds.imdb_id;
     selectedMovie.details = details;
     
-    // Ir a selección de fuentes
     window.location.href = `/sources.html?movie=${encodeURIComponent(JSON.stringify(selectedMovie))}`;
     
   } catch (error) {
