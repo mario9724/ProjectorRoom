@@ -1,135 +1,175 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const socketIO = require('socket.io');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-});
+const io = socketIO(server);
 
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(express.json());
 app.use(express.static('public'));
 
-const projectorRooms = {};
+// Base de datos en memoria
+let projectorRooms = {};
+let roomUsers = {}; // { roomId: [{ id, username }] }
 
-// Ruta principal
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Generar ID único
+function generateId() {
+  return Math.random().toString(36).substring(2, 9);
+}
 
-// Ruta de sala individual
-app.get('/sala/:roomId', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'room.html'));
-});
+// ==================== RUTAS API ====================
 
-// API: Crear sala
+// Crear sala
 app.post('/api/projectorrooms/create', (req, res) => {
   const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
   
-  const roomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  if (!roomName || !hostUsername || !manifest || !sourceUrl) {
+    return res.json({ success: false, message: 'Datos incompletos' });
+  }
+  
+  const roomId = generateId();
   
   projectorRooms[roomId] = {
     id: roomId,
-    roomName: roomName,
-    hostUsername: hostUsername,
-    manifest: manifest,
-    sourceUrl: sourceUrl,
-    useHostSource: useHostSource,
-    projectorType: projectorType,
-    customManifest: customManifest,
-    users: [],
-    createdAt: new Date().toISOString()
+    roomName,
+    hostUsername,
+    manifest,
+    sourceUrl,
+    useHostSource: useHostSource !== false,
+    projectorType: projectorType || 'public',
+    customManifest: customManifest || '',
+    createdAt: new Date()
   };
   
-  console.log('✅ Sala creada:', roomId);
+  console.log(`✅ Sala creada: ${roomId} - ${roomName} por ${hostUsername}`);
   
-  res.json({
-    success: true,
+  res.json({ 
+    success: true, 
     projectorRoom: projectorRooms[roomId]
   });
 });
 
-// API: Obtener sala
+// Obtener sala por ID
 app.get('/api/projectorrooms/:id', (req, res) => {
-  const room = projectorRooms[req.params.id];
+  const roomId = req.params.id;
+  const room = projectorRooms[roomId];
   
   if (!room) {
-    return res.status(404).json({
-      success: false,
-      message: 'Sala no encontrada'
-    });
+    return res.json({ success: false, message: 'Sala no encontrada' });
   }
   
-  res.json({
-    success: true,
+  res.json({ 
+    success: true, 
     projectorRoom: room
   });
 });
 
-// Socket.IO
+// Servir HTML principal
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Servir sala
+app.get('/sala/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'room.html'));
+});
+
+// ==================== SOCKET.IO ====================
+
 io.on('connection', (socket) => {
   console.log('🔌 Usuario conectado:', socket.id);
   
+  // UNIRSE A SALA
   socket.on('join-room', ({ roomId, username }) => {
-    console.log('👤', username, 'se unió a sala:', roomId);
-    
-    if (!projectorRooms[roomId]) {
-      socket.emit('error', { message: 'Sala no encontrada' });
-      return;
-    }
+    console.log(`👤 ${username} se unió a sala ${roomId}`);
     
     socket.join(roomId);
+    
+    if (!roomUsers[roomId]) {
+      roomUsers[roomId] = [];
+    }
+    
+    // Agregar usuario
+    roomUsers[roomId].push({
+      id: socket.id,
+      username: username
+    });
+    
+    // Guardar datos en socket
     socket.roomId = roomId;
     socket.username = username;
     
-    const user = {
-      id: socket.id,
-      username: username,
-      joinedAt: new Date().toISOString()
-    };
-    
-    projectorRooms[roomId].users.push(user);
-    
+    // Notificar a todos en la sala
     io.to(roomId).emit('user-joined', {
-      user: user,
-      users: projectorRooms[roomId].users
+      user: { id: socket.id, username },
+      users: roomUsers[roomId]
     });
   });
   
+  // MENSAJE DE CHAT
   socket.on('chat-message', ({ roomId, message }) => {
-    console.log('💬 Mensaje en sala:', roomId);
+    console.log(`💬 [${roomId}] ${socket.username}: ${message}`);
     
     io.to(roomId).emit('chat-message', {
       username: socket.username,
-      message: message,
-      timestamp: new Date().toISOString()
+      message: message
     });
   });
   
-  socket.on('disconnect', () => {
-    console.log('❌ Usuario desconectado:', socket.id);
+  // CALIFICACIÓN
+  socket.on('add-rating', ({ roomId, username, rating }) => {
+    console.log(`⭐ [${roomId}] ${username} calificó con ${rating}/10`);
     
-    if (socket.roomId && projectorRooms[socket.roomId]) {
-      projectorRooms[socket.roomId].users = projectorRooms[socket.roomId].users.filter(
-        u => u.id !== socket.id
-      );
+    io.to(roomId).emit('rating-added', {
+      username,
+      rating
+    });
+  });
+  
+  // REACCIÓN
+  socket.on('add-reaction', ({ roomId, username, time, message }) => {
+    console.log(`💬 [${roomId}] ${username} reaccionó en ${time}: ${message}`);
+    
+    io.to(roomId).emit('reaction-added', {
+      username,
+      time,
+      message
+    });
+  });
+  
+  // DESCONEXIÓN
+  socket.on('disconnect', () => {
+    console.log('🔴 Usuario desconectado:', socket.id);
+    
+    const roomId = socket.roomId;
+    const username = socket.username;
+    
+    if (roomId && roomUsers[roomId]) {
+      // Remover usuario de la sala
+      roomUsers[roomId] = roomUsers[roomId].filter(user => user.id !== socket.id);
       
-      io.to(socket.roomId).emit('user-left', {
-        userId: socket.id,
-        username: socket.username,
-        users: projectorRooms[socket.roomId].users
+      // Notificar a los demás
+      io.to(roomId).emit('user-left', {
+        username: username,
+        users: roomUsers[roomId]
       });
+      
+      // Limpiar sala si está vacía
+      if (roomUsers[roomId].length === 0) {
+        delete roomUsers[roomId];
+        console.log(`🗑️ Sala ${roomId} eliminada (sin usuarios)`);
+      }
     }
   });
 });
 
+// ==================== SERVIDOR ====================
+
 server.listen(PORT, () => {
-  console.log('🚀 Servidor en puerto', PORT);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
