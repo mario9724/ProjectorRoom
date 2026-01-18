@@ -11,6 +11,7 @@ let guestSelectedSourceIndex = null;
 let userRating = null;
 let allRatings = [];
 let allReactions = [];
+let currentUsers = [];
 
 // ==================== INICIALIZAR ====================
 window.addEventListener('load', async function() {
@@ -375,10 +376,15 @@ function renderRoom() {
   
   const movieData = JSON.parse(roomData.manifest);
   
+  // Poster pequeño (header)
   document.getElementById('roomPosterSmall').src = movieData.poster;
   document.getElementById('roomTitle').textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
-  document.getElementById('roomPoster').src = movieData.poster;
-  document.getElementById('movieTitle').textContent = movieData.title;
+  
+  // Backdrop/Banner (en vez de poster grande)
+  const backdropUrl = movieData.backdrop || movieData.poster;
+  document.getElementById('roomBackdrop').src = backdropUrl;
+  
+  // Info de la película (sin título redundante)
   document.getElementById('movieYear').textContent = `📅 ${movieData.year}`;
   document.getElementById('movieType').textContent = `🎬 ${movieData.type === 'movie' ? 'Película' : 'Serie'}`;
   document.getElementById('movieRating').textContent = `⭐ ${movieData.rating}`;
@@ -426,9 +432,18 @@ function connectSocket() {
 }
 
 function updateUsersList(users) {
-  const usersCount = document.getElementById('usersCount');
-  if (usersCount) {
-    usersCount.textContent = users.length;
+  currentUsers = users;
+  
+  const usersNamesEl = document.getElementById('usersNames');
+  if (usersNamesEl) {
+    if (users.length === 0) {
+      usersNamesEl.textContent = 'No hay usuarios';
+    } else if (users.length === 1) {
+      usersNamesEl.textContent = `1 roomie en la sala: ${users[0].username}`;
+    } else {
+      const names = users.map(u => u.username).join(', ');
+      usersNamesEl.textContent = `${users.length} roomies en la sala: ${names}`;
+    }
   }
 }
 
