@@ -469,3 +469,22 @@ button:hover {
   background: rgba(79, 70, 229, 0.2);
   border-color: #4f46e5;
 }
+#videoPlayer {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  border-radius: 12px;
+}
+
+.player-info {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #0f0f23;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.player-info small {
+  color: #06b6d4;
+  font-size: 0.9rem;
+}
