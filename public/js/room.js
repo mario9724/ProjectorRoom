@@ -2,7 +2,7 @@ let roomId = null;
 let socket = null;
 let username = '';
 let roomData = null;
-let isGuest = false;
+let isHost = false;
 
 // INICIALIZAR SALA
 window.addEventListener('load', async function() {
@@ -19,60 +19,72 @@ window.addEventListener('load', async function() {
   // Cargar datos de la sala primero
   await loadRoomData();
   
-  // Verificar si es invitado o anfitrión
-  username = localStorage.getItem('projectorroom_username');
+  // Verificar si es ANFITRIÓN (viene de crear sala)
+  isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
   
-  // Si no hay username o si necesita configurar proyector
-  if (!username || (roomData.useHostSource === false && !localStorage.getItem('projectorroom_guest_configured_' + roomId))) {
-    showGuestConfig();
-    return;
+  if (isHost) {
+    // ES ANFITRIÓN - Acceso directo sin configuración
+    username = sessionStorage.getItem('projectorroom_host_username_' + roomId);
+    initRoom();
+  } else {
+    // ES INVITADO - Verificar si ya se configuró
+    const alreadyConfigured = localStorage.getItem('projectorroom_guest_configured_' + roomId) === 'true';
+    
+    if (alreadyConfigured) {
+      username = localStorage.getItem('projectorroom_username');
+      initRoom();
+    } else {
+      showGuestConfig();
+    }
   }
-  
-  // Si ya está configurado, conectar directamente
-  initRoom();
 });
 
 // MOSTRAR CONFIGURACIÓN DE INVITADO
 function showGuestConfig() {
-  isGuest = true;
-  
   // Ocultar sala y mostrar formulario
   document.querySelector('.room-container').style.display = 'none';
   
-  // Crear formulario de invitado
-  const configHTML = `
+  // Crear formulario según configuración del anfitrión
+  let configHTML = `
     <div class="guest-config-container">
       <div class="step-card">
         <h1>👋 Ey roomie, ¿cómo te llamas?</h1>
         <input type="text" id="guestUsername" placeholder="Tu nombre..." maxlength="20" autofocus>
+  `;
+  
+  // Si el anfitrión NO comparte su proyector, mostrar selector
+  if (roomData.useHostSource === false) {
+    configHTML += `
+      <div style="margin-top: 30px;">
+        <h2 style="font-size: 1.3rem; margin-bottom: 20px; text-align: center;">🎬 ¿Qué proyector quieres usar?</h2>
         
-        ${roomData.useHostSource === false ? `
-          <div style="margin-top: 30px;">
-            <h2 style="font-size: 1.3rem; margin-bottom: 20px; text-align: center;">🎬 ¿Qué proyector quieres usar?</h2>
-            
-            <div class="option-card" onclick="selectGuestProjector('public')">
-              <input type="radio" name="guestProjectorType" value="public" checked>
-              <div class="option-content">
-                <div class="option-title">🌐 Proyector público</div>
-                <div class="option-desc">Se usará el predeterminado ya configurado</div>
-              </div>
-            </div>
-            
-            <div class="option-card" onclick="selectGuestProjector('custom')">
-              <input type="radio" name="guestProjectorType" value="custom">
-              <div class="option-content">
-                <div class="option-title">⚙️ Proyector personalizado</div>
-                <div class="option-desc">Introduce tu manifest.json custom</div>
-              </div>
-            </div>
-            
-            <div id="guestCustomManifestBox" style="display:none; margin-top: 15px;">
-              <input type="url" id="guestCustomManifest" placeholder="https://tu-manifest.json">
-            </div>
+        <div class="option-card" onclick="selectGuestProjector('public')">
+          <input type="radio" name="guestProjectorType" value="public" checked>
+          <div class="option-content">
+            <div class="option-title">🌐 Proyector público</div>
+            <div class="option-desc">Se usará el predeterminado ya configurado</div>
           </div>
-        ` : ''}
+        </div>
         
-        <button class="btn-primary" onclick="submitGuestConfig()" style="margin-top: 30px;">Unirse a la sala →</button>
+        <div class="option-card" onclick="selectGuestProjector('custom')">
+          <input type="radio" name="guestProjectorType" value="custom">
+          <div class="option-content">
+            <div class="option-title">⚙️ Proyector personalizado</div>
+            <div class="option-desc">Introduce tu manifest.json custom</div>
+          </div>
+        </div>
+        
+        <div id="guestCustomManifestBox" style="display:none; margin-top: 15px;">
+          <input type="url" id="guestCustomManifest" placeholder="https://tu-manifest.json">
+        </div>
+      </div>
+    `;
+  }
+  
+  configHTML += `
+        <button class="btn-primary" onclick="submitGuestConfig()" style="margin-top: 30px;">
+          Accede a la sala de ${escapeHtml(roomData.hostUsername)} →
+        </button>
       </div>
     </div>
   `;
@@ -121,10 +133,10 @@ window.submitGuestConfig = function() {
     }
     
     localStorage.setItem('projectorroom_guest_projector_' + roomId, projectorType);
-    localStorage.setItem('projectorroom_guest_configured_' + roomId, 'true');
   }
   
   localStorage.setItem('projectorroom_username', username);
+  localStorage.setItem('projectorroom_guest_configured_' + roomId, 'true');
   
   // Ocultar formulario y mostrar sala
   document.querySelector('.guest-config-container').remove();
@@ -236,30 +248,24 @@ function sendChatMessage() {
   }
 }
 
-// ABRIR VLC (SIN VENTANA EMERGENTE)
+// ABRIR VLC (MÉTODO ORIGINAL QUE FUNCIONABA)
 function startProjection() {
   if (!roomData || !roomData.sourceUrl) {
     alert('No se encontró la fuente de reproducción');
     return;
   }
   
-  // SOLO intentar abrir VLC mediante iframe oculto
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = `vlc://${roomData.sourceUrl}`;
-  document.body.appendChild(iframe);
+  // Método original: cambiar location
+  const vlcUrl = `vlc://${roomData.sourceUrl}`;
+  window.location.href = vlcUrl;
   
-  // Eliminar iframe después de 2 segundos
+  // Fallback después de 1 segundo
   setTimeout(() => {
-    document.body.removeChild(iframe);
-  }, 2000);
-  
-  // Mostrar mensaje de confirmación
-  setTimeout(() => {
-    if (confirm('Si VLC no se abrió automáticamente, ¿deseas copiar el enlace?')) {
-      prompt('Copia este enlace y ábrelo en VLC:', roomData.sourceUrl);
-    }
-  }, 1500);
+    const link = document.createElement('a');
+    link.href = roomData.sourceUrl;
+    link.download = '';
+    link.click();
+  }, 1000);
 }
 
 // COPIAR ENLACE DE INVITACIÓN
