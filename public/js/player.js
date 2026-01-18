@@ -1,4 +1,5 @@
 let player;
+let hls;
 
 async function loadRoom() {
   const params = new URLSearchParams(window.location.search);
@@ -22,51 +23,55 @@ async function loadRoom() {
       document.getElementById('movieMeta').innerHTML = 
         `<p>Año: ${m.year} | Anfitrión: ${data.projectorRoom.host_username}</p>`;
       
-      // 🎬 DETECTAR FORMATO Y ACTUAR
+      // BOTÓN VLC (siempre disponible)
+      setupVLCButton(streamUrl);
+      
+      // REPRODUCIR INTEGRADO
       console.log('🎥 Stream URL:', streamUrl);
-      
-      // 1. MKV (WebStreamr) → SOLO EXTERNOS
-      if (streamUrl.includes('.mkv') || streamUrl.includes('mkv')) {
-        console.log('⚠️ MKV detectado - Usando reproductores externos');
-        showExternalButtons(streamUrl, m.title, 'MKV no soportado en navegadores');
-        return;
-      }
-      
-      // 2. M3U8 (Debrid HLS) → HLS.js + Plyr
-      if (streamUrl.includes('.m3u8') || streamUrl.includes('m3u8')) {
-        console.log('✅ HLS detectado - Usando HLS.js');
-        loadHLS(streamUrl, m.title);
-        return;
-      }
-      
-      // 3. MP4/WEBM → Nativo
-      if (streamUrl.match(/\.(mp4|webm)$/i)) {
-        console.log('✅ MP4/WebM - Player nativo');
-        loadNative(streamUrl, m.title);
-        return;
-      }
-      
-      // 4. Desconocido → Intentar nativo con fallback
-      console.log('⚠️ Formato desconocido - Intentando nativo');
-      loadNative(streamUrl, m.title);
-      
+      initPlayer(streamUrl);
     }
   } catch (error) {
     console.error('Error cargando sala:', error);
   }
 }
 
-// ════════════════════════════════════════════
-// HLS.js + Plyr (para Debrid m3u8)
-// ════════════════════════════════════════════
-function loadHLS(url, title) {
+function setupVLCButton(url) {
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const btnVLC = document.getElementById('btnVLC');
+  
+  if (isIOS) {
+    btnVLC.href = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(url)}`;
+  } else {
+    btnVLC.href = url;
+    btnVLC.setAttribute('download', '');
+  }
+}
+
+function initPlayer(url) {
   const video = document.getElementById('videoPlayer');
   
+  // Detectar formato
+  const isHLS = url.includes('.m3u8') || url.includes('m3u8');
+  const isMKV = url.includes('.mkv') || url.includes('mkv');
+  
+  if (isHLS) {
+    loadHLS(url, video);
+  } else {
+    loadDirect(url, video);
+  }
+}
+
+// ════════════════════════════════════════════
+// HLS.js (m3u8 - Debrid)
+// ════════════════════════════════════════════
+function loadHLS(url, video) {
   if (Hls.isSupported()) {
-    const hls = new Hls({
+    hls = new Hls({
       enableWorker: true,
       lowLatencyMode: true,
       backBufferLength: 90,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 600,
       xhrSetup: (xhr) => {
         xhr.withCredentials = false;
       }
@@ -76,110 +81,79 @@ function loadHLS(url, title) {
     hls.attachMedia(video);
     
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      console.log('✅ HLS manifest cargado');
-      
-      // Inicializar Plyr DESPUÉS de HLS
-      player = new Plyr(video, {
-        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-        settings: ['quality', 'speed'],
-        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] }
-      });
+      console.log('✅ HLS cargado');
+      initPlyr(video);
     });
     
     hls.on(Hls.Events.ERROR, (event, data) => {
       console.error('❌ HLS Error:', data);
       if (data.fatal) {
-        showExternalButtons(url, title, 'Error cargando stream HLS');
+        console.log('Error fatal - usar VLC');
       }
     });
     
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari iOS nativo
+    // Safari nativo
     video.src = url;
-    player = new Plyr(video);
-  } else {
-    showExternalButtons(url, title, 'HLS no soportado en este navegador');
+    initPlyr(video);
   }
 }
 
 // ════════════════════════════════════════════
-// Player Nativo (MP4/WebM)
+// Directo (MP4, MKV, HTTP)
 // ════════════════════════════════════════════
-function loadNative(url, title) {
-  const video = document.getElementById('videoPlayer');
+function loadDirect(url, video) {
   video.src = url;
+  initPlyr(video);
   
+  video.addEventListener('error', (e) => {
+    console.error('❌ Error video:', video.error);
+  });
+}
+
+// ════════════════════════════════════════════
+// Plyr (controles bonitos)
+// ════════════════════════════════════════════
+function initPlyr(video) {
   player = new Plyr(video, {
-    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
-    settings: ['speed'],
-    speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] }
+    controls: [
+      'play-large',
+      'play',
+      'progress',
+      'current-time',
+      'duration',
+      'mute',
+      'volume',
+      'captions',
+      'settings',
+      'pip',
+      'airplay',
+      'fullscreen'
+    ],
+    settings: ['quality', 'speed', 'loop'],
+    speed: { 
+      selected: 1, 
+      options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] 
+    },
+    quality: {
+      default: 'auto',
+      options: ['auto']
+    },
+    ratio: '16:9',
+    fullscreen: { 
+      enabled: true, 
+      fallback: true, 
+      iosNative: true 
+    }
   });
   
-  video.addEventListener('error', () => {
-    console.error('❌ Error video nativo:', video.error);
-    showExternalButtons(url, title, 'Error de reproducción');
+  player.on('ready', () => {
+    console.log('✅ Player listo');
   });
-}
-
-// ════════════════════════════════════════════
-// BOTONES EXTERNOS (fallback)
-// ════════════════════════════════════════════
-function showExternalButtons(url, title, reason) {
-  document.getElementById('playerContainer').style.display = 'none';
-  document.getElementById('externalButtons').style.display = 'block';
   
-  document.getElementById('fallbackTitle').textContent = '🎬 ' + title;
-  document.getElementById('fallbackMsg').textContent = reason + '. Usa un reproductor externo:';
-  
-  // Deep links
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  
-  document.getElementById('btnInfuse').href = 
-    `infuse://x-callback-url/play?url=${encodeURIComponent(url)}`;
-  
-  document.getElementById('btnVLC').href = isIOS 
-    ? `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(url)}`
-    : url;
-  
-  document.getElementById('btnBrowser').href = url;
-  
-  // Share/Cast
-  document.getElementById('btnShare').onclick = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: title,
-          text: `Reproducir: ${title}`,
-          url: url
-        });
-      } else {
-        await navigator.clipboard.writeText(url);
-        showToast('✅ Enlace copiado');
-      }
-    } catch (e) {}
-  };
-  
-  // Hint
-  const hint = document.getElementById('platformHint');
-  if (isIOS) {
-    hint.innerHTML = '<strong>💡 iOS:</strong> Usa Infuse (mejor) o VLC. Puedes hacer AirPlay desde ahí.';
-  } else if (/Android/i.test(navigator.userAgent)) {
-    hint.innerHTML = '<strong>💡 Android:</strong> Toca VLC y el sistema preguntará "Abrir con...". Para Cast usa Compartir.';
-  } else {
-    hint.innerHTML = '<strong>💡 PC:</strong> Descarga VLC y abre el enlace copiado con Compartir.';
-  }
-}
-
-function showToast(msg) {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-    background: #4f46e5; color: white; padding: 1rem 2rem;
-    border-radius: 8px; z-index: 9999; font-weight: 600;
-  `;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+  player.on('error', (e) => {
+    console.error('❌ Player error:', e);
+  });
 }
 
 loadRoom();
