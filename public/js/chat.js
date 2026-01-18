@@ -1,59 +1,81 @@
 const socket = io();
+
+// Unirse a sala
 const params = new URLSearchParams(window.location.search);
 const roomId = params.get('id');
-let username = params.get('username') || prompt('Nombre:') || 'Anónimo';
-
-const users = new Set();
+const username = params.get('username') || 'Invitado';
 
 socket.emit('join-room', { roomId, username });
 
-socket.on('user-joined', ({ username: u, users: all }) => {
-  if (all) {
-    users.clear();
-    all.forEach(x => users.add(x));
-  } else {
-    users.add(u);
-  }
-  updateUsers();
-  if (u !== username) addMsg(`${u} se unió`);
+// Recibir usuarios
+socket.on('user-joined', ({ username, users }) => {
+  updateUsersList(users);
+  addSystemMessage(`${username} se unió a la sala`);
 });
 
-socket.on('user-left', ({ username: u, users: all }) => {
-  if (all) {
-    users.clear();
-    all.forEach(x => users.add(x));
-  } else {
-    users.delete(u);
-  }
-  updateUsers();
-  addMsg(`${u} salió`);
+socket.on('user-left', ({ username, users }) => {
+  updateUsersList(users);
+  addSystemMessage(`${username} salió de la sala`);
 });
 
-socket.on('message', ({ username: u, message: m, timestamp: t }) => {
-  const div = document.getElementById('chatMessages');
-  const time = new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  div.innerHTML += `<div class="message"><strong>${u}:</strong> ${m} <small>${time}</small></div>`;
-  div.scrollTop = div.scrollHeight;
+// Recibir mensajes
+socket.on('message', ({ username, message, timestamp }) => {
+  addMessage(username, message, timestamp);
 });
+
+function updateUsersList(users) {
+  const list = document.getElementById('usersList');
+  list.innerHTML = `<strong>👥 ${users.length} online:</strong> ${users.join(', ')}`;
+}
+
+function addMessage(user, msg, time) {
+  const messagesDiv = document.getElementById('chatMessages');
+  const messageEl = document.createElement('div');
+  messageEl.className = 'chat-message';
+  
+  const timeStr = new Date(time).toLocaleTimeString('es-ES', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  messageEl.innerHTML = `
+    <div class="message-header">
+      <span class="message-time">${timeStr}</span>
+      <span class="message-user">${user}</span>
+    </div>
+    <div class="message-content">${escapeHtml(msg)}</div>
+  `;
+  
+  messagesDiv.appendChild(messageEl);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function addSystemMessage(msg) {
+  const messagesDiv = document.getElementById('chatMessages');
+  const messageEl = document.createElement('div');
+  messageEl.className = 'chat-message system-message';
+  messageEl.textContent = msg;
+  messagesDiv.appendChild(messageEl);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
 function sendMessage() {
-  const inp = document.getElementById('messageInput');
-  if (inp.value.trim()) {
-    socket.emit('chat-message', { roomId, message: inp.value });
-    inp.value = '';
-  }
+  const input = document.getElementById('messageInput');
+  const message = input.value.trim();
+  
+  if (!message) return;
+  
+  socket.emit('chat-message', { roomId, message });
+  input.value = '';
 }
 
-function updateUsers() {
-  users.add(username);
-  document.getElementById('usersList').innerHTML = 
-    Array.from(users).map(u => `<span class="user-tag">${u}</span>`).join('');
-}
+// Enter para enviar
+document.getElementById('messageInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
 
-function addMsg(txt) {
-  const div = document.getElementById('chatMessages');
-  div.innerHTML += `<div style="text-align:center;opacity:0.6;margin:0.5rem 0">${txt}</div>`;
-  div.scrollTop = div.scrollHeight;
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
-
-updateUsers();
