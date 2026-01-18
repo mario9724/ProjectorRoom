@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProjectorRoom - Sala</title>
+  <title>Sala - ProjectorRoom</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
       <div class="video-section">
         <video id="videoPlayer" controls crossorigin="anonymous" playsinline></video>
         <div class="player-info">
-          <small id="videoStatus">Cargando video...</small>
+          <small id="videoStatus">Cargando...</small>
         </div>
       </div>
       
@@ -37,7 +37,7 @@
         </div>
         <div id="chatMessages"></div>
         <div class="chat-input">
-          <input type="text" id="messageInput" placeholder="Mensaje..." onkeypress="if(event.key==='Enter')sendMessage()">
+          <input type="text" id="messageInput" placeholder="Mensaje...">
           <button onclick="sendMessage()">Enviar</button>
         </div>
       </div>
