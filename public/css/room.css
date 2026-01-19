@@ -82,11 +82,13 @@ body {
   border: 1px solid #2a2a2a;
 }
 
+/* Cambiado: más altura + contain para no recortar */
 .room-backdrop {
   width: 100%;
-  height: 320px;
+  height: 420px;
   overflow: hidden;
   position: relative;
+  background: #0a0a0a;
 }
 
 .room-backdrop::after {
@@ -97,12 +99,14 @@ body {
   right: 0;
   height: 120px;
   background: linear-gradient(to top, #1a1a1a 0%, transparent 100%);
+  pointer-events: none;
 }
 
 .room-backdrop img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   display: block;
 }
 
@@ -159,6 +163,7 @@ body {
   transform: translateY(-2px);
 }
 
+/* Se mantiene por si lo usas en otras pantallas */
 .btn-outline-large {
   flex: 1;
   min-width: 200px;
@@ -178,30 +183,6 @@ body {
   border-color: #4a4a4a;
 }
 
-/* ==================== CAMBIAR FUENTE ==================== */
-#changeSourceSection {
-  margin-bottom: 20px;
-}
-
-.btn-change-source {
-  width: 100%;
-  background: #2a2a2a;
-  color: #ffffff;
-  border: 2px solid #3a3a3a;
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-change-source:hover {
-  background: #3a3a3a;
-  border-color: #4a4a4a;
-  transform: translateY(-1px);
-}
-
 /* ==================== BOTONES DE INTERACCIÓN ==================== */
 .interaction-buttons {
   display: grid;
@@ -217,15 +198,26 @@ body {
   padding: 14px 20px;
   border-radius: 10px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .btn-interaction:hover {
   background: #2a2a2a;
   border-color: #3a3a3a;
   transform: translateY(-2px);
+}
+
+/* Para que “Invitar” y “Cambiar fuente” ocupen las dos columnas */
+.btn-wide {
+  grid-column: 1 / -1;
+}
+
+/* Para el contenedor de cambiar fuente dentro del grid */
+#changeSourceSection {
+  width: 100%;
 }
 
 /* ==================== CHAT ==================== */
@@ -377,17 +369,23 @@ body {
   margin: 20px 0;
 }
 
+/* Cambiado: se renderiza el carácter de estrella */
+.star::before {
+  content: "★";
+}
+
 .star {
   font-size: 2rem;
   color: #3a3a3a;
   cursor: pointer;
   transition: all 0.2s ease;
+  line-height: 1;
 }
 
 .star:hover,
 .star.selected {
   color: #ffffff;
-  transform: scale(1.2);
+  transform: scale(1.15);
 }
 
 .roomies-ratings-section {
@@ -560,7 +558,7 @@ body {
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
   .room-backdrop {
-    height: 220px;
+    height: 300px;
   }
 
   .room-actions {
@@ -574,6 +572,10 @@ body {
 
   .interaction-buttons {
     grid-template-columns: 1fr;
+  }
+
+  .btn-wide {
+    grid-column: auto;
   }
 }
 
