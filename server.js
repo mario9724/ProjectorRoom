@@ -1,230 +1,133 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
 const { Pool } = require('pg');
-const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT |
 
-// Configuración de PostgreSQL usando DATABASE_URL (Render)
+| 3000;
+
+// Configuración de PostgreSQL en Render
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // En muchos entornos gestionados (Render, Heroku) hace falta ssl.
-  // Si tu proveedor no requiere SSL, puedes quitar el ssl.
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: { rejectUnauthorized: false } // Requerido para conexiones externas en Render
 });
 
-// Middleware
 app.use(express.json());
 app.use(express.static('public'));
 
-// Crear tablas si no existen
-async function ensureTables() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS projector_rooms (
-      id TEXT PRIMARY KEY,
-      room_name TEXT NOT NULL,
-      host_username TEXT NOT NULL,
-      manifest JSONB NOT NULL,
-      source_url TEXT NOT NULL,
-      use_host_source BOOLEAN DEFAULT TRUE,
-      projector_type TEXT,
-      custom_manifest TEXT,
-      created_at TIMESTAMP DEFAULT now()
-    );
-  `);
+// Almacenamiento volátil solo para usuarios en línea (no requiere persistencia larga)
+let roomUsers = {}; 
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS room_users (
-      id SERIAL PRIMARY KEY,
-      room_id TEXT NOT NULL REFERENCES projector_rooms(id) ON DELETE CASCADE,
-      socket_id TEXT NOT NULL,
-      username TEXT NOT NULL,
-      joined_at TIMESTAMP DEFAULT now()
-    );
-  `);
-}
-
-// Helper: generar id (usa crypto.randomUUID si está disponible)
 function generateId() {
-  if (crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '').substring(0, 9);
-  return Math.random().toString(36).substring(2, 11);
+  return Math.random().toString(36).substring(2, 9);
 }
-
-// Inicialización
-(async () => {
-  try {
-    await pool.connect(); // valida conexión
-    await ensureTables();
-    console.log('✅ Conectado a PostgreSQL y tablas aseguradas');
-  } catch (err) {
-    console.error('❌ Error conectando a la base de datos:', err);
-    process.exit(1);
-  }
-})().catch(console.error);
 
 // ==================== RUTAS API ====================
 
-// Crear sala (persistida en Postgres)
 app.post('/api/projectorrooms/create', async (req, res) => {
   const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
-
-  if (!roomName || !hostUsername || !manifest || !sourceUrl) {
-    return res.json({ success: false, message: 'Datos incompletos' });
-  }
-
   const roomId = generateId();
-
+  
   try {
-    // Guardamos manifest como JSONB
     await pool.query(
-      `INSERT INTO projector_rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest)
-       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8)`,
-      [
-        roomId,
-        roomName,
-        hostUsername,
-        typeof manifest === 'string' ? manifest : JSON.stringify(manifest),
-        sourceUrl,
-        useHostSource !== false,
-        projectorType || 'public',
-        customManifest || ''
-      ]
+      'INSERT INTO rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+     
     );
-
-    console.log(`✅ Sala creada en DB: ${roomId} - ${roomName} por ${hostUsername}`);
-
-    const projectorRoom = (await pool.query('SELECT * FROM projector_rooms WHERE id = $1', [roomId])).rows[0];
-
-    res.json({
-      success: true,
-      projectorRoom
-    });
+    res.json({ success: true, projectorRoom: { id: roomId, roomName, hostUsername, manifest, sourceUrl } });
   } catch (err) {
-    console.error('❌ Error creando sala:', err);
-    res.json({ success: false, message: 'Error interno al crear sala' });
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Error al crear la sala en la base de datos' });
   }
 });
 
-// Obtener sala por ID (desde Postgres)
 app.get('/api/projectorrooms/:id', async (req, res) => {
-  const roomId = req.params.id;
   try {
-    const result = await pool.query('SELECT * FROM projector_rooms WHERE id = $1', [roomId]);
-    const room = result.rows[0];
-
-    if (!room) {
-      return res.json({ success: false, message: 'Sala no encontrada' });
-    }
-
-    res.json({
-      success: true,
-      projectorRoom: room
+    const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.json({ success: false, message: 'Sala no encontrada' });
+    
+    // Formatear para compatibilidad con el frontend
+    const room = result.rows;
+    res.json({ 
+      success: true, 
+      projectorRoom: {
+        id: room.id,
+        roomName: room.room_name,
+        hostUsername: room.host_username,
+        manifest: room.manifest,
+        sourceUrl: room.source_url,
+        useHostSource: room.use_host_source
+      } 
     });
   } catch (err) {
-    console.error('❌ Error obteniendo sala:', err);
-    res.json({ success: false, message: 'Error interno' });
+    res.status(500).json({ success: false });
   }
 });
 
-// Servir HTML principal
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Servir sala
-app.get('/sala/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'room.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/sala/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'room.html')));
 
 // ==================== SOCKET.IO ====================
 
 io.on('connection', (socket) => {
-  console.log('🔌 Socket conectado:', socket.id);
+  socket.on('join-room', async ({ roomId, username }) => {
+    socket.join(roomId);
+    socket.roomId = roomId;
+    socket.username = username;
 
-  socket.on('join-room', async (data) => {
+    if (!roomUsers[roomId]) roomUsers[roomId] =;
+    roomUsers[roomId].push({ id: socket.id, username });
+
     try {
-      const { roomId, username } = data || {};
-      if (!roomId || !username) return;
+      // Cargar historial persistente para el nuevo usuario
+      const chatRes = await pool.query('SELECT username, message FROM chat_messages WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
+      const rateRes = await pool.query('SELECT username, rating FROM ratings WHERE room_id = $1', [roomId]);
+      const reacRes = await pool.query('SELECT username, time_marker as time, message FROM reactions WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
 
-      // Validar que la sala existe
-      const roomRes = await pool.query('SELECT id FROM projector_rooms WHERE id = $1', [roomId]);
-      if (roomRes.rowCount === 0) {
-        socket.emit('error', { message: 'Sala no encontrada' });
-        return;
-      }
+      socket.emit('load-history', {
+        messages: chatRes.rows,
+        ratings: rateRes.rows,
+        reactions: reacRes.rows
+      });
 
-      socket.join(roomId);
-      socket.username = username;
+      io.to(roomId).emit('user-joined', { user: { id: socket.id, username }, users: roomUsers[roomId] });
+    } catch (err) {
+      console.error('Error cargando historial:', err);
+    }
+  });
 
-      // Insertar usuario conectado
+  socket.on('chat-message', async ({ roomId, message }) => {
+    await pool.query('INSERT INTO chat_messages (room_id, username, message) VALUES ($1, $2, $3)', [roomId, socket.username, message]);
+    io.to(roomId).emit('chat-message', { username: socket.username, message });
+  });
+
+  socket.on('add-rating', async ({ roomId, username, rating }) => {
+    try {
       await pool.query(
-        'INSERT INTO room_users (room_id, socket_id, username) VALUES ($1, $2, $3)',
-        [roomId, socket.id, username]
+        'INSERT INTO ratings (room_id, username, rating) VALUES ($1, $2, $3) ON CONFLICT (room_id, username) DO UPDATE SET rating = EXCLUDED.rating',
+        [roomId, username, rating]
       );
-
-      // Obtener lista actualizada de usuarios
-      const usersRes = await pool.query('SELECT username FROM room_users WHERE room_id = $1', [roomId]);
-      const users = usersRes.rows.map(r => ({ username: r.username }));
-
-      io.to(roomId).emit('user-joined', { user: { username }, users });
-      console.log(`👥 ${username} se unió a ${roomId}`);
-    } catch (err) {
-      console.error('❌ Error en join-room:', err);
-    }
+      io.to(roomId).emit('rating-added', { username, rating });
+    } catch (err) { console.error(err); }
   });
 
-  socket.on('chat-message', (data) => {
-    try {
-      const { roomId, message } = data || {};
-      if (!roomId || !message) return;
-      // Emisión a todos en la sala
-      io.to(roomId).emit('chat-message', { username: socket.username || 'Anónimo', message });
-    } catch (err) {
-      console.error('❌ Error chat-message:', err);
-    }
+  socket.on('add-reaction', async ({ roomId, username, time, message }) => {
+    await pool.query('INSERT INTO reactions (room_id, username, time_marker, message) VALUES ($1, $2, $3, $4)', [roomId, username, time, message]);
+    io.to(roomId).emit('reaction-added', { username, time, message });
   });
 
-  socket.on('add-rating', (data) => {
-    try {
-      if (!data || !data.roomId) return;
-      io.to(data.roomId).emit('rating-added', data);
-    } catch (err) {
-      console.error('❌ Error add-rating:', err);
-    }
-  });
-
-  socket.on('add-reaction', (data) => {
-    try {
-      if (!data || !data.roomId) return;
-      io.to(data.roomId).emit('reaction-added', data);
-    } catch (err) {
-      console.error('❌ Error add-reaction:', err);
-    }
-  });
-
-  socket.on('disconnect', async () => {
-    try {
-      // Eliminar usuario de room_users y notificar
-      const delRes = await pool.query('DELETE FROM room_users WHERE socket_id = $1 RETURNING room_id, username', [socket.id]);
-      for (const row of delRes.rows) {
-        const usersRes = await pool.query('SELECT username FROM room_users WHERE room_id = $1', [row.room_id]);
-        const users = usersRes.rows.map(r => ({ username: r.username }));
-        io.to(row.room_id).emit('user-left', { username: row.username, users });
-        console.log(`👋 ${row.username} salió de ${row.room_id}`);
-      }
-    } catch (err) {
-      console.error('❌ Error en disconnect:', err);
+  socket.on('disconnect', () => {
+    if (socket.roomId && roomUsers[socket.roomId]) {
+      roomUsers[socket.roomId] = roomUsers[socket.roomId].filter(u => u.id!== socket.id);
+      io.to(socket.roomId).emit('user-left', { username: socket.username, users: roomUsers[socket.roomId] });
     }
   });
 });
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
