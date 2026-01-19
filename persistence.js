@@ -1,33 +1,31 @@
-const { roomData, loadRoom, saveRoom } = require('./persistence');
+const fs = require('fs');
+const path = require('path');
 
-io.on('connection', (socket) => {
-  socket.on('join-room', (roomId, username) => {
-    loadRoom(roomId); // Cargar datos existentes
-    
-    // Enviar historial al usuario
-    socket.emit('load-history', roomData[roomId]);
-    
-    socket.join(roomId);
-  });
+const DATA_DIR = path.join(__dirname, 'projectorroom-data');
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
-  socket.on('chat-message', (roomId, message) => {
-    const data = { username: socket.username, message, timestamp: Date.now() };
-    roomData[roomId].messages.push(data);
-    saveRoom(roomId); // Guardar inmediatamente
-    io.to(roomId).emit('chat-message', data);
-  });
+// Almacenamiento en memoria
+const roomData = {};
 
-  socket.on('add-rating', (roomId, username, rating) => {
-    const data = { username, rating };
-    roomData[roomId].ratings.push(data);
-    saveRoom(roomId);
-    io.to(roomId).emit('rating-added', data);
-  });
+// Cargar datos al iniciar
+async function loadRoom(roomId) {
+    const filePath = path.join(DATA_DIR, `${roomId}.json`);
+    if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        roomData[roomId] = data;
+        console.log(`📂 Sala cargada: ${roomId}`);
+    } else {
+        roomData[roomId] = { messages: [], ratings: [], reactions: [] };
+    }
+}
 
-  socket.on('add-reaction', (roomId, username, time, message) => {
-    const data = { username, time, message };
-    roomData[roomId].reactions.push(data);
-    saveRoom(roomId);
-    io.to(roomId).emit('reaction-added', data);
-  });
-});
+// Guardar datos
+async function saveRoom(roomId) {
+    const filePath = path.join(DATA_DIR, `${roomId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(roomData[roomId], null, 2));
+    console.log(`💾 Sala guardada: ${roomId}`);
+}
+
+module.exports = { roomData, loadRoom, saveRoom };
