@@ -9,6 +9,7 @@ services:
     name: projector-room-app
     runtime: node
     plan: free
+    # Instalamos y luego inicializamos la BD en un solo comando de construcción
     buildCommand: npm install && node scripts/init-db.js
     startCommand: node server.js
     envVars:
