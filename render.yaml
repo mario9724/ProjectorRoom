@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: projectorroom
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: projectorroom-db
+          property: connectionString
+    preDeployCommand: npm run db:init
