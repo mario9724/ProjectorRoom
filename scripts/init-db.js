@@ -9,13 +9,13 @@ const pool = new Pool({
 });
 
 async function run() {
-  console.log('⏳ Inicializando base de datos...');
+  console.log('⏳ Configurando tablas en PostgreSQL...');
   try {
     const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     await pool.query(sql);
-    console.log('✅ Base de datos configurada correctamente.');
+    console.log('✅ Base de datos lista para persistencia.');
   } catch (err) {
-    console.error('❌ Error inicializando:', err);
+    console.error('❌ Error al inicializar:', err);
     process.exit(1);
   } finally {
     await pool.end();
