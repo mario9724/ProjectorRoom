@@ -1,6 +1,6 @@
 {
   "name": "projectorroom",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Salas de proyección con VLC y persistencia SQL",
   "main": "server.js",
   "scripts": {
