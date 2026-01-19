@@ -274,34 +274,54 @@ function initRoom() {
 // ==================== SOCKET.IO ====================
 
 function initSocket() {
+    console.log('🔌 Inicializando socket...');
     socket = io();
 
-    socket.emit('join-room', {
-        roomId: roomId,
-        username: username
+    socket.on('connect', () => {
+        console.log('✅ Socket conectado:', socket.id);
+
+        // Unirse a la sala
+        console.log('📤 Enviando join-room...');
+        socket.emit('join-room', {
+            roomId: roomId,
+            username: username
+        });
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('❌ Error de conexión socket:', error);
     });
 
     // NUEVO: Escuchar historial desde el servidor
     socket.on('load-history', (data) => {
         console.log('📚 Historial recibido del servidor:', data);
 
-        // Cargar mensajes
-        if (data.messages && data.messages.length > 0) {
-            data.messages.forEach(msg => {
-                appendChatMessage(msg.username, msg.message);
-            });
-        }
+        try {
+            // Cargar mensajes
+            if (data.messages && data.messages.length > 0) {
+                console.log('💬 Cargando', data.messages.length, 'mensajes');
+                data.messages.forEach(msg => {
+                    appendChatMessage(msg.username, msg.message);
+                });
+            }
 
-        // Cargar calificaciones
-        if (data.ratings && data.ratings.length > 0) {
-            allRatings = data.ratings;
-            renderRatings();
-        }
+            // Cargar calificaciones
+            if (data.ratings && data.ratings.length > 0) {
+                console.log('⭐ Cargando', data.ratings.length, 'calificaciones');
+                allRatings = data.ratings;
+                renderRatings();
+            }
 
-        // Cargar reacciones
-        if (data.reactions && data.reactions.length > 0) {
-            allReactions = data.reactions;
-            renderReactions();
+            // Cargar reacciones
+            if (data.reactions && data.reactions.length > 0) {
+                console.log('💭 Cargando', data.reactions.length, 'reacciones');
+                allReactions = data.reactions;
+                renderReactions();
+            }
+
+            console.log('✅ Historial cargado completamente');
+        } catch (error) {
+            console.error('❌ Error procesando historial:', error);
         }
     });
 
@@ -359,6 +379,11 @@ function initSocket() {
 
 function updateUsersList() {
     const usersList = document.getElementById('users-list');
+    if (!usersList) {
+        console.warn('⚠️ Elemento users-list no encontrado');
+        return;
+    }
+
     usersList.innerHTML = '';
 
     currentUsers.forEach(user => {
@@ -378,16 +403,32 @@ function setupEventListeners() {
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-message');
 
-    sendBtn.addEventListener('click', sendChatMessage);
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendChatMessage);
+    }
 
-    document.getElementById('copy-link-btn').addEventListener('click', copyRoomLink);
-    document.getElementById('submit-rating').addEventListener('click', submitRating);
-    document.getElementById('submit-reaction').addEventListener('click', submitReaction);
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+    }
+
+    const copyBtn = document.getElementById('copy-link-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', copyRoomLink);
+    }
+
+    const ratingBtn = document.getElementById('submit-rating');
+    if (ratingBtn) {
+        ratingBtn.addEventListener('click', submitRating);
+    }
+
+    const reactionBtn = document.getElementById('submit-reaction');
+    if (reactionBtn) {
+        reactionBtn.addEventListener('click', submitReaction);
+    }
 }
 
 function sendChatMessage() {
@@ -407,6 +448,11 @@ function sendChatMessage() {
 
 function appendChatMessage(user, message) {
     const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) {
+        console.warn('⚠️ Elemento chat-messages no encontrado');
+        return;
+    }
+
     const messageEl = document.createElement('div');
     messageEl.className = 'chat-message';
 
@@ -457,19 +503,26 @@ async function loadMovieInfo() {
             ? `https://image.tmdb.org/t/p/original${movieData.backdrop_path}`
             : '';
 
-        if (backdropUrl) {
-            document.querySelector('.movie-info').style.backgroundImage = `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url('${backdropUrl}')`;
+        const movieInfoEl = document.querySelector('.movie-info');
+        if (backdropUrl && movieInfoEl) {
+            movieInfoEl.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url('${backdropUrl}')`;
         }
 
         const title = movieData.title || movieData.name;
         const year = movieData.release_date ? movieData.release_date.split('-')[0] : (movieData.first_air_date ? movieData.first_air_date.split('-')[0] : '');
         const rating = movieData.vote_average ? movieData.vote_average.toFixed(1) : 'N/A';
 
-        document.getElementById('movie-title').textContent = title;
-        document.getElementById('movie-year').textContent = year;
-        document.getElementById('movie-rating').textContent = `⭐ ${rating}`;
-        document.getElementById('movie-overview').textContent = movieData.overview || 'Sin descripción disponible';
-        document.getElementById('movie-poster').src = posterUrl;
+        const titleEl = document.getElementById('movie-title');
+        const yearEl = document.getElementById('movie-year');
+        const ratingEl = document.getElementById('movie-rating');
+        const overviewEl = document.getElementById('movie-overview');
+        const posterEl = document.getElementById('movie-poster');
+
+        if (titleEl) titleEl.textContent = title;
+        if (yearEl) yearEl.textContent = year;
+        if (ratingEl) ratingEl.textContent = `⭐ ${rating}`;
+        if (overviewEl) overviewEl.textContent = movieData.overview || 'Sin descripción disponible';
+        if (posterEl) posterEl.src = posterUrl;
 
     } catch (error) {
         console.error('❌ Error cargando info de película:', error);
@@ -480,6 +533,11 @@ async function loadMovieInfo() {
 
 function submitRating() {
     const ratingSelect = document.getElementById('rating-select');
+    if (!ratingSelect) {
+        console.warn('⚠️ Elemento rating-select no encontrado');
+        return;
+    }
+
     const rating = parseInt(ratingSelect.value);
 
     if (!rating) {
@@ -508,6 +566,11 @@ function submitRating() {
 
 function renderRatings() {
     const container = document.getElementById('ratings-list');
+    if (!container) {
+        console.warn('⚠️ Elemento ratings-list no encontrado');
+        return;
+    }
+
     container.innerHTML = '';
 
     if (allRatings.length === 0) {
@@ -532,6 +595,11 @@ function renderRatings() {
 function submitReaction() {
     const timeInput = document.getElementById('reaction-time');
     const messageInput = document.getElementById('reaction-message');
+
+    if (!timeInput || !messageInput) {
+        console.warn('⚠️ Elementos de reacción no encontrados');
+        return;
+    }
 
     const time = timeInput.value.trim();
     const message = messageInput.value.trim();
@@ -562,6 +630,11 @@ function submitReaction() {
 
 function renderReactions() {
     const container = document.getElementById('reactions-list');
+    if (!container) {
+        console.warn('⚠️ Elemento reactions-list no encontrado');
+        return;
+    }
+
     container.innerHTML = '';
 
     if (allReactions.length === 0) {
