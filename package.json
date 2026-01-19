@@ -4,12 +4,11 @@
   "description": "Salas de proyección con VLC",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "db:init": "node scripts/init-db.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "4.18.2",
-    "pg": "^8.11.5",
-    "socket.io": "4.6.1"
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "pg": "^8.11.3"
   }
 }
