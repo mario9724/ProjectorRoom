@@ -1,21 +1,13 @@
 {
   "name": "projectorroom",
   "version": "1.0.0",
-  "description": "Sistema de salas compartidas con Stremio",
+  "description": "Salas de proyección con VLC",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.6.1",
-    "better-sqlite3": "^9.3.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  },
-  "engines": {
-    "node": "20.x"
+    "socket.io": "^4.6.1"
   }
 }
