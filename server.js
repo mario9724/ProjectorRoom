@@ -9,12 +9,12 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// CONFIGURACIÓN DEL PUERTO (Corregida con ||)
+// Configuración del puerto para Render
 const PORT = process.env.PORT |
 
 | 10000;
 
-// Configuración de PostgreSQL para Render
+// Conexión a base de datos
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -37,7 +37,6 @@ app.post('/api/projectorrooms/create', async (req, res) => {
   
   try {
     const values =;
-    
     await pool.query(
       'INSERT INTO rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       values
@@ -45,14 +44,14 @@ app.post('/api/projectorrooms/create', async (req, res) => {
     res.json({ success: true, projectorRoom: { id: roomId, roomName, hostUsername, manifest, sourceUrl } });
   } catch (err) {
     console.error('Error DB:', err);
-    res.status(500).json({ success: false, message: 'Error al crear la sala' });
+    res.status(500).json({ success: false });
   }
 });
 
 app.get('/api/projectorrooms/:id', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) return res.json({ success: false, message: 'Sala no encontrada' });
+    if (result.rows.length === 0) return res.json({ success: false });
     
     const room = result.rows;
     res.json({ 
@@ -97,7 +96,7 @@ io.on('connection', (socket) => {
 
       io.to(roomId).emit('user-joined', { user: { id: socket.id, username }, users: roomUsers[roomId] });
     } catch (err) {
-      console.error('Error cargando historial:', err);
+      console.error('Error historial:', err);
     }
   });
 
@@ -105,7 +104,7 @@ io.on('connection', (socket) => {
     try {
       await pool.query('INSERT INTO chat_messages (room_id, username, message) VALUES ($1, $2, $3)', [roomId, socket.username, message]);
       io.to(roomId).emit('chat-message', { username: socket.username, message });
-    } catch (err) { console.error('Error chat:', err); }
+    } catch (err) { console.error(err); }
   });
 
   socket.on('add-rating', async ({ roomId, username, rating }) => {
@@ -115,14 +114,14 @@ io.on('connection', (socket) => {
         [roomId, username, rating]
       );
       io.to(roomId).emit('rating-added', { username, rating });
-    } catch (err) { console.error('Error rating:', err); }
+    } catch (err) { console.error(err); }
   });
 
   socket.on('add-reaction', async ({ roomId, username, time, message }) => {
     try {
       await pool.query('INSERT INTO reactions (room_id, username, time_marker, message) VALUES ($1, $2, $3, $4)', [roomId, username, time, message]);
       io.to(roomId).emit('reaction-added', { username, time, message });
-    } catch (err) { console.error('Error reacción:', err); }
+    } catch (err) { console.error(err); }
   });
 
   socket.on('disconnect', () => {
