@@ -9,7 +9,6 @@ services:
     name: projector-room-app
     runtime: node
     plan: free
-    # Instalamos dependencias y ejecutamos el script de creación de tablas
     buildCommand: npm install && node scripts/init-db.js
     startCommand: node server.js
     envVars:
@@ -18,6 +17,6 @@ services:
           name: projectorroom-db
           property: connectionString
       - key: TMDB_API_KEY
-        sync: false # Lo pondrás manualmente en el dashboard de Render al desplegar
+        sync: false
       - key: NODE_ENV
         value: production
