@@ -14,18 +14,11 @@ let roomConfig = {
   shareMode: 'host'
 };
 
-// ==================== helpers ====================
-function buildStremioVideoId(movieData) {
-  if (!movieData) return null;
-
-  // Stremio: movies -> Meta ID (IMDb)
-  if (movieData.type === 'movie') return movieData.imdbId;
-
-  // Stremio: IMDb series -> imdbId:season:episode [page:1]
-  const s = movieData.season || 1;
-  const e = movieData.episode || 1;
-  return `${movieData.imdbId}:${s}:${e}`;
-}
+// ============ NUEVO: selector serie ============
+let seriesSeasons = [];
+let seriesEpisodes = [];
+let selectedSeason = 1;
+let selectedEpisode = 1;
 
 // NAVEGACIÓN ENTRE PASOS
 function goToStep(step) {
@@ -134,8 +127,8 @@ async function searchMovies(query) {
     const res = await fetch(url);
     const data = await res.json();
 
-    const filtered = (data.results || []).filter(
-      item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
+    const filtered = (data.results || []).filter(item =>
+      (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
     );
 
     if (filtered.length === 0) {
@@ -172,6 +165,96 @@ function renderMovieGrid(movies) {
   });
 }
 
+// ============ NUEVO: UI selector capitulo (solo series) ============
+function ensureEpisodeSelectorUI() {
+  // Inserta el selector encima de la lista de fuentes SIN romper tu UI
+  let box = document.getElementById('episodeSelectorBox');
+  if (box) return box;
+
+  const sourcesList = document.getElementById('sourcesList');
+  if (!sourcesList) return null;
+
+  box = document.createElement('div');
+  box.id = 'episodeSelectorBox';
+
+  // Sin estilos nuevos “creativos”: solo un wrapper neutro
+  box.innerHTML = `
+    <div class="section-title" style="margin-top: 10px;">📺 Selecciona capítulo</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
+      <select id="seasonSelect" style="padding:10px; border-radius:10px;"></select>
+      <select id="episodeSelect" style="padding:10px; border-radius:10px; min-width: 220px;"></select>
+    </div>
+  `;
+
+  sourcesList.parentNode.insertBefore(box, sourcesList);
+  return box;
+}
+
+function removeEpisodeSelectorUI() {
+  document.getElementById('episodeSelectorBox')?.remove();
+}
+
+function renderEpisodeSelectorOptions() {
+  const seasonSelect = document.getElementById('seasonSelect');
+  const episodeSelect = document.getElementById('episodeSelect');
+  if (!seasonSelect || !episodeSelect) return;
+
+  seasonSelect.innerHTML = seriesSeasons
+    .map(s => `<option value="${s}">Temporada ${s}</option>`)
+    .join('');
+  seasonSelect.value = String(selectedSeason);
+
+  episodeSelect.innerHTML = seriesEpisodes
+    .map(e => `<option value="${e}">E${String(e).padStart(2, '0')}</option>`)
+    .join('');
+  episodeSelect.value = String(selectedEpisode);
+
+  seasonSelect.onchange = async () => {
+    selectedSeason = parseInt(seasonSelect.value, 10) || 1;
+    selectedEpisode = 1;
+    selectedMovie.season = selectedSeason;
+    selectedMovie.episode = selectedEpisode;
+
+    await loadSeasonEpisodes(selectedMovie.id, selectedSeason);
+    renderEpisodeSelectorOptions();
+    loadSources();
+  };
+
+  episodeSelect.onchange = () => {
+    selectedEpisode = parseInt(episodeSelect.value, 10) || 1;
+    selectedMovie.season = selectedSeason;
+    selectedMovie.episode = selectedEpisode;
+    loadSources();
+  };
+}
+
+async function loadSeriesSeasons(tvId) {
+  const url = `https://api.themoviedb.org/3/tv/${tvId}?api_key=${TMDB_API_KEY}&language=es-ES`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  seriesSeasons = (data.seasons || [])
+    .map(s => s.season_number)
+    .filter(n => Number.isInteger(n) && n >= 1)
+    .sort((a, b) => a - b);
+
+  if (!seriesSeasons.length) seriesSeasons = [1];
+  selectedSeason = seriesSeasons[0];
+}
+
+async function loadSeasonEpisodes(tvId, seasonNumber) {
+  const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=es-ES`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  seriesEpisodes = (data.episodes || [])
+    .map(e => e.episode_number)
+    .filter(n => Number.isInteger(n) && n >= 1)
+    .sort((a, b) => a - b);
+
+  if (!seriesEpisodes.length) seriesEpisodes = [1];
+}
+
 // SELECCIONAR PELÍCULA
 async function selectMovie(movie) {
   selectedMovie = {
@@ -184,9 +267,9 @@ async function selectMovie(movie) {
     overview: movie.overview || 'Sin descripción disponible',
     imdbId: null,
 
-    // ✅ para series (Stremio id tt:s:e) [page:1]
-    season: 1,
-    episode: 1
+    // ✅ se rellenan solo si es serie
+    season: null,
+    episode: null
   };
 
   // Obtener IMDb ID
@@ -205,48 +288,26 @@ async function selectMovie(movie) {
     goToStep(6);
     renderSelectedMovie();
 
-    // ✅ Si existe un bloque en tu HTML para S/E, lo conectamos sin cambiar estilos
-    setupSeriesInputsIfPresent();
+    // ✅ Solo para series: monta selector y setea season/episode
+    if (selectedMovie.type === 'series') {
+      ensureEpisodeSelectorUI();
+      await loadSeriesSeasons(selectedMovie.id);
+      await loadSeasonEpisodes(selectedMovie.id, selectedSeason);
+
+      selectedEpisode = seriesEpisodes[0] || 1;
+      selectedMovie.season = selectedSeason;
+      selectedMovie.episode = selectedEpisode;
+
+      renderEpisodeSelectorOptions();
+    } else {
+      removeEpisodeSelectorUI();
+    }
 
     loadSources();
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
     alert('Error obteniendo información');
   }
-}
-
-// Si tienes estos elementos en tu HTML, se usarán:
-// - #seriesEpisodeBox (contenedor)
-// - #seasonInput (input number)
-// - #episodeInput (input number)
-function setupSeriesInputsIfPresent() {
-  const box = document.getElementById('seriesEpisodeBox');
-  if (!box) return;
-
-  if (selectedMovie.type !== 'series') {
-    box.style.display = 'none';
-    return;
-  }
-
-  box.style.display = 'block';
-
-  const seasonInput = document.getElementById('seasonInput');
-  const episodeInput = document.getElementById('episodeInput');
-
-  if (!seasonInput || !episodeInput) return;
-
-  seasonInput.value = selectedMovie.season || 1;
-  episodeInput.value = selectedMovie.episode || 1;
-
-  seasonInput.onchange = () => {
-    selectedMovie.season = parseInt(seasonInput.value, 10) || 1;
-    loadSources();
-  };
-
-  episodeInput.onchange = () => {
-    selectedMovie.episode = parseInt(episodeInput.value, 10) || 1;
-    loadSources();
-  };
 }
 
 // RENDERIZAR PELÍCULA SELECCIONADA
@@ -264,15 +325,21 @@ async function loadSources() {
   const container = document.getElementById('sourcesList');
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
 
-  const manifestUrl = roomConfig.projectorType === 'custom' ? roomConfig.customManifest : PUBLIC_MANIFEST;
+  const manifestUrl = roomConfig.projectorType === 'custom'
+    ? roomConfig.customManifest
+    : PUBLIC_MANIFEST;
 
   try {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = selectedMovie.type === 'movie' ? 'movie' : 'series';
 
-    // ✅ Stremio id correcto para series [page:1]
-    const videoId = buildStremioVideoId(selectedMovie);
+    // ✅ Stremio: /stream/{type}/{videoID}.json y para series videoID = imdbId:season:episode [page:2]
+    const videoId =
+      selectedMovie.type === 'movie'
+        ? selectedMovie.imdbId
+        : `${selectedMovie.imdbId}:${selectedMovie.season || 1}:${selectedMovie.episode || 1}`;
+
     const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)}.json`;
 
     const res = await fetch(streamUrl);
@@ -297,7 +364,7 @@ async function loadSources() {
     renderSources();
   } catch (error) {
     console.error('Error cargando fuentes:', error);
-    container.innerHTML = `<div class="loading">❌ Error: ${escapeHtml(error.message)}</div>`;
+    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
     document.getElementById('btnCreateRoom').disabled = true;
   }
 }
@@ -341,7 +408,7 @@ async function createRoom() {
   const roomData = {
     roomName: roomConfig.roomName,
     hostUsername: roomConfig.username,
-    manifest: JSON.stringify(selectedMovie), // ✅ incluye season/episode para invitado
+    manifest: JSON.stringify(selectedMovie), // ✅ incluye season/episode si es serie
     sourceUrl: sources[selectedSourceIndex].url,
     useHostSource: roomConfig.shareMode === 'host',
     projectorType: roomConfig.projectorType,
@@ -360,11 +427,9 @@ async function createRoom() {
     if (data.success) {
       const roomId = data.projectorRoom.id;
 
-      // MARCAR COMO ANFITRIÓN (no mostrar configuración de invitado)
       sessionStorage.setItem('projectorroom_is_host_' + roomId, 'true');
       sessionStorage.setItem('projectorroom_host_username_' + roomId, roomConfig.username);
 
-      // REDIRIGIR A LA SALA
       window.location.href = `/sala/${roomId}`;
     } else {
       alert('Error creando sala');
