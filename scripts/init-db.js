@@ -9,11 +9,11 @@ const pool = new Pool({
 });
 
 async function run() {
-  console.log('⏳ Configurando base de datos...');
+  console.log('⏳ Inicializando base de datos...');
   try {
     const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     await pool.query(sql);
-    console.log('✅ Base de datos lista.');
+    console.log('✅ Base de datos configurada correctamente.');
   } catch (err) {
     console.error('❌ Error inicializando:', err);
     process.exit(1);
