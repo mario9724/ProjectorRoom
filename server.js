@@ -10,7 +10,6 @@ const io = socketIO(server);
 const PORT = process.env.PORT || 3000;
 
 // ==================== CONFIGURACIÓN BASE DE DATOS ====================
-// Usar archivo persistente en producción, memoria en desarrollo
 const dbPath = process.env.NODE_ENV === 'production' ? 'projector_rooms.db' : ':memory:';
 const db = new Database(dbPath, { verbose: console.log });
 
@@ -65,9 +64,9 @@ db.exec(`
   );
 `);
 
-console.log('✅ Base de datos inicializada');
+console.log('✅ Base de datos SQLite inicializada');
 
-// Preparar statements para mejor rendimiento
+// Preparar statements
 const stmts = {
   // Rooms
   createRoom: db.prepare(`
@@ -369,6 +368,12 @@ io.on('connection', (socket) => {
 
 // Limpieza al cerrar
 process.on('SIGINT', () => {
+  console.log('🛑 Cerrando servidor...');
+  db.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
   console.log('🛑 Cerrando servidor...');
   db.close();
   process.exit(0);
