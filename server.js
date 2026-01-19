@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const storage = require('node-persist');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,9 +18,21 @@ const io = new Server(server);
 })();
 
 app.use(express.json());
-app.use(express.static('public')); // Tu carpeta con HTML/CSS/JS
+app.use(express.static('public'));
 
 const rooms = new Map();
+
+// ==================== RUTAS HTML ====================
+
+// Página principal
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Página de sala
+app.get('/sala/:id', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'room.html'));
+});
 
 // ==================== API ENDPOINTS ====================
 
@@ -45,6 +58,8 @@ app.post('/api/projectorrooms/create', async (req, res) => {
     // Guardar sala en persistencia
     await storage.setItem(`room_${id}`, room);
     
+    console.log(`✅ Sala creada: ${roomName} (ID: ${id})`);
+    
     res.json({ success: true, projectorRoom: room });
 });
 
@@ -59,10 +74,12 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
         if (room) {
             room.users = [];
             rooms.set(roomId, room);
+            console.log(`📂 Sala cargada de persistencia: ${roomId}`);
         }
     }
     
     if (!room) {
+        console.log(`❌ Sala no encontrada: ${roomId}`);
         return res.json({ success: false, message: 'Sala no encontrada' });
     }
     
@@ -87,7 +104,10 @@ io.on('connection', (socket) => {
     
     socket.on('join-room', async (roomId, username) => {
         const room = rooms.get(roomId);
-        if (!room) return;
+        if (!room) {
+            console.log(`❌ Sala no encontrada para join: ${roomId}`);
+            return;
+        }
         
         socket.join(roomId);
         const user = { id: socket.id, username };
