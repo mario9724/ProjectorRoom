@@ -1,135 +1,175 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
-const { roomData, loadRoom, saveRoom } = require('./persistence');
+const socketIO = require('socket.io');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+const io = socketIO(server);
 
-// Servir archivos estáticos
-app.use(express.static('public'));
+const PORT = process.env.PORT || 3000;
+
+// Middleware
 app.use(express.json());
+app.use(express.static('public'));
 
-// Rutas HTML
+// Base de datos en memoria
+let projectorRooms = {};
+let roomUsers = {}; // { roomId: [{ id, username }] }
+
+// Generar ID único
+function generateId() {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+// ==================== RUTAS API ====================
+
+// Crear sala
+app.post('/api/projectorrooms/create', (req, res) => {
+  const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
+  
+  if (!roomName || !hostUsername || !manifest || !sourceUrl) {
+    return res.json({ success: false, message: 'Datos incompletos' });
+  }
+  
+  const roomId = generateId();
+  
+  projectorRooms[roomId] = {
+    id: roomId,
+    roomName,
+    hostUsername,
+    manifest,
+    sourceUrl,
+    useHostSource: useHostSource !== false,
+    projectorType: projectorType || 'public',
+    customManifest: customManifest || '',
+    createdAt: new Date()
+  };
+  
+  console.log(`✅ Sala creada: ${roomId} - ${roomName} por ${hostUsername}`);
+  
+  res.json({ 
+    success: true, 
+    projectorRoom: projectorRooms[roomId]
+  });
+});
+
+// Obtener sala por ID
+app.get('/api/projectorrooms/:id', (req, res) => {
+  const roomId = req.params.id;
+  const room = projectorRooms[roomId];
+  
+  if (!room) {
+    return res.json({ success: false, message: 'Sala no encontrada' });
+  }
+  
+  res.json({ 
+    success: true, 
+    projectorRoom: room
+  });
+});
+
+// Servir HTML principal
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Servir sala
 app.get('/sala/:id', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'room.html'));
-});
-
-// ==================== API ====================
-
-app.post('/api/projectorrooms/create', async (req, res) => {
-    const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
-    const roomId = Date.now().toString();
-    
-    const room = {
-        id: roomId,
-        roomName,
-        hostUsername,
-        manifest,
-        sourceUrl,
-        useHostSource,
-        projectorType,
-        customManifest,
-        users: []
-    };
-    
-    roomData[roomId] = room;
-    await saveRoom(roomId);
-    
-    res.json({ success: true, projectorRoom: room });
-});
-
-app.get('/api/projectorrooms/:id', async (req, res) => {
-    const roomId = req.params.id;
-    
-    if (!roomData[roomId]) {
-        await loadRoom(roomId);
-    }
-    
-    if (!roomData[roomId]) {
-        return res.status(404).json({ success: false, message: 'Sala no encontrada' });
-    }
-    
-    const room = roomData[roomId];
-    res.json({ 
-        success: true, 
-        projectorRoom: room 
-    });
+  res.sendFile(path.join(__dirname, 'public', 'room.html'));
 });
 
 // ==================== SOCKET.IO ====================
 
 io.on('connection', (socket) => {
-    console.log('🔌 Conexión:', socket.id);
+  console.log('🔌 Usuario conectado:', socket.id);
+  
+  // UNIRSE A SALA
+  socket.on('join-room', ({ roomId, username }) => {
+    console.log(`👤 ${username} se unió a sala ${roomId}`);
     
-    socket.on('join-room', async (roomId, username) => {
-        await loadRoom(roomId);
-        
-        const history = roomData[roomId] || { messages: [], ratings: [], reactions: [] };
-        socket.emit('load-history', history);
-        
-        socket.join(roomId);
-        console.log(`👤 ${username} entró en ${roomId}`);
-        
-        socket.broadcast.to(roomId).emit('user-joined', { username });
+    socket.join(roomId);
+    
+    if (!roomUsers[roomId]) {
+      roomUsers[roomId] = [];
+    }
+    
+    // Agregar usuario
+    roomUsers[roomId].push({
+      id: socket.id,
+      username: username
     });
     
-    socket.on('chat-message', async (roomId, message) => {
-        await loadRoom(roomId);
-        
-        const msg = {
-            username: socket.username || 'Anónimo',
-            message,
-            timestamp: Date.now()
-        };
-        
-        roomData[roomId].messages = roomData[roomId].messages || [];
-        roomData[roomId].messages.push(msg);
-        await saveRoom(roomId);
-        
-        io.to(roomId).emit('chat-message', msg);
-    });
+    // Guardar datos en socket
+    socket.roomId = roomId;
+    socket.username = username;
     
-    socket.on('add-rating', async (roomId, username, rating) => {
-        await loadRoom(roomId);
-        
-        roomData[roomId].ratings = roomData[roomId].ratings || [];
-        
-        // Actualizar o añadir
-        const existing = roomData[roomId].ratings.find(r => r.username === username);
-        if (existing) {
-            existing.rating = rating;
-        } else {
-            roomData[roomId].ratings.push({ username, rating });
-        }
-        
-        await saveRoom(roomId);
-        io.to(roomId).emit('rating-added', { username, rating });
+    // Notificar a todos en la sala
+    io.to(roomId).emit('user-joined', {
+      user: { id: socket.id, username },
+      users: roomUsers[roomId]
     });
+  });
+  
+  // MENSAJE DE CHAT
+  socket.on('chat-message', ({ roomId, message }) => {
+    console.log(`💬 [${roomId}] ${socket.username}: ${message}`);
     
-    socket.on('add-reaction', async (roomId, username, time, message) => {
-        await loadRoom(roomId);
-        
-        roomData[roomId].reactions = roomData[roomId].reactions || [];
-        roomData[roomId].reactions.push({ username, time, message });
-        
-        await saveRoom(roomId);
-        io.to(roomId).emit('reaction-added', { username, time, message });
+    io.to(roomId).emit('chat-message', {
+      username: socket.username,
+      message: message
     });
+  });
+  
+  // CALIFICACIÓN
+  socket.on('add-rating', ({ roomId, username, rating }) => {
+    console.log(`⭐ [${roomId}] ${username} calificó con ${rating}/10`);
+    
+    io.to(roomId).emit('rating-added', {
+      username,
+      rating
+    });
+  });
+  
+  // REACCIÓN
+  socket.on('add-reaction', ({ roomId, username, time, message }) => {
+    console.log(`💬 [${roomId}] ${username} reaccionó en ${time}: ${message}`);
+    
+    io.to(roomId).emit('reaction-added', {
+      username,
+      time,
+      message
+    });
+  });
+  
+  // DESCONEXIÓN
+  socket.on('disconnect', () => {
+    console.log('🔴 Usuario desconectado:', socket.id);
+    
+    const roomId = socket.roomId;
+    const username = socket.username;
+    
+    if (roomId && roomUsers[roomId]) {
+      // Remover usuario de la sala
+      roomUsers[roomId] = roomUsers[roomId].filter(user => user.id !== socket.id);
+      
+      // Notificar a los demás
+      io.to(roomId).emit('user-left', {
+        username: username,
+        users: roomUsers[roomId]
+      });
+      
+      // Limpiar sala si está vacía
+      if (roomUsers[roomId].length === 0) {
+        delete roomUsers[roomId];
+        console.log(`🗑️ Sala ${roomId} eliminada (sin usuarios)`);
+      }
+    }
+  });
 });
 
-const PORT = process.env.PORT || 3000;
+// ==================== SERVIDOR ====================
+
 server.listen(PORT, () => {
-    console.log(`🚀 Servidor en puerto ${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
