@@ -1,6 +1,5 @@
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
-const PUBLIC_MANIFEST =
-  'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
+const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
 
 let roomId = null;
 let socket = null;
@@ -15,7 +14,7 @@ let allReactions = [];
 let currentUsers = [];
 
 // ==================== INICIALIZAR ====================
-window.addEventListener('load', async function () {
+window.addEventListener('load', async function() {
   console.log('🚀 Inicializando sala...');
 
   const pathParts = window.location.pathname.split('/');
@@ -55,6 +54,7 @@ window.addEventListener('load', async function () {
 
     console.log('✅ Anfitrión detectado, iniciando sala...');
     initRoom();
+
   } else {
     console.log('👥 Usuario invitado detectado');
 
@@ -149,7 +149,7 @@ function showGuestConfig() {
   document.body.insertAdjacentHTML('beforeend', configHTML);
 }
 
-window.selectGuestProjector = function (type) {
+window.selectGuestProjector = function(type) {
   document.querySelectorAll('input[name="guestProjectorType"]').forEach(radio => {
     radio.checked = radio.value === type;
   });
@@ -165,7 +165,7 @@ window.selectGuestProjector = function (type) {
   }
 };
 
-window.submitGuestConfig = function () {
+window.submitGuestConfig = function() {
   const usernameInput = document.getElementById('guestUsername');
   username = usernameInput.value.trim();
 
@@ -244,24 +244,15 @@ async function showGuestSourceSelector() {
   await loadGuestSources(movieData);
 }
 
-// ✅ Stremio videoID para series: imdbId:season:episode [web:73][web:72]
-function buildStremioVideoId(movieData) {
-  if (movieData.type === 'movie') return movieData.imdbId;
-  const s = movieData.season || 1;
-  const e = movieData.episode || 1;
-  return `${movieData.imdbId}:${s}:${e}`;
-}
-
 async function loadGuestSources(movieData) {
   console.log('🔍 Cargando fuentes para invitado...');
   const container = document.getElementById('guestSourcesList');
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
 
   const projectorType = localStorage.getItem('projectorroom_guest_projector_' + roomId);
-  const manifestUrl =
-    projectorType === 'custom'
-      ? localStorage.getItem('projectorroom_guest_manifest_' + roomId)
-      : PUBLIC_MANIFEST;
+  const manifestUrl = projectorType === 'custom'
+    ? localStorage.getItem('projectorroom_guest_manifest_' + roomId)
+    : PUBLIC_MANIFEST;
 
   console.log('📡 Manifest URL:', manifestUrl);
 
@@ -270,13 +261,13 @@ async function loadGuestSources(movieData) {
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = movieData.type === 'movie' ? 'movie' : 'series';
 
-    const videoId = buildStremioVideoId(movieData);
-const videoId = movieData.type === 'movie'
-  ? movieData.imdbId
-  : `${movieData.imdbId}:${movieData.season || 1}:${movieData.episode || 1}`;
+    // ✅ ÚNICO CAMBIO REAL:
+    // Stremio /stream/{type}/{videoID}.json, y en series videoID identifica el episodio (imdbId:season:episode). [page:3]
+    const videoId = movieData.type === 'movie'
+      ? movieData.imdbId
+      : `${movieData.imdbId}:${movieData.season || 1}:${movieData.episode || 1}`;
 
-const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)}.json`;
-
+    const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)}.json`;
 
     console.log('🎬 Stream URL:', streamUrl);
 
@@ -303,7 +294,7 @@ const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)
     renderGuestSources();
   } catch (error) {
     console.error('❌ Error cargando fuentes:', error);
-    container.innerHTML = `<div class="loading">❌ Error: ${escapeHtml(error.message)}</div>`;
+    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
   }
 }
 
@@ -335,7 +326,7 @@ function selectGuestSource(index) {
   });
 }
 
-window.joinRoomWithSource = function () {
+window.joinRoomWithSource = function() {
   if (guestSelectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
     return;
@@ -367,10 +358,6 @@ function initRoom() {
     console.log('🔄 Botón "Cambiar fuente" habilitado');
   }
 
-  // ✅ Mostrar botón cerrar sala solo host (si existe en HTML) [conversation_history]
-  const btnCloseRoom = document.getElementById('btnCloseRoom');
-  if (btnCloseRoom) btnCloseRoom.style.display = isHost ? 'block' : 'none';
-
   connectSocket();
   setupButtons();
   loadRatings();
@@ -379,35 +366,25 @@ function initRoom() {
   console.log('✅ Sala inicializada correctamente');
 }
 
-function formatEpisodeTag(movieData) {
-  if (!movieData || movieData.type !== 'series') return '';
-  const s = movieData.season;
-  const e = movieData.episode;
-  if (!s || !e) return '';
-  return `S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')}`;
-}
-
 function renderRoom() {
   console.log('🎨 Renderizando interfaz de sala...');
 
   const movieData = JSON.parse(roomData.manifest);
 
+  // Poster pequeño (header)
   const posterEl = document.getElementById('roomPosterSmall');
   if (posterEl) posterEl.src = movieData.poster || '';
 
-  // ✅ Título con S01E03 si procede [conversation_history]
   const titleEl = document.getElementById('roomTitle');
-  if (titleEl) {
-    const ep = formatEpisodeTag(movieData);
-    const epText = ep ? ` (${ep})` : '';
-    titleEl.textContent = `Proyectando ${movieData.title}${epText} en ${roomData.roomName} de ${roomData.hostUsername}`;
-  }
+  if (titleEl) titleEl.textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
 
+  // Backdrop/Banner (con fallback al poster si no existe)
   const backdropEl = document.getElementById('roomBackdrop');
   if (backdropEl) {
     backdropEl.src = movieData.backdrop || movieData.poster || '';
   }
 
+  // Info de la película
   const yearEl = document.getElementById('movieYear');
   const typeEl = document.getElementById('movieType');
   const ratingEl = document.getElementById('movieRating');
@@ -461,11 +438,6 @@ function connectSocket() {
     if (document.getElementById('modalReactions').style.display === 'flex') {
       renderAllReactions();
     }
-  });
-
-  socket.on('room-closed', () => {
-    alert('El anfitrión cerró la sala');
-    window.location.href = '/';
   });
 }
 
@@ -538,55 +510,25 @@ function copyInvite() {
   const roomUrl = `${window.location.origin}/sala/${roomId}`;
 
   if (navigator.clipboard) {
-    navigator.clipboard
-      .writeText(roomUrl)
-      .then(() => {
-        alert('✅ Enlace copiado al portapapeles\n\n' + roomUrl);
-      })
-      .catch(() => {
-        prompt('Copia este enlace:', roomUrl);
-      });
+    navigator.clipboard.writeText(roomUrl).then(() => {
+      alert('✅ Enlace copiado al portapapeles\n\n' + roomUrl);
+    }).catch(() => {
+      prompt('Copia este enlace:', roomUrl);
+    });
   } else {
     prompt('Copia este enlace:', roomUrl);
   }
 }
 
-// ✅ Cambiar fuente SIN recargar (vuelve al selector) [conversation_history]
 function changeSource() {
   if (isHost) {
     alert('Como anfitrión, debes crear una nueva sala para cambiar la fuente');
     return;
   }
 
-  if (roomData.useHostSource === true) {
-    alert('El anfitrión está compartiendo la fuente, no puedes cambiarla.');
-    return;
-  }
-
   console.log('🔄 Reiniciando selección de fuente...');
   localStorage.removeItem('projectorroom_guest_source_' + roomId);
-
-  document.querySelector('.guest-source-container')?.remove();
-  showGuestSourceSelector();
-}
-
-// ✅ Cerrar sala (host) - requiere endpoint DELETE en server [conversation_history]
-async function closeRoom() {
-  if (!isHost) return;
-
-  const ok = confirm('¿Cerrar la sala para todos?');
-  if (!ok) return;
-
-  const res = await fetch(`/api/projectorrooms/${roomId}`, { method: 'DELETE' });
-  const data = await res.json();
-
-  if (!data.success) {
-    alert('No se pudo cerrar la sala: ' + (data.message || 'Error'));
-    return;
-  }
-
-  alert('Sala cerrada');
-  window.location.href = '/';
+  window.location.reload();
 }
 
 function openCalificationsModal() {
@@ -601,22 +543,28 @@ function setupRatingStars() {
   let selectedRating = userRating || 0;
 
   stars.forEach((s, i) => {
-    if (i < selectedRating) s.classList.add('selected');
-    else s.classList.remove('selected');
+    if (i < selectedRating) {
+      s.classList.add('selected');
+    } else {
+      s.classList.remove('selected');
+    }
   });
 
   stars.forEach(star => {
-    star.onclick = function () {
+    star.onclick = function() {
       selectedRating = parseInt(this.dataset.value);
 
       stars.forEach((s, i) => {
-        if (i < selectedRating) s.classList.add('selected');
-        else s.classList.remove('selected');
+        if (i < selectedRating) {
+          s.classList.add('selected');
+        } else {
+          s.classList.remove('selected');
+        }
       });
     };
   });
 
-  document.getElementById('btnSubmitRating').onclick = function () {
+  document.getElementById('btnSubmitRating').onclick = function() {
     if (selectedRating === 0) {
       alert('Selecciona una calificación');
       return;
@@ -637,8 +585,7 @@ function renderAllRatings() {
   container.innerHTML = '';
 
   if (allRatings.length === 0) {
-    container.innerHTML =
-      '<p style="color: #888; text-align: center; padding: 20px;">Aún no hay calificaciones de otros roomies</p>';
+    container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Aún no hay calificaciones de otros roomies</p>';
     return;
   }
 
@@ -698,9 +645,9 @@ function renderAllReactions() {
   }
 
   allReactions.sort((a, b) => {
-    const parseTime = time => {
+    const parseTime = (time) => {
       const parts = time.split(':').map(Number);
-      return parts.length === 2 ? parts[0] * 60 + parts[1] : 0;
+      return parts.length === 2 ? parts[0] * 60 + parts[[1]] : 0;
     };
     return parseTime(a.time) - parseTime(b.time);
   });
@@ -733,7 +680,6 @@ function setupButtons() {
   const btnStartProjection = document.getElementById('btnStartProjection');
   const btnCopyInvite = document.getElementById('btnCopyInvite');
   const btnChangeSource = document.getElementById('btnChangeSource');
-  const btnCloseRoom = document.getElementById('btnCloseRoom');
   const btnCalifications = document.getElementById('btnCalifications');
   const btnReactions = document.getElementById('btnReactions');
   const btnSendChat = document.getElementById('btnSendChat');
@@ -745,8 +691,6 @@ function setupButtons() {
   if (btnStartProjection) btnStartProjection.onclick = startProjection;
   if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
   if (btnChangeSource) btnChangeSource.onclick = changeSource;
-  if (btnCloseRoom) btnCloseRoom.onclick = closeRoom;
-
   if (btnCalifications) btnCalifications.onclick = openCalificationsModal;
   if (btnReactions) btnReactions.onclick = openReactionsModal;
   if (btnSendChat) btnSendChat.onclick = sendChatMessage;
@@ -760,8 +704,8 @@ function setupButtons() {
     });
   }
 
-  window.onclick = function (event) {
-    if (event.target.classList && event.target.classList.contains('modal')) {
+  window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
       event.target.style.display = 'none';
     }
   };
