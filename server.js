@@ -132,43 +132,58 @@ io.on('connection', (socket) => {
 
     // UNIRSE A SALA
     socket.on('join-room', async ({ roomId, username }) => {
-        console.log(`👤 ${username} se unió a sala ${roomId}`);
-        socket.join(roomId);
+        console.log(`👤 ${username} intenta unirse a sala ${roomId}`);
 
-        if (!roomUsers[roomId]) {
-            roomUsers[roomId] = [];
-        }
-
-        // Agregar usuario
-        roomUsers[roomId].push({
-            id: socket.id,
-            username: username
-        });
-
-        // Guardar datos en socket
-        socket.roomId = roomId;
-        socket.username = username;
-
-        // Cargar historial y enviarlo al usuario que acaba de unirse
         try {
-            const messages = await db.getChatMessages(roomId);
-            const ratings = await db.getRatings(roomId);
-            const reactions = await db.getReactions(roomId);
+            socket.join(roomId);
 
-            socket.emit('load-history', {
-                messages,
-                ratings,
-                reactions
+            if (!roomUsers[roomId]) {
+                roomUsers[roomId] = [];
+            }
+
+            // Agregar usuario
+            roomUsers[roomId].push({
+                id: socket.id,
+                username: username
+            });
+
+            // Guardar datos en socket
+            socket.roomId = roomId;
+            socket.username = username;
+
+            console.log(`✅ ${username} unido a sala ${roomId}`);
+
+            // Cargar historial y enviarlo al usuario que acaba de unirse
+            try {
+                const messages = await db.getChatMessages(roomId);
+                const ratings = await db.getRatings(roomId);
+                const reactions = await db.getReactions(roomId);
+
+                console.log(`📚 Enviando historial a ${username}: ${messages.length} mensajes, ${ratings.length} ratings, ${reactions.length} reacciones`);
+
+                socket.emit('load-history', {
+                    messages,
+                    ratings,
+                    reactions
+                });
+            } catch (error) {
+                console.error('❌ Error cargando historial:', error);
+                // Enviar historial vacío en caso de error
+                socket.emit('load-history', {
+                    messages: [],
+                    ratings: [],
+                    reactions: []
+                });
+            }
+
+            // Notificar a todos en la sala
+            io.to(roomId).emit('user-joined', {
+                user: { id: socket.id, username },
+                users: roomUsers[roomId]
             });
         } catch (error) {
-            console.error('❌ Error cargando historial:', error);
+            console.error('❌ Error en join-room:', error);
         }
-
-        // Notificar a todos en la sala
-        io.to(roomId).emit('user-joined', {
-            user: { id: socket.id, username },
-            users: roomUsers[roomId]
-        });
     });
 
     // MENSAJE DE CHAT
@@ -183,6 +198,11 @@ io.on('connection', (socket) => {
             });
         } catch (error) {
             console.error('❌ Error guardando mensaje:', error);
+            // Emitir el mensaje aunque falle el guardado
+            io.to(roomId).emit('chat-message', {
+                username: socket.username,
+                message: message
+            });
         }
     });
 
@@ -203,6 +223,11 @@ io.on('connection', (socket) => {
             });
         } catch (error) {
             console.error('❌ Error guardando calificación:', error);
+            // Emitir sin allRatings en caso de error
+            io.to(roomId).emit('rating-added', {
+                username,
+                rating
+            });
         }
     });
 
@@ -219,6 +244,12 @@ io.on('connection', (socket) => {
             });
         } catch (error) {
             console.error('❌ Error guardando reacción:', error);
+            // Emitir aunque falle el guardado
+            io.to(roomId).emit('reaction-added', {
+                username,
+                time,
+                message
+            });
         }
     });
 
@@ -255,6 +286,13 @@ server.listen(PORT, () => {
 
 // Cerrar base de datos al terminar
 process.on('SIGINT', () => {
+    console.log('\n🔴 Cerrando servidor...');
+    db.close();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('\n🔴 Cerrando servidor...');
     db.close();
     process.exit(0);
 });
