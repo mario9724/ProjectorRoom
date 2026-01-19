@@ -9,12 +9,12 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// Configuración del puerto para Render
+// CONFIGURACIÓN DEL PUERTO (Corregida con ||)
 const PORT = process.env.PORT |
 
 | 10000;
 
-// Configuración de la base de datos PostgreSQL
+// Configuración de PostgreSQL para Render
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -23,7 +23,6 @@ const pool = new Pool({
 app.use(express.json());
 app.use(express.static('public'));
 
-// Estado volátil solo para rastrear quién está conectado ahora mismo
 let roomUsers = {}; 
 
 function generateId() {
@@ -32,40 +31,28 @@ function generateId() {
 
 // ==================== RUTAS API ====================
 
-// Crear una sala nueva con persistencia
 app.post('/api/projectorrooms/create', async (req, res) => {
   const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
-  
-  if (!roomName ||!hostUsername ||!manifest ||!sourceUrl) {
-    return res.json({ success: false, message: 'Datos incompletos' });
-  }
-
   const roomId = generateId();
   
   try {
-    const queryText = 'INSERT INTO rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
     const values =;
     
-    await pool.query(queryText, values);
-    
-    res.json({ 
-      success: true, 
-      projectorRoom: { id: roomId, roomName, hostUsername, manifest, sourceUrl } 
-    });
+    await pool.query(
+      'INSERT INTO rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      values
+    );
+    res.json({ success: true, projectorRoom: { id: roomId, roomName, hostUsername, manifest, sourceUrl } });
   } catch (err) {
-    console.error('❌ Error al guardar sala en DB:', err);
-    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    console.error('Error DB:', err);
+    res.status(500).json({ success: false, message: 'Error al crear la sala' });
   }
 });
 
-// Obtener datos de una sala desde la base de datos
 app.get('/api/projectorrooms/:id', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
-    
-    if (result.rows.length === 0) {
-      return res.json({ success: false, message: 'Sala no encontrada' });
-    }
+    if (result.rows.length === 0) return res.json({ success: false, message: 'Sala no encontrada' });
     
     const room = result.rows;
     res.json({ 
@@ -80,19 +67,15 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
       } 
     });
   } catch (err) {
-    console.error('❌ Error al buscar sala:', err);
     res.status(500).json({ success: false });
   }
 });
 
-app.get('/sala/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'room.html'));
-});
+app.get('/sala/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'room.html')));
 
 // ==================== SOCKET.IO CON PERSISTENCIA ====================
 
 io.on('connection', (socket) => {
-  
   socket.on('join-room', async ({ roomId, username }) => {
     socket.join(roomId);
     socket.roomId = roomId;
@@ -102,30 +85,19 @@ io.on('connection', (socket) => {
     roomUsers[roomId].push({ id: socket.id, username });
 
     try {
-      // 1. Recuperar historial de mensajes
       const chatRes = await pool.query('SELECT username, message FROM chat_messages WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
-      
-      // 2. Recuperar calificaciones
       const rateRes = await pool.query('SELECT username, rating FROM ratings WHERE room_id = $1', [roomId]);
-      
-      // 3. Recuperar reacciones
       const reacRes = await pool.query('SELECT username, time_marker as time, message FROM reactions WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
 
-      // Enviar todo el estado histórico al usuario que acaba de entrar
       socket.emit('load-history', {
         messages: chatRes.rows,
         ratings: rateRes.rows,
         reactions: reacRes.rows
       });
 
-      // Notificar presencia actual
-      io.to(roomId).emit('user-joined', { 
-        user: { id: socket.id, username }, 
-        users: roomUsers[roomId] 
-      });
-      
+      io.to(roomId).emit('user-joined', { user: { id: socket.id, username }, users: roomUsers[roomId] });
     } catch (err) {
-      console.error('❌ Error cargando historial:', err);
+      console.error('Error cargando historial:', err);
     }
   });
 
@@ -133,31 +105,24 @@ io.on('connection', (socket) => {
     try {
       await pool.query('INSERT INTO chat_messages (room_id, username, message) VALUES ($1, $2, $3)', [roomId, socket.username, message]);
       io.to(roomId).emit('chat-message', { username: socket.username, message });
-    } catch (err) {
-      console.error('❌ Error guardando mensaje:', err);
-    }
+    } catch (err) { console.error('Error chat:', err); }
   });
 
   socket.on('add-rating', async ({ roomId, username, rating }) => {
     try {
-      // Guardar o actualizar la calificación (un usuario, un voto por sala)
       await pool.query(
         'INSERT INTO ratings (room_id, username, rating) VALUES ($1, $2, $3) ON CONFLICT (room_id, username) DO UPDATE SET rating = EXCLUDED.rating',
         [roomId, username, rating]
       );
       io.to(roomId).emit('rating-added', { username, rating });
-    } catch (err) {
-      console.error('❌ Error guardando calificación:', err);
-    }
+    } catch (err) { console.error('Error rating:', err); }
   });
 
   socket.on('add-reaction', async ({ roomId, username, time, message }) => {
     try {
       await pool.query('INSERT INTO reactions (room_id, username, time_marker, message) VALUES ($1, $2, $3, $4)', [roomId, username, time, message]);
       io.to(roomId).emit('reaction-added', { username, time, message });
-    } catch (err) {
-      console.error('❌ Error guardando reacción:', err);
-    }
+    } catch (err) { console.error('Error reacción:', err); }
   });
 
   socket.on('disconnect', () => {
@@ -168,7 +133,4 @@ io.on('connection', (socket) => {
   });
 });
 
-// Iniciar el servidor
-server.listen(PORT, () => {
-  console.log(`🚀 Servidor ProjectorRoom corriendo en el puerto ${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
