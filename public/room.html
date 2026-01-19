@@ -8,7 +8,6 @@
 </head>
 <body>
   <div class="room-container">
-    <!-- HEADER CON TÍTULO -->
     <div class="room-header">
       <div class="room-title-section">
         <div class="room-poster-small">
@@ -25,7 +24,6 @@
       </div>
     </div>
 
-    <!-- BACKDROP/BANNER + INFORMACIÓN -->
     <div class="movie-section">
       <div class="room-backdrop">
         <img id="roomBackdrop" src="" alt="Banner" />
@@ -42,25 +40,23 @@
       </div>
     </div>
 
-    <!-- BOTONES DE ACCIÓN -->
     <div class="room-actions">
       <button id="btnStartProjection" class="btn-primary-large">Proyectar</button>
+      <button id="btnCopyInvite" class="btn-outline-large">Invitar a un roomie</button>
+
+      <!-- ✅ Solo host -->
+      <button id="btnCloseRoom" class="btn-danger-large" style="display:none;">Cerrar sala</button>
     </div>
 
-    <!-- BLOQUE UNIFICADO DE BOTONES (mismo estilo para 4) -->
+    <div id="changeSourceSection" style="display:none; margin-bottom: 20px;">
+      <button id="btnChangeSource" class="btn-change-source">Cambiar fuente de reproducción</button>
+    </div>
+
     <div class="interaction-buttons">
-      <button id="btnCopyInvite" class="btn-interaction btn-wide">Invitar a un roomie</button>
-
-      <!-- BOTÓN CAMBIAR FUENTE SOLO INVITADOS -->
-      <div id="changeSourceSection" style="display: none;" class="btn-wide">
-        <button id="btnChangeSource" class="btn-interaction btn-wide">Cambiar fuente de reproducción</button>
-      </div>
-
       <button id="btnCalifications" class="btn-interaction">Calificaciones</button>
       <button id="btnReactions" class="btn-interaction">Reacciones</button>
     </div>
 
-    <!-- CHAT -->
     <div class="chat-section">
       <h3>Esto dicen los roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
@@ -71,12 +67,10 @@
     </div>
   </div>
 
-  <!-- MODAL CALIFICACIONES -->
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
       <h2>Calificaciones</h2>
 
-      <!-- TU CALIFICACIÓN SIEMPRE EDITABLE -->
       <div class="your-rating-section">
         <h3>Tu calificación</h3>
 
@@ -96,7 +90,6 @@
         <button id="btnSubmitRating" class="btn-primary" style="margin-top: 15px;">Guardar calificación</button>
       </div>
 
-      <!-- CALIFICACIONES DE LOS ROOMIES -->
       <div class="roomies-ratings-section">
         <h3>Calificaciones de los roomies</h3>
         <div id="ratingsContent" class="ratings-list"></div>
@@ -108,12 +101,10 @@
     </div>
   </div>
 
-  <!-- MODAL REACCIONES -->
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
       <h2>Reacciones</h2>
 
-      <!-- NUEVA REACCIÓN -->
       <div class="new-reaction-section">
         <h3>Agregar nueva reacción</h3>
 
@@ -132,7 +123,6 @@
         </div>
       </div>
 
-      <!-- REACCIONES DE LOS ROOMIES -->
       <div class="roomies-reactions-section">
         <h3>Reacciones de los roomies</h3>
         <div id="reactionsContent" class="reactions-content"></div>
