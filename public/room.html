@@ -1,152 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sala de Proyección</title>
-  <link rel="stylesheet" href="/css/room.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala - ProjectorRoom</title>
+    <link rel="stylesheet" href="room.css">
 </head>
 <body>
-  <div class="room-container">
-    <!-- HEADER CON TÍTULO -->
-    <div class="room-header">
-      <div class="room-title-section">
-        <div class="room-poster-small">
-          <img id="roomPosterSmall" src="" alt="Poster">
+    <div class="room-container">
+        <!-- Información de la sala -->
+        <div class="room-header">
+            <div class="room-info">
+                <h1 id="room-name-display">Cargando...</h1>
+                <p>ID: <span id="room-id-display"></span></p>
+                <p>Usuario: <span id="current-username"></span></p>
+            </div>
+            <button id="copy-link-btn" class="btn-secondary">📋 Copiar Link</button>
         </div>
-        <div class="room-title-info">
-          <h1 id="roomTitle">Cargando...</h1>
-          <div class="room-users-list">
-            <span class="users-icon">👥</span>
-            <span id="usersNames">Cargando...</span>
-          </div>
+
+        <!-- Panel Principal -->
+        <div class="main-content">
+            <!-- Información de Película -->
+            <div class="movie-info">
+                <img id="movie-poster" src="" alt="Poster" class="movie-poster">
+                <div class="movie-details">
+                    <h2 id="movie-title">Cargando...</h2>
+                    <p><span id="movie-year"></span> • <span id="movie-rating"></span></p>
+                    <p id="movie-overview" class="movie-description">Cargando descripción...</p>
+                </div>
+            </div>
+
+            <!-- Panel de Pestañas -->
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="chat">💬 Chat</button>
+                    <button class="tab-btn" data-tab="users">👥 Usuarios</button>
+                    <button class="tab-btn" data-tab="ratings">⭐ Calificaciones</button>
+                    <button class="tab-btn" data-tab="reactions">💭 Reacciones</button>
+                </div>
+
+                <!-- Chat -->
+                <div class="tab-content active" id="chat-tab">
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." maxlength="500">
+                        <button id="send-message" class="btn-primary">Enviar</button>
+                    </div>
+                </div>
+
+                <!-- Usuarios -->
+                <div class="tab-content" id="users-tab">
+                    <h3>Usuarios en la sala</h3>
+                    <div id="users-list"></div>
+                </div>
+
+                <!-- Calificaciones -->
+                <div class="tab-content" id="ratings-tab">
+                    <h3>Califica esta película/serie</h3>
+                    <div class="rating-input">
+                        <select id="rating-select">
+                            <option value="">Selecciona calificación</option>
+                            <option value="1">1 - Muy Mala</option>
+                            <option value="2">2 - Mala</option>
+                            <option value="3">3 - Regular</option>
+                            <option value="4">4 - Aceptable</option>
+                            <option value="5">5 - Buena</option>
+                            <option value="6">6 - Muy Buena</option>
+                            <option value="7">7 - Excelente</option>
+                            <option value="8">8 - Increíble</option>
+                            <option value="9">9 - Obra Maestra</option>
+                            <option value="10">10 - Perfección</option>
+                        </select>
+                        <button id="submit-rating" class="btn-primary">Enviar</button>
+                    </div>
+                    <div id="ratings-list" class="ratings-list"></div>
+                </div>
+
+                <!-- Reacciones -->
+                <div class="tab-content" id="reactions-tab">
+                    <h3>Añade una reacción</h3>
+                    <div class="reaction-input">
+                        <input type="text" id="reaction-time" placeholder="Tiempo (ej: 1:23)" maxlength="10">
+                        <input type="text" id="reaction-message" placeholder="Tu reacción" maxlength="200">
+                        <button id="submit-reaction" class="btn-primary">Añadir</button>
+                    </div>
+                    <div id="reactions-list" class="reactions-list"></div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
-    <!-- BACKDROP/BANNER + INFORMACIÓN -->
-    <div class="movie-section">
-      <div class="room-backdrop">
-        <img id="roomBackdrop" src="" alt="Banner">
-      </div>
-      
-      <div class="room-info">
-        <div class="movie-meta">
-          <span id="movieYear"></span>
-          <span id="movieType"></span>
-          <span id="movieRating"></span>
-        </div>
-        <p id="movieOverview"></p>
-      </div>
-    </div>
+    <!-- IMPORTANTE: Socket.io DEBE cargarse ANTES de room.js -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="room.js"></script>
 
-    <!-- BOTONES DE ACCIÓN -->
-    <div class="room-actions">
-      <button id="btnStartProjection" class="btn-primary-large">
-        ▶️ Proyectar
-      </button>
-      <button id="btnCopyInvite" class="btn-outline-large">
-        👥 Invitar a un roomie
-      </button>
-    </div>
+    <script>
+        // Tabs functionality
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.getAttribute('data-tab');
 
-    <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
-    <div id="changeSourceSection" style="display: none;">
-      <button id="btnChangeSource" class="btn-change-source">
-        🔄 Cambiar fuente de reproducción
-      </button>
-    </div>
+                // Remover active de todos
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-    <!-- BOTONES DE CALIFICACIONES Y REACCIONES -->
-    <div class="interaction-buttons">
-      <button id="btnCalifications" class="btn-interaction">
-        ⭐ Calificaciones
-      </button>
-      <button id="btnReactions" class="btn-interaction">
-        💬 Reacciones
-      </button>
-    </div>
-
-    <!-- CHAT -->
-    <div class="chat-section">
-      <h3>💬 Esto dicen los roomies</h3>
-      <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
-        <button id="btnSendChat" class="btn-send">Enviar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL CALIFICACIONES -->
-  <div id="modalCalifications" class="modal">
-    <div class="modal-content">
-      <h2>⭐ Calificaciones</h2>
-      
-      <!-- TU CALIFICACIÓN (SIEMPRE EDITABLE) -->
-      <div class="your-rating-section">
-        <h3>Tu calificación</h3>
-        <div class="rating-stars" id="ratingStars">
-          <span class="star" data-value="1">★</span>
-          <span class="star" data-value="2">★</span>
-          <span class="star" data-value="3">★</span>
-          <span class="star" data-value="4">★</span>
-          <span class="star" data-value="5">★</span>
-          <span class="star" data-value="6">★</span>
-          <span class="star" data-value="7">★</span>
-          <span class="star" data-value="8">★</span>
-          <span class="star" data-value="9">★</span>
-          <span class="star" data-value="10">★</span>
-        </div>
-        <button id="btnSubmitRating" class="btn-primary" style="margin-top: 15px;">Guardar calificación</button>
-      </div>
-
-      <!-- CALIFICACIONES DE LOS ROOMIES -->
-      <div class="roomies-ratings-section">
-        <h3>Calificaciones de los roomies</h3>
-        <div id="ratingsContent" class="ratings-list"></div>
-      </div>
-
-      <div class="modal-actions">
-        <button id="btnCloseCalifications" class="btn-secondary">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL REACCIONES -->
-  <div id="modalReactions" class="modal">
-    <div class="modal-content wide">
-      <h2>💬 Reacciones</h2>
-      
-      <!-- NUEVA REACCIÓN -->
-      <div class="new-reaction-section">
-        <h3>Agregar nueva reacción</h3>
-        <div class="reaction-form">
-          <div class="form-group">
-            <label>⏱️ Minuto</label>
-            <input type="number" id="reactionMinute" placeholder="Ej: 45" min="0">
-          </div>
-          <div class="form-group">
-            <label>💬 Reacción</label>
-            <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
-          </div>
-          <button id="btnSubmitReaction" class="btn-primary">Enviar reacción</button>
-        </div>
-      </div>
-
-      <!-- REACCIONES DE LOS ROOMIES -->
-      <div class="roomies-reactions-section">
-        <h3>Reacciones de los roomies</h3>
-        <div id="reactionsContent" class="reactions-content"></div>
-      </div>
-
-      <div class="modal-actions">
-        <button id="btnCloseReactions" class="btn-secondary">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/room.js"></script>
+                // Añadir active al seleccionado
+                btn.classList.add('active');
+                document.getElementById(tabName + '-tab').classList.add('active');
+            });
+        });
+    </script>
 </body>
 </html>
