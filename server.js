@@ -9,9 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// Corregido: Operador lógico |
-
-| para el puerto
+// CONFIGURACIÓN DEL PUERTO (Corregida)
 const PORT = process.env.PORT |
 
 | 3000;
@@ -38,10 +36,11 @@ app.post('/api/projectorrooms/create', async (req, res) => {
   const roomId = generateId();
   
   try {
-    // Corregido: Parámetros de la consulta SQL completos
+    const values =;
+    
     await pool.query(
       'INSERT INTO rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-     
+      values
     );
     res.json({ success: true, projectorRoom: { id: roomId, roomName, hostUsername, manifest, sourceUrl } });
   } catch (err) {
@@ -86,7 +85,6 @@ io.on('connection', (socket) => {
     roomUsers[roomId].push({ id: socket.id, username });
 
     try {
-      // Cargar historial persistente desde PostgreSQL
       const chatRes = await pool.query('SELECT username, message FROM chat_messages WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
       const rateRes = await pool.query('SELECT username, rating FROM ratings WHERE room_id = $1', [roomId]);
       const reacRes = await pool.query('SELECT username, time_marker as time, message FROM reactions WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
