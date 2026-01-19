@@ -172,6 +172,8 @@ async function selectMovie(movie) {
     type: movie.media_type === 'movie' ? 'movie' : 'series',
     title: movie.title || movie.name,
     poster: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+    // ✅ backdrop panorámico (para la sala)
+    backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null,
     rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'NA',
     year: (movie.release_date || movie.first_air_date || '').substring(0, 4),
     overview: movie.overview || 'Sin descripción disponible',
@@ -181,7 +183,6 @@ async function selectMovie(movie) {
   };
 
   try {
-    // Para películas y series, intentamos obtener IMDb id (en series lo usaremos para construir tt:s:e)
     const type = movie.media_type === 'movie' ? 'movie' : 'tv';
     const url = `https://api.themoviedb.org/3/${type}/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`;
     const res = await fetch(url);
@@ -189,13 +190,11 @@ async function selectMovie(movie) {
 
     selectedMovie.imdbId = data.imdb_id || null;
 
-    // Películas: necesitamos imdb sí o sí para tu streamUrl actual
     if (selectedMovie.type === 'movie' && !selectedMovie.imdbId) {
       alert('No se encontró IMDb ID para este contenido');
       return;
     }
 
-    // Series: si no hay imdb, no podemos construir tt:s:e
     if (selectedMovie.type === 'series' && !selectedMovie.imdbId) {
       alert('No se encontró IMDb ID de la serie (necesario para seleccionar capítulo).');
       return;
@@ -205,9 +204,9 @@ async function selectMovie(movie) {
     renderSelectedMovie();
 
     if (selectedMovie.type === 'series') {
-      await initSeriesEpisodeSelector(); // crea selector S/E en el paso 6
+      await initSeriesEpisodeSelector();
     } else {
-      removeSeriesEpisodeSelector(); // por si venías de una serie
+      removeSeriesEpisodeSelector();
     }
 
     await loadSources();
@@ -230,7 +229,6 @@ function renderSelectedMovie() {
 
 // ==================== SELECTOR S/E (SERIES) ====================
 function ensureSeriesSelectorContainer() {
-  // Intentar usar un contenedor existente si lo creas en HTML, si no, lo inyectamos
   let box = document.getElementById('seriesEpisodeSelector');
   if (box) return box;
 
@@ -245,7 +243,6 @@ function ensureSeriesSelectorContainer() {
   box.style.borderRadius = '12px';
   box.style.background = '#1a1a1a';
 
-  // Insertar antes de la lista de fuentes
   sourcesList.parentNode.insertBefore(box, sourcesList);
   return box;
 }
@@ -261,7 +258,6 @@ async function initSeriesEpisodeSelector() {
 
   box.innerHTML = `<div class="loading">Cargando temporadas...</div>`;
 
-  // 1) Obtener temporadas
   const tvUrl = `https://api.themoviedb.org/3/tv/${selectedMovie.id}?api_key=${TMDB_API_KEY}&language=es-ES`;
   const tvRes = await fetch(tvUrl);
   const tvData = await tvRes.json();
@@ -270,17 +266,13 @@ async function initSeriesEpisodeSelector() {
     .filter(s => typeof s.season_number === 'number' && s.season_number >= 0)
     .sort((a, b) => a.season_number - b.season_number);
 
-  // Elegimos temporada 1 por defecto si existe, si no la primera real
   const hasSeason1 = seriesSeasons.some(s => s.season_number === 1);
   selectedSeason = hasSeason1 ? 1 : (seriesSeasons[0]?.season_number ?? 1);
 
-  // 2) Cargar episodios de la temporada seleccionada
   const episodes = await fetchSeasonEpisodes(selectedSeason);
 
-  // Elegimos episodio 1 por defecto
   selectedEpisode = 1;
 
-  // Guardamos en selectedMovie
   selectedMovie.season = selectedSeason;
   selectedMovie.episode = selectedEpisode;
 
@@ -292,11 +284,9 @@ async function fetchSeasonEpisodes(seasonNumber) {
   const res = await fetch(seasonUrl);
   const data = await res.json();
 
-  const eps = (data.episodes || [])
+  return (data.episodes || [])
     .filter(e => typeof e.episode_number === 'number' && e.episode_number >= 1)
     .sort((a, b) => a.episode_number - b.episode_number);
-
-  return eps;
 }
 
 function renderSeriesSelector(container, seasons, episodes) {
@@ -346,11 +336,9 @@ function renderSeriesSelector(container, seasons, episodes) {
     selectedMovie.season = selectedSeason;
     selectedMovie.episode = selectedEpisode;
 
-    // recargar episodios (y refrescar selector)
     const eps = await fetchSeasonEpisodes(selectedSeason);
     renderSeriesSelector(container, seasons, eps);
 
-    // recargar fuentes para el nuevo capítulo
     await loadSources();
   });
 
@@ -366,12 +354,7 @@ function renderSeriesSelector(container, seasons, episodes) {
 
 // ==================== CONSTRUIR ID PARA STREAM ====================
 function buildStreamIdForAddon() {
-  if (selectedMovie.type === 'movie') {
-    return selectedMovie.imdbId; // ej: tt1234567
-  }
-
-  // Series: id episodio Stremio: tt1234567:season:episode
-  // (formato estándar de episodios) [web:44]
+  if (selectedMovie.type === 'movie') return selectedMovie.imdbId;
   const s = selectedMovie.season || 1;
   const e = selectedMovie.episode || 1;
   return `${selectedMovie.imdbId}:${s}:${e}`;
@@ -382,9 +365,9 @@ async function loadSources() {
   const container = document.getElementById('sourcesList');
   container.innerHTML = '<div class="loading">Buscando fuentes...</div>';
 
-  const manifestUrl = roomConfig.projectorType === 'custom' ? roomConfig.customManifest : PUBLIC_MANIFEST;
+  const manifestUrl =
+    roomConfig.projectorType === 'custom' ? roomConfig.customManifest : PUBLIC_MANIFEST;
 
-  // Para series, si todavía no hay S/E, no buscamos
   if (selectedMovie.type === 'series') {
     if (!selectedMovie.season || !selectedMovie.episode) {
       container.innerHTML = '<div class="loading">Selecciona temporada y episodio</div>';
@@ -400,7 +383,8 @@ async function loadSources() {
     const streamType = selectedMovie.type === 'movie' ? 'movie' : 'series';
     const streamId = buildStreamIdForAddon();
 
-    const streamUrl = `${baseUrl}stream/${streamType}/${encodeURIComponent(streamId)}.json`;
+    // ✅ sin .json
+    const streamUrl = `${baseUrl}stream/${streamType}/${encodeURIComponent(streamId)}`;
 
     const res = await fetch(streamUrl);
     if (!res.ok) throw new Error('No se encontraron fuentes');
@@ -464,7 +448,6 @@ async function createRoom() {
     return;
   }
 
-  // Guardamos season/episode también en manifest para que room.js pueda mostrarlo
   const roomData = {
     roomName: roomConfig.roomName,
     hostUsername: roomConfig.username,
@@ -487,7 +470,6 @@ async function createRoom() {
     if (data.success) {
       const roomId = data.projectorRoom.id;
 
-      // Host flags (unificados con room.js)
       sessionStorage.setItem(`projectorroom_is_host_${roomId}`, 'true');
       sessionStorage.setItem(`projectorroom_host_username_${roomId}`, roomConfig.username);
 
