@@ -1,5 +1,5 @@
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
-const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
+const PUBLIC_MANIFEST = 'https://aiostreams.stremio.ru/stremio/91c5f615-b4a7-4416-b1ad-bdd8ebc2e59a/eyJpIjoibFVXcngvY0hob2s5WVkwSlNpdW5tdz09IiwiZSI6Ik9XQzlPSlVqbzJ5WkpRMkZsb3JRYlFJejBGMW5zYktpa2o4U2twcmhmR009IiwidCI6ImEifQ/manifest.json';
 
 let roomId = null;
 let socket = null;
