@@ -48,9 +48,7 @@ window.addEventListener('load', async () => {
   }
 
   // Invitado
-  const alreadyConfigured =
-    localStorage.getItem(`projectorroom_guest_configured_${roomId}`) === 'true';
-
+  const alreadyConfigured = localStorage.getItem(`projectorroom_guest_configured_${roomId}`) === 'true';
   if (!alreadyConfigured) {
     showGuestConfig();
     return;
@@ -127,14 +125,8 @@ function showGuestConfig() {
 }
 
 window.selectGuestProjector = function (type) {
-  document
-    .querySelectorAll('input[name="guestProjectorType"]')
-    .forEach(r => (r.checked = r.value === type));
-
-  document
-    .querySelectorAll('.guest-config-container .option-card')
-    .forEach(c => c.classList.remove('selected'));
-
+  document.querySelectorAll('input[name="guestProjectorType"]').forEach(r => (r.checked = r.value === type));
+  document.querySelectorAll('.guest-config-container .option-card').forEach(c => c.classList.remove('selected'));
   event.currentTarget.classList.add('selected');
 
   const customBox = document.getElementById('guestCustomManifestBox');
@@ -218,8 +210,15 @@ async function showGuestSourceSelector() {
   await loadGuestSources(movieData);
 }
 
-// OJO: aquí lo dejamos “como antes”: usa movieData.imdbId sin S/E
-// (si quieres también soportar series por episodio aquí, lo cambiamos después)
+function buildStreamIdFromMovieData(movieData) {
+  if (movieData.type === 'movie') return movieData.imdbId;
+
+  // ✅ Stremio series id: ttXXXXXXX:season:episode
+  const s = movieData.season || 1;
+  const e = movieData.episode || 1;
+  return `${movieData.imdbId}:${s}:${e}`;
+}
+
 async function loadGuestSources(movieData) {
   const container = document.getElementById('guestSourcesList');
   container.innerHTML = '<div class="loading">Buscando fuentes...</div>';
@@ -235,9 +234,10 @@ async function loadGuestSources(movieData) {
     const baseUrl = manifestUrl.replace('manifest.json', '');
 
     const streamType = movieData.type === 'movie' ? 'movie' : 'series';
+    const streamId = buildStreamIdFromMovieData(movieData);
 
-    // ✅ COMO ANTES (tu versión original): con .json y usando imdbId directo
-    const streamUrl = `${baseUrl}stream/${streamType}/${movieData.imdbId}.json`;
+    // ✅ con .json (como venías usando)
+    const streamUrl = `${baseUrl}stream/${streamType}/${encodeURIComponent(streamId)}.json`;
 
     const res = await fetch(streamUrl);
     if (!res.ok) throw new Error('No se encontraron fuentes');
@@ -252,7 +252,7 @@ async function loadGuestSources(movieData) {
         provider: manifest.name || 'Addon'
       }));
 
-    if (guestSources.length === 0) {
+    if (!guestSources.length) {
       container.innerHTML = '<div class="loading">No se encontraron fuentes disponibles</div>';
       return;
     }
@@ -307,13 +307,13 @@ window.joinRoomWithSource = function () {
 function initRoom() {
   renderRoom();
 
-  // ✅ Invitado puede cambiar fuente solo si host NO comparte
+  // Invitado puede cambiar fuente solo si host NO comparte
   if (!isHost && roomData.useHostSource === false) {
     const changeSourceSection = document.getElementById('changeSourceSection');
     if (changeSourceSection) changeSourceSection.style.display = 'block';
   }
 
-  // ✅ Botón cerrar sala solo host (necesita endpoint DELETE en server.js)
+  // Botón cerrar sala solo host
   const btnCloseRoom = document.getElementById('btnCloseRoom');
   if (btnCloseRoom) btnCloseRoom.style.display = isHost ? 'block' : 'none';
 
@@ -337,7 +337,6 @@ function renderRoom() {
   const posterEl = document.getElementById('roomPosterSmall');
   if (posterEl) posterEl.src = movieData.poster || '';
 
-  // ✅ Mostrar S01E03 en título si aplica
   const titleEl = document.getElementById('roomTitle');
   if (titleEl) {
     const ep = formatEpisodeTag(movieData);
@@ -466,18 +465,10 @@ function startProjection() {
 // ==================== ACTIONS ====================
 function copyInvite() {
   const roomUrl = `${window.location.origin}/sala/${roomId}`;
-
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(roomUrl).then(
-      () => alert(`Enlace copiado: ${roomUrl}`),
-      () => prompt('Copia este enlace:', roomUrl)
-    );
-  } else {
-    prompt('Copia este enlace:', roomUrl);
-  }
+  if (navigator.clipboard) navigator.clipboard.writeText(roomUrl).then(() => alert(`Enlace copiado: ${roomUrl}`));
+  else prompt('Copia este enlace:', roomUrl);
 }
 
-// ✅ Ahora: sin reload (vuelve al selector)
 function changeSource() {
   if (isHost) {
     alert('Como anfitrión, debes crear una nueva sala para cambiar la fuente');
@@ -511,7 +502,7 @@ async function closeRoom() {
   window.location.href = '/';
 }
 
-// ==================== MODALS ====================
+// ==================== MODALS (igual que tu flujo actual) ====================
 function openCalificationsModal() {
   const modal = document.getElementById('modalCalifications');
   setupRatingStars();
@@ -539,10 +530,7 @@ function setupRatingStars() {
   const btn = document.getElementById('btnSubmitRating');
   if (btn) {
     btn.onclick = function () {
-      if (selectedRating <= 0) {
-        alert('Selecciona una calificación');
-        return;
-      }
+      if (selectedRating <= 0) return alert('Selecciona una calificación');
       userRating = selectedRating;
       socket.emit('add-rating', roomId, username, selectedRating);
       alert(`Has calificado con ${selectedRating}/10 estrellas`);
@@ -582,24 +570,16 @@ function closeReactionsModal() {
 function submitReaction() {
   const minute = (document.getElementById('reactionMinute')?.value || '').trim();
   const message = (document.getElementById('reactionMessage')?.value || '').trim();
-
-  if (!minute || !message) {
-    alert('Completa todos los campos');
-    return;
-  }
+  if (!minute || !message) return alert('Completa todos los campos');
 
   const minuteNum = parseInt(minute, 10);
-  if (isNaN(minuteNum) || minuteNum < 0) {
-    alert('Introduce un minuto válido');
-    return;
-  }
+  if (isNaN(minuteNum) || minuteNum < 0) return alert('Introduce un minuto válido');
 
   const time = `${minuteNum}:00`;
   socket.emit('add-reaction', roomId, username, time, message);
 
   document.getElementById('reactionMinute').value = '';
   document.getElementById('reactionMessage').value = '';
-
   alert('Reacción enviada');
 }
 
@@ -676,7 +656,7 @@ function setupButtons() {
   };
 }
 
-// ==================== UTILS ====================
+// ==================== UTIL ====================
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text ?? '';
