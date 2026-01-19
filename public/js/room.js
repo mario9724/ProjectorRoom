@@ -271,7 +271,12 @@ async function loadGuestSources(movieData) {
     const streamType = movieData.type === 'movie' ? 'movie' : 'series';
 
     const videoId = buildStremioVideoId(movieData);
-    const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)}.json`;
+const videoId = movieData.type === 'movie'
+  ? movieData.imdbId
+  : `${movieData.imdbId}:${movieData.season || 1}:${movieData.episode || 1}`;
+
+const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)}.json`;
+
 
     console.log('🎬 Stream URL:', streamUrl);
 
