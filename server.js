@@ -9,10 +9,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// Configuración del puerto para Render
-const PORT = process.env.PORT |
-
-| 10000;
+// Configuración del puerto para Render ✅ CORREGIDO
+const PORT = process.env.PORT || 10000;
 
 // Configuración de la base de datos PostgreSQL
 const pool = new Pool({
@@ -36,8 +34,8 @@ app.post('/api/projectorrooms/create', async (req, res) => {
   const roomId = generateId();
   
   try {
-    // Definición de los valores para insertar en las columnas de la tabla 'rooms'
-    const values =;
+    // ✅ CORREGIDO: array completo con 8 valores
+    const values = [roomId, roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest];
     
     await pool.query(
       'INSERT INTO rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
@@ -55,7 +53,7 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
     const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.json({ success: false, message: 'Sala no encontrada' });
     
-    const room = result.rows;
+    const room = result.rows[0];  // ✅ CORREGIDO: rows[0] en vez de rows
     res.json({ 
       success: true, 
       projectorRoom: {
@@ -83,7 +81,8 @@ io.on('connection', (socket) => {
     socket.roomId = roomId;
     socket.username = username;
 
-    if (!roomUsers[roomId]) roomUsers[roomId] =;
+    // ✅ CORREGIDO: array vacío
+    if (!roomUsers[roomId]) roomUsers[roomId] = [];
     roomUsers[roomId].push({ id: socket.id, username });
 
     try {
@@ -129,10 +128,12 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (socket.roomId && roomUsers[socket.roomId]) {
-      roomUsers[socket.roomId] = roomUsers[socket.roomId].filter(u => u.id!== socket.id);
+      // ✅ CORREGIDO: template literal con backticks
+      roomUsers[socket.roomId] = roomUsers[socket.roomId].filter(u => u.id !== socket.id);
       io.to(socket.roomId).emit('user-left', { username: socket.username, users: roomUsers[socket.roomId] });
     }
   });
 });
 
+// ✅ Servidor listo
 server.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
