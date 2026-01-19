@@ -1,140 +1,325 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sala de Proyección</title>
-  <link rel="stylesheet" href="/css/room.css" />
-</head>
-<body>
-  <div class="room-container">
-    <div class="room-header">
-      <div class="room-title-section">
-        <div class="room-poster-small">
-          <img id="roomPosterSmall" src="" alt="Poster" />
-        </div>
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-        <div class="room-title-info">
-          <h1 id="roomTitle">Cargando...</h1>
-          <div class="room-users-list">
-            <span class="users-icon">👥</span>
-            <span id="usersNames">Cargando...</span>
-          </div>
-        </div>
-      </div>
-    </div>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #0a0a0a;
+  color: #ffffff;
+  min-height: 100vh;
+  padding: 20px;
+}
 
-    <div class="movie-section">
-      <div class="room-backdrop">
-        <img id="roomBackdrop" src="" alt="Banner" />
-      </div>
+.room-container { max-width: 1000px; margin: 0 auto; }
 
-      <div class="room-info">
-        <div class="movie-meta">
-          <span id="movieYear"></span>
-          <span id="movieType"></span>
-          <span id="movieRating"></span>
-        </div>
+/* ==================== HEADER ==================== */
+.room-header {
+  background: #1a1a1a;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 25px;
+  border: 1px solid #2a2a2a;
+}
 
-        <p id="movieOverview"></p>
-      </div>
-    </div>
+.room-title-section { display: flex; align-items: center; gap: 20px; }
 
-    <div class="room-actions">
-      <button id="btnStartProjection" class="btn-primary-large">Proyectar</button>
-      <button id="btnCopyInvite" class="btn-outline-large">Invitar a un roomie</button>
+.room-poster-small {
+  width: 60px;
+  height: 90px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5);
+}
 
-      <!-- ✅ Solo host -->
-      <button id="btnCloseRoom" class="btn-danger-large" style="display:none;">Cerrar sala</button>
-    </div>
+.room-poster-small img { width: 100%; height: 100%; object-fit: cover; }
 
-    <div id="changeSourceSection" style="display:none; margin-bottom: 20px;">
-      <button id="btnChangeSource" class="btn-change-source">Cambiar fuente de reproducción</button>
-    </div>
+.room-title-info h1 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  color: #ffffff;
+}
 
-    <div class="interaction-buttons">
-      <button id="btnCalifications" class="btn-interaction">Calificaciones</button>
-      <button id="btnReactions" class="btn-interaction">Reacciones</button>
-    </div>
+.room-users-list { display: flex; align-items: center; gap: 8px; font-size: .95rem; color: #999; margin-top: 5px; }
+.users-icon { font-size: 1.1rem; }
+#usersNames { color: #ccc; font-weight: 500; }
 
-    <div class="chat-section">
-      <h3>Esto dicen los roomies</h3>
-      <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200" />
-        <button id="btnSendChat" class="btn-send">Enviar</button>
-      </div>
-    </div>
-  </div>
+/* ==================== BACKDROP + INFO ==================== */
+.movie-section {
+  margin-bottom: 25px;
+  background: #1a1a1a;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+}
 
-  <div id="modalCalifications" class="modal">
-    <div class="modal-content">
-      <h2>Calificaciones</h2>
+/* ✅ Banner consistente (panorámico). Si llega un poster vertical, no se deforma. */
+.room-backdrop {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  overflow: hidden;
+  position: relative;
+  background: #0a0a0a;
+}
 
-      <div class="your-rating-section">
-        <h3>Tu calificación</h3>
+.room-backdrop::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to top, #1a1a1a 0%, transparent 100%);
+  pointer-events: none;
+}
 
-        <div class="rating-stars" id="ratingStars">
-          <span class="star" data-value="1"></span>
-          <span class="star" data-value="2"></span>
-          <span class="star" data-value="3"></span>
-          <span class="star" data-value="4"></span>
-          <span class="star" data-value="5"></span>
-          <span class="star" data-value="6"></span>
-          <span class="star" data-value="7"></span>
-          <span class="star" data-value="8"></span>
-          <span class="star" data-value="9"></span>
-          <span class="star" data-value="10"></span>
-        </div>
+.room-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+}
 
-        <button id="btnSubmitRating" class="btn-primary" style="margin-top: 15px;">Guardar calificación</button>
-      </div>
+.room-info { padding: 20px 25px 25px 25px; }
 
-      <div class="roomies-ratings-section">
-        <h3>Calificaciones de los roomies</h3>
-        <div id="ratingsContent" class="ratings-list"></div>
-      </div>
+.movie-meta { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
 
-      <div class="modal-actions">
-        <button id="btnCloseCalifications" class="btn-secondary">Cerrar</button>
-      </div>
-    </div>
-  </div>
+.movie-meta span {
+  background: #2a2a2a;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: .9rem;
+  color: #ccc;
+  border: 1px solid #3a3a3a;
+}
 
-  <div id="modalReactions" class="modal">
-    <div class="modal-content wide">
-      <h2>Reacciones</h2>
+.room-info p { color: #b0b0b0; line-height: 1.6; font-size: .95rem; }
 
-      <div class="new-reaction-section">
-        <h3>Agregar nueva reacción</h3>
+/* ==================== BOTONES DE ACCIÓN ==================== */
+.room-actions { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
 
-        <div class="reaction-form">
-          <div class="form-group">
-            <label>Minuto</label>
-            <input type="number" id="reactionMinute" placeholder="Ej: 45" min="0" />
-          </div>
+.btn-primary-large {
+  flex: 1;
+  min-width: 200px;
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .3s ease;
+}
+.btn-primary-large:hover { background: #e0e0e0; transform: translateY(-2px); }
 
-          <div class="form-group">
-            <label>Reacción</label>
-            <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
-          </div>
+.btn-outline-large {
+  flex: 1;
+  min-width: 200px;
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid #3a3a3a;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .3s ease;
+}
+.btn-outline-large:hover { background: #1a1a1a; border-color: #4a4a4a; }
 
-          <button id="btnSubmitReaction" class="btn-primary">Enviar reacción</button>
-        </div>
-      </div>
+.btn-danger-large{
+  flex: 1;
+  min-width: 200px;
+  background: #b30000;
+  color: #ffffff;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .3s ease;
+}
+.btn-danger-large:hover { background: #d10000; transform: translateY(-2px); }
 
-      <div class="roomies-reactions-section">
-        <h3>Reacciones de los roomies</h3>
-        <div id="reactionsContent" class="reactions-content"></div>
-      </div>
+/* ==================== CAMBIAR FUENTE ==================== */
+#changeSourceSection { margin-bottom: 20px; }
 
-      <div class="modal-actions">
-        <button id="btnCloseReactions" class="btn-secondary">Cerrar</button>
-      </div>
-    </div>
-  </div>
+.btn-change-source {
+  width: 100%;
+  background: #2a2a2a;
+  color: #ffffff;
+  border: 2px solid #3a3a3a;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .3s ease;
+}
+.btn-change-source:hover { background: #3a3a3a; border-color: #4a4a4a; transform: translateY(-1px); }
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/room.js"></script>
-</body>
-</html>
+/* ==================== BOTONES DE INTERACCIÓN ==================== */
+.interaction-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.btn-interaction {
+  background: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #2a2a2a;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .3s ease;
+}
+.btn-interaction:hover { background: #2a2a2a; border-color: #3a3a3a; transform: translateY(-2px); }
+
+/* ==================== CHAT ==================== */
+.chat-section { background: #1a1a1a; border-radius: 16px; padding: 20px; border: 1px solid #2a2a2a; }
+.chat-section h3 { font-size: 1.2rem; margin-bottom: 15px; color: #ffffff; }
+
+.chat-messages {
+  background: #0a0a0a;
+  border-radius: 12px;
+  padding: 15px;
+  height: 300px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+  border: 1px solid #2a2a2a;
+}
+
+.chat-message {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  font-size: .95rem;
+  line-height: 1.4;
+  border: 1px solid #2a2a2a;
+}
+.chat-system { background: #2a2a2a; color: #999; font-style: italic; text-align: center; border: 1px solid #3a3a3a; }
+.chat-username { font-weight: 600; color: #fff; margin-right: 5px; }
+
+.chat-input { display: flex; gap: 10px; }
+.chat-input input {
+  flex: 1;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 1rem;
+  outline: none;
+  transition: all .3s ease;
+}
+.chat-input input:focus { background: #3a3a3a; border-color: #4a4a4a; }
+.chat-input input::placeholder { color: #666; }
+
+.btn-send {
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .3s ease;
+}
+.btn-send:hover { background: #e0e0e0; }
+
+/* ==================== MODALES ==================== */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,.85);
+  backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 100%;
+  border: 1px solid #2a2a2a;
+  box-shadow: 0 10px 40px rgba(0,0,0,.7);
+  margin: auto;
+}
+.modal-content.wide { max-width: 700px; }
+.modal-content h2 { margin-bottom: 25px; text-align: center; font-size: 1.5rem; color: #fff; }
+.modal-content h3 { font-size: 1.2rem; margin-bottom: 15px; color: #fff; border-bottom: 1px solid #2a2a2a; padding-bottom: 10px; }
+
+/* ==================== CALIFICACIONES ==================== */
+.your-rating-section { margin-bottom: 30px; }
+.rating-stars { display: flex; justify-content: center; gap: 8px; margin: 20px 0; }
+
+.star::before { content: "★"; }
+.star { font-size: 2rem; color: #3a3a3a; cursor: pointer; transition: all .2s ease; line-height: 1; }
+.star:hover, .star.selected { color: #fff; transform: scale(1.15); }
+
+.roomies-ratings-section { margin-top: 30px; }
+.ratings-list { max-height: 300px; overflow-y: auto; padding: 10px; background: #0a0a0a; border-radius: 10px; border: 1px solid #2a2a2a; }
+.rating-item { padding: 12px; margin-bottom: 8px; background: #2a2a2a; border-radius: 8px; border: 1px solid #3a3a3a; color: #ccc; }
+
+/* ==================== REACCIONES ==================== */
+.new-reaction-section { margin-bottom: 30px; padding-bottom: 30px; border-bottom: 2px solid #2a2a2a; }
+.reaction-form { display: flex; flex-direction: column; gap: 15px; }
+
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group label { font-weight: 600; color: #ccc; font-size: .95rem; }
+
+.form-group input[type="number"], .form-group textarea {
+  width: 100%;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 1rem;
+  outline: none;
+  font-family: inherit;
+}
+.form-group input[type="number"] { -moz-appearance: textfield; }
+.form-group input[type="number"]::-webkit-outer-spin-button,
+.form-group input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.form-group input::placeholder, .form-group textarea::placeholder { color: #666; }
+.form-group input:focus, .form-group textarea:focus { background: #3a3a3a; border-color: #4a4a4a; }
+.form-group textarea { min-height: 80px; resize: vertical; }
+
+.roomies-reactions-section { margin-top: 20px; }
+.reactions-content { max-height: 350px; overflow-y: auto; padding: 10px; background: #0a0a0a; border-radius: 10px; border: 1px solid #2a2a2a; }
+.reaction-item { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #fff; border: 1px solid #3a3a3a; }
+.reaction-time { font-weight: 600; color: #fff; margin-bottom: 5px; }
+.reaction-user { font-size: .9rem; color: #999; margin-bottom: 8px; }
+.reaction-message { color: #ccc; line-height: 1.4; }
+
+/* ==================== BOTONES MODALES ==================== */
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-primary { flex: 1; background: #fff; color: #000; border: none; padding: 12px 20px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .3s ease; }
+.btn-primary:hover { background: #e0e0e0; }
+
+.btn-secondary { flex: 1; background: transparent; color: #fff; border: 2px solid #3a3a3a; padding: 12px 20px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .3s ease; }
+.btn-secondary:hover { background: #2a2a2a; border-color: #4a4a4a; }
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .room-actions { flex-direction: column; }
+  .btn-primary-large, .btn-outline-large, .btn-danger-large { min-width: 100%; }
+  .interaction-buttons { grid-template-columns: 1fr; }
+}
