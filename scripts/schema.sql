@@ -1,4 +1,3 @@
--- scripts/schema.sql
 CREATE TABLE IF NOT EXISTS rooms (
     id VARCHAR(10) PRIMARY KEY,
     room_name VARCHAR(50) NOT NULL,
