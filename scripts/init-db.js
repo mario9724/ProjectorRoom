@@ -1,4 +1,3 @@
-// scripts/init-db.js
 require('dotenv').config();
 const { Pool } = require('pg');
 const fs = require('fs');
@@ -9,20 +8,17 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-async function initializeDatabase() {
-  console.log('⏳ Iniciando migración de base de datos...');
+async function run() {
+  console.log('⏳ Configurando base de datos...');
   try {
-    const sqlPath = path.join(__dirname, 'schema.sql');
-    const sql = fs.readFileSync(sqlPath, 'utf8');
-    
+    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     await pool.query(sql);
-    console.log('✅ Tablas creadas/verificadas con éxito.');
+    console.log('✅ Base de datos lista.');
   } catch (err) {
-    console.error('❌ Error inicializando la base de datos:', err);
+    console.error('❌ Error inicializando:', err);
     process.exit(1);
   } finally {
     await pool.end();
   }
 }
-
-initializeDatabase();
+run();
