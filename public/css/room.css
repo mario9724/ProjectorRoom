@@ -5,7 +5,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: #0a0a0a;
   color: #ffffff;
   min-height: 100vh;
@@ -82,7 +82,7 @@ body {
   border: 1px solid #2a2a2a;
 }
 
-/* Cambiado: más altura + contain para no recortar */
+/* ✅ BACKDROP (banner panorámico). Más altura para que recorte menos */
 .room-backdrop {
   width: 100%;
   height: 420px;
@@ -92,7 +92,7 @@ body {
 }
 
 .room-backdrop::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
@@ -105,7 +105,7 @@ body {
 .room-backdrop img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;     /* mantiene banner, no lo convierte en póster */
   object-position: center;
   display: block;
 }
@@ -163,7 +163,7 @@ body {
   transform: translateY(-2px);
 }
 
-/* Se mantiene por si lo usas en otras pantallas */
+/* (Se mantiene por si se usa en otra pantalla) */
 .btn-outline-large {
   flex: 1;
   min-width: 200px;
@@ -210,14 +210,32 @@ body {
   transform: translateY(-2px);
 }
 
-/* Para que “Invitar” y “Cambiar fuente” ocupen las dos columnas */
 .btn-wide {
   grid-column: 1 / -1;
 }
 
-/* Para el contenedor de cambiar fuente dentro del grid */
 #changeSourceSection {
   width: 100%;
+}
+
+/* (Se mantiene por compat, pero ya no hace falta si cambiaste el HTML) */
+.btn-change-source {
+  width: 100%;
+  background: #2a2a2a;
+  color: #ffffff;
+  border: 2px solid #3a3a3a;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-change-source:hover {
+  background: #3a3a3a;
+  border-color: #4a4a4a;
+  transform: translateY(-1px);
 }
 
 /* ==================== CHAT ==================== */
@@ -369,7 +387,7 @@ body {
   margin: 20px 0;
 }
 
-/* Cambiado: se renderiza el carácter de estrella */
+/* ✅ Hace visibles las estrellas aunque el <span> esté vacío */
 .star::before {
   content: "★";
 }
