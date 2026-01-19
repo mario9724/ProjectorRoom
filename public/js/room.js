@@ -709,3 +709,12 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+socket.on('load-history', (history) => {
+  allRatings = history.ratings || [];
+  allReactions = history.reactions || [];
+  
+  // Renderizar mensajes previos
+  history.messages?.forEach(msg => {
+    addChatMessage(msg.username, msg.message, false);
+  });
+});
