@@ -13,16 +13,15 @@ const PORT = process.env.PORT |
 
 | 3000;
 
-// Configuración de PostgreSQL en Render
+// Configuración de conexión a base de datos
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Requerido para conexiones externas en Render
+  ssl: { rejectUnauthorized: false }
 });
 
 app.use(express.json());
 app.use(express.static('public'));
 
-// Almacenamiento volátil solo para usuarios en línea (no requiere persistencia larga)
 let roomUsers = {}; 
 
 function generateId() {
@@ -42,17 +41,16 @@ app.post('/api/projectorrooms/create', async (req, res) => {
     );
     res.json({ success: true, projectorRoom: { id: roomId, roomName, hostUsername, manifest, sourceUrl } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Error al crear la sala en la base de datos' });
+    console.error('Error DB:', err);
+    res.status(500).json({ success: false });
   }
 });
 
 app.get('/api/projectorrooms/:id', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) return res.json({ success: false, message: 'Sala no encontrada' });
+    if (result.rows.length === 0) return res.json({ success: false });
     
-    // Formatear para compatibilidad con el frontend
     const room = result.rows;
     res.json({ 
       success: true, 
@@ -70,7 +68,6 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/sala/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'room.html')));
 
 // ==================== SOCKET.IO ====================
@@ -85,7 +82,7 @@ io.on('connection', (socket) => {
     roomUsers[roomId].push({ id: socket.id, username });
 
     try {
-      // Cargar historial persistente para el nuevo usuario
+      // Recuperar historial de la base de datos para el nuevo usuario
       const chatRes = await pool.query('SELECT username, message FROM chat_messages WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
       const rateRes = await pool.query('SELECT username, rating FROM ratings WHERE room_id = $1', [roomId]);
       const reacRes = await pool.query('SELECT username, time_marker as time, message FROM reactions WHERE room_id = $1 ORDER BY created_at ASC', [roomId]);
@@ -98,7 +95,7 @@ io.on('connection', (socket) => {
 
       io.to(roomId).emit('user-joined', { user: { id: socket.id, username }, users: roomUsers[roomId] });
     } catch (err) {
-      console.error('Error cargando historial:', err);
+      console.error('Error historial:', err);
     }
   });
 
@@ -108,13 +105,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('add-rating', async ({ roomId, username, rating }) => {
-    try {
-      await pool.query(
-        'INSERT INTO ratings (room_id, username, rating) VALUES ($1, $2, $3) ON CONFLICT (room_id, username) DO UPDATE SET rating = EXCLUDED.rating',
-        [roomId, username, rating]
-      );
-      io.to(roomId).emit('rating-added', { username, rating });
-    } catch (err) { console.error(err); }
+    // ON CONFLICT permite actualizar el voto si el usuario ya votó en esa sala
+    await pool.query(
+      'INSERT INTO ratings (room_id, username, rating) VALUES ($1, $2, $3) ON CONFLICT (room_id, username) DO UPDATE SET rating = EXCLUDED.rating',
+      [roomId, username, rating]
+    );
+    io.to(roomId).emit('rating-added', { username, rating });
   });
 
   socket.on('add-reaction', async ({ roomId, username, time, message }) => {
