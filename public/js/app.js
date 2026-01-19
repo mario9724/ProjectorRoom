@@ -6,6 +6,7 @@ let searchTimeout = null;
 let selectedMovie = null;
 let sources = [];
 let selectedSourceIndex = null;
+let selectedEpisode = null; // NUEVO: episodio seleccionado
 let roomConfig = {
   username: '',
   roomName: '',
@@ -13,12 +14,6 @@ let roomConfig = {
   customManifest: '',
   shareMode: 'host'
 };
-
-// ============ NUEVO: selector serie ============
-let seriesSeasons = [];
-let seriesEpisodes = [];
-let selectedSeason = 1;
-let selectedEpisode = 1;
 
 // NAVEGACIÓN ENTRE PASOS
 function goToStep(step) {
@@ -74,7 +69,6 @@ function selectProjectorType(type) {
   document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
     radio.checked = radio.value === type;
   });
-
   document.querySelectorAll('#step3 .option-card').forEach(card => {
     card.classList.remove('selected');
   });
@@ -89,7 +83,6 @@ function selectShareMode(mode) {
   document.querySelectorAll('input[name="shareMode"]').forEach(radio => {
     radio.checked = radio.value === mode;
   });
-
   document.querySelectorAll('#step4 .option-card').forEach(card => {
     card.classList.remove('selected');
   });
@@ -101,18 +94,19 @@ function initSearch() {
   const input = document.getElementById('searchInput');
   if (!input) return;
 
-  input.addEventListener('input', function () {
+  input.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     const query = this.value.trim();
 
     if (query.length < 2) {
-      document.getElementById('searchResults').innerHTML =
-        '<div class="loading">Escribe al menos 2 caracteres...</div>';
+      document.getElementById('searchResults').innerHTML = '<div class="loading">Escribe al menos 2 caracteres...</div>';
       return;
     }
 
     searchTimeout = setTimeout(() => searchMovies(query), 500);
   });
+
+  input.focus();
 }
 
 // BUSCAR PELÍCULAS
@@ -121,25 +115,22 @@ async function searchMovies(query) {
   container.innerHTML = '<div class="loading">🔍 Buscando...</div>';
 
   try {
-    const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(
-      query
-    )}`;
+    const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(query)}`;
     const res = await fetch(url);
     const data = await res.json();
 
-    const filtered = (data.results || []).filter(item =>
-      (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
-    );
+    const filtered = data.results
+      .filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path);
 
     if (filtered.length === 0) {
-      container.innerHTML = '<div class="loading">😕 No se encontraron resultados</div>';
+      container.innerHTML = '<div class="loading">No se encontraron resultados</div>';
       return;
     }
 
     renderMovieGrid(filtered);
   } catch (error) {
     console.error('Error buscando:', error);
-    container.innerHTML = '<div class="loading">❌ Error en la búsqueda</div>';
+    container.innerHTML = '<div class="loading">Error en la búsqueda</div>';
   }
 }
 
@@ -152,7 +143,6 @@ function renderMovieGrid(movies) {
     const card = document.createElement('div');
     card.className = 'movie-card';
     card.onclick = () => selectMovie(movie);
-
     card.innerHTML = `
       <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" alt="${movie.title || movie.name}">
       <div class="movie-card-info">
@@ -160,102 +150,11 @@ function renderMovieGrid(movies) {
         <div class="movie-card-meta">⭐ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
       </div>
     `;
-
     container.appendChild(card);
   });
 }
 
-// ============ NUEVO: UI selector capitulo (solo series) ============
-function ensureEpisodeSelectorUI() {
-  // Inserta el selector encima de la lista de fuentes SIN romper tu UI
-  let box = document.getElementById('episodeSelectorBox');
-  if (box) return box;
-
-  const sourcesList = document.getElementById('sourcesList');
-  if (!sourcesList) return null;
-
-  box = document.createElement('div');
-  box.id = 'episodeSelectorBox';
-
-  // Sin estilos nuevos “creativos”: solo un wrapper neutro
-  box.innerHTML = `
-    <div class="section-title" style="margin-top: 10px;">📺 Selecciona capítulo</div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
-      <select id="seasonSelect" style="padding:10px; border-radius:10px;"></select>
-      <select id="episodeSelect" style="padding:10px; border-radius:10px; min-width: 220px;"></select>
-    </div>
-  `;
-
-  sourcesList.parentNode.insertBefore(box, sourcesList);
-  return box;
-}
-
-function removeEpisodeSelectorUI() {
-  document.getElementById('episodeSelectorBox')?.remove();
-}
-
-function renderEpisodeSelectorOptions() {
-  const seasonSelect = document.getElementById('seasonSelect');
-  const episodeSelect = document.getElementById('episodeSelect');
-  if (!seasonSelect || !episodeSelect) return;
-
-  seasonSelect.innerHTML = seriesSeasons
-    .map(s => `<option value="${s}">Temporada ${s}</option>`)
-    .join('');
-  seasonSelect.value = String(selectedSeason);
-
-  episodeSelect.innerHTML = seriesEpisodes
-    .map(e => `<option value="${e}">E${String(e).padStart(2, '0')}</option>`)
-    .join('');
-  episodeSelect.value = String(selectedEpisode);
-
-  seasonSelect.onchange = async () => {
-    selectedSeason = parseInt(seasonSelect.value, 10) || 1;
-    selectedEpisode = 1;
-    selectedMovie.season = selectedSeason;
-    selectedMovie.episode = selectedEpisode;
-
-    await loadSeasonEpisodes(selectedMovie.id, selectedSeason);
-    renderEpisodeSelectorOptions();
-    loadSources();
-  };
-
-  episodeSelect.onchange = () => {
-    selectedEpisode = parseInt(episodeSelect.value, 10) || 1;
-    selectedMovie.season = selectedSeason;
-    selectedMovie.episode = selectedEpisode;
-    loadSources();
-  };
-}
-
-async function loadSeriesSeasons(tvId) {
-  const url = `https://api.themoviedb.org/3/tv/${tvId}?api_key=${TMDB_API_KEY}&language=es-ES`;
-  const res = await fetch(url);
-  const data = await res.json();
-
-  seriesSeasons = (data.seasons || [])
-    .map(s => s.season_number)
-    .filter(n => Number.isInteger(n) && n >= 1)
-    .sort((a, b) => a - b);
-
-  if (!seriesSeasons.length) seriesSeasons = [1];
-  selectedSeason = seriesSeasons[0];
-}
-
-async function loadSeasonEpisodes(tvId, seasonNumber) {
-  const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=es-ES`;
-  const res = await fetch(url);
-  const data = await res.json();
-
-  seriesEpisodes = (data.episodes || [])
-    .map(e => e.episode_number)
-    .filter(n => Number.isInteger(n) && n >= 1)
-    .sort((a, b) => a - b);
-
-  if (!seriesEpisodes.length) seriesEpisodes = [1];
-}
-
-// SELECCIONAR PELÍCULA
+// SELECCIONAR PELÍCULA O SERIE
 async function selectMovie(movie) {
   selectedMovie = {
     id: movie.id,
@@ -264,12 +163,7 @@ async function selectMovie(movie) {
     poster: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
     rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A',
     year: (movie.release_date || movie.first_air_date || '').substring(0, 4),
-    overview: movie.overview || 'Sin descripción disponible',
-    imdbId: null,
-
-    // ✅ se rellenan solo si es serie
-    season: null,
-    episode: null
+    overview: movie.overview || 'Sin descripción disponible'
   };
 
   // Obtener IMDb ID
@@ -285,36 +179,133 @@ async function selectMovie(movie) {
       return;
     }
 
-    goToStep(6);
-    renderSelectedMovie();
-
-    // ✅ Solo para series: monta selector y setea season/episode
+    // NUEVO: Si es serie, obtener temporadas
     if (selectedMovie.type === 'series') {
-      ensureEpisodeSelectorUI();
-      await loadSeriesSeasons(selectedMovie.id);
-      await loadSeasonEpisodes(selectedMovie.id, selectedSeason);
-
-      selectedEpisode = seriesEpisodes[0] || 1;
-      selectedMovie.season = selectedSeason;
-      selectedMovie.episode = selectedEpisode;
-
-      renderEpisodeSelectorOptions();
-    } else {
-      removeEpisodeSelectorUI();
+      const detailsUrl = `https://api.themoviedb.org/3/tv/${movie.id}?api_key=${TMDB_API_KEY}&language=es-ES`;
+      const detailsRes = await fetch(detailsUrl);
+      const detailsData = await detailsRes.json();
+      selectedMovie.seasons = detailsData.seasons || [];
     }
 
-    loadSources();
+    goToStep(6);
+    renderSelectedMovie();
+    
+    // NUEVO: Si es serie, mostrar selector de episodios
+    if (selectedMovie.type === 'series') {
+      showEpisodeSelector();
+    } else {
+      loadSources();
+    }
+
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
     alert('Error obteniendo información');
   }
 }
 
+// NUEVO: MOSTRAR SELECTOR DE EPISODIOS
+async function showEpisodeSelector() {
+  const container = document.getElementById('sourcesList');
+  container.innerHTML = `
+    <div style="margin-bottom: 30px;">
+      <h3 class="section-title">Selecciona temporada y episodio</h3>
+      <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+        <select id="seasonSelect" style="flex: 1; padding: 12px; background: #2a2a2a; border: 2px solid #3a3a3a; border-radius: 10px; color: #fff; font-size: 1rem;">
+          <option value="">Selecciona temporada...</option>
+        </select>
+        <select id="episodeSelect" style="flex: 1; padding: 12px; background: #2a2a2a; border: 2px solid #3a3a3a; border-radius: 10px; color: #fff; font-size: 1rem;" disabled>
+          <option value="">Primero selecciona temporada</option>
+        </select>
+      </div>
+      <div id="episodeInfo" style="background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; display: none;">
+        <h4 id="episodeTitle" style="color: #fff; margin-bottom: 8px;"></h4>
+        <p id="episodeOverview" style="color: #999; font-size: 0.9rem; line-height: 1.4;"></p>
+      </div>
+    </div>
+    <div id="episodeSourcesList"></div>
+  `;
+
+  const seasonSelect = document.getElementById('seasonSelect');
+  const episodeSelect = document.getElementById('episodeSelect');
+
+  // Llenar selector de temporadas
+  selectedMovie.seasons
+    .filter(s => s.season_number > 0)
+    .forEach(season => {
+      const option = document.createElement('option');
+      option.value = season.season_number;
+      option.textContent = `Temporada ${season.season_number} (${season.episode_count} episodios)`;
+      seasonSelect.appendChild(option);
+    });
+
+  // Evento cambio de temporada
+  seasonSelect.addEventListener('change', async function() {
+    const seasonNum = parseInt(this.value);
+    if (!seasonNum) return;
+
+    episodeSelect.disabled = true;
+    episodeSelect.innerHTML = '<option value="">Cargando episodios...</option>';
+
+    try {
+      const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNum}?api_key=${TMDB_API_KEY}&language=es-ES`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      episodeSelect.innerHTML = '<option value="">Selecciona episodio...</option>';
+      data.episodes.forEach(ep => {
+        const option = document.createElement('option');
+        option.value = ep.episode_number;
+        option.dataset.name = ep.name;
+        option.dataset.overview = ep.overview;
+        option.textContent = `${ep.episode_number}. ${ep.name}`;
+        episodeSelect.appendChild(option);
+      });
+
+      episodeSelect.disabled = false;
+    } catch (error) {
+      console.error('Error cargando episodios:', error);
+      episodeSelect.innerHTML = '<option value="">Error cargando episodios</option>';
+    }
+  });
+
+  // Evento cambio de episodio
+  episodeSelect.addEventListener('change', function() {
+    const seasonNum = parseInt(seasonSelect.value);
+    const episodeNum = parseInt(this.value);
+    
+    if (!seasonNum || !episodeNum) {
+      document.getElementById('episodeInfo').style.display = 'none';
+      return;
+    }
+
+    const selectedOption = this.options[this.selectedIndex];
+    const episodeName = selectedOption.dataset.name;
+    const episodeOverview = selectedOption.dataset.overview;
+
+    selectedEpisode = {
+      season: seasonNum,
+      episode: episodeNum,
+      name: episodeName,
+      overview: episodeOverview
+    };
+
+    // Mostrar info del episodio
+    document.getElementById('episodeTitle').textContent = `${seasonNum}x${episodeNum} - ${episodeName}`;
+    document.getElementById('episodeOverview').textContent = episodeOverview || 'Sin descripción disponible';
+    document.getElementById('episodeInfo').style.display = 'block';
+
+    // Cargar fuentes para este episodio
+    loadSources();
+  });
+
+  document.getElementById('btnCreateRoom').disabled = true;
+}
+
 // RENDERIZAR PELÍCULA SELECCIONADA
 function renderSelectedMovie() {
   document.getElementById('selectedPoster').src = selectedMovie.poster;
   document.getElementById('selectedTitle').textContent = selectedMovie.title;
-  document.getElementById('selectedRating').textContent = `⭐ ${selectedMovie.rating}`;
+  document.getElementById('selectedRating').textContent = '⭐ ' + selectedMovie.rating;
   document.getElementById('selectedYear').textContent = selectedMovie.year;
   document.getElementById('selectedType').textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
   document.getElementById('selectedOverview').textContent = selectedMovie.overview;
@@ -322,33 +313,34 @@ function renderSelectedMovie() {
 
 // CARGAR FUENTES
 async function loadSources() {
-  const container = document.getElementById('sourcesList');
+  const containerId = selectedMovie.type === 'series' ? 'episodeSourcesList' : 'sourcesList';
+  const container = document.getElementById(containerId);
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
 
-  const manifestUrl = roomConfig.projectorType === 'custom'
-    ? roomConfig.customManifest
-    : PUBLIC_MANIFEST;
+  const manifestUrl = roomConfig.projectorType === 'custom' ? roomConfig.customManifest : PUBLIC_MANIFEST;
 
   try {
     const manifest = await fetch(manifestUrl).then(r => r.json());
-    const baseUrl = manifestUrl.replace('/manifest.json', '');
-    const streamType = selectedMovie.type === 'movie' ? 'movie' : 'series';
-
-    // ✅ Stremio: /stream/{type}/{videoID}.json y para series videoID = imdbId:season:episode [page:2]
-    const videoId =
-      selectedMovie.type === 'movie'
-        ? selectedMovie.imdbId
-        : `${selectedMovie.imdbId}:${selectedMovie.season || 1}:${selectedMovie.episode || 1}`;
-
-    const streamUrl = `${baseUrl}/stream/${streamType}/${encodeURIComponent(videoId)}.json`;
+    const baseUrl = manifestUrl.replace('manifest.json', '');
+    
+    let streamUrl;
+    if (selectedMovie.type === 'movie') {
+      streamUrl = `${baseUrl}stream/movie/${selectedMovie.imdbId}.json`;
+    } else {
+      // NUEVO: Formato Stremio para episodios: {imdbId}:{season}:{episode}
+      if (!selectedEpisode) {
+        container.innerHTML = '<div class="loading">Por favor, selecciona un episodio</div>';
+        return;
+      }
+      streamUrl = `${baseUrl}stream/series/${selectedMovie.imdbId}:${selectedEpisode.season}:${selectedEpisode.episode}.json`;
+    }
 
     const res = await fetch(streamUrl);
     if (!res.ok) throw new Error('No se encontraron fuentes');
 
     const data = await res.json();
-
-    sources = (data.streams || [])
-      .filter(s => s && s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')))
+    sources = data.streams
+      .filter(s => s.url && (s.url.startsWith('http') || s.url.startsWith('https')))
       .map(s => ({
         url: s.url,
         title: s.title || s.name || 'Stream',
@@ -356,34 +348,32 @@ async function loadSources() {
       }));
 
     if (sources.length === 0) {
-      container.innerHTML = '<div class="loading">😕 No se encontraron fuentes disponibles</div>';
+      container.innerHTML = '<div class="loading">No se encontraron fuentes disponibles</div>';
       document.getElementById('btnCreateRoom').disabled = true;
       return;
     }
 
-    renderSources();
+    renderSources(containerId);
   } catch (error) {
     console.error('Error cargando fuentes:', error);
-    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
+    container.innerHTML = `<div class="loading">Error: ${error.message}</div>`;
     document.getElementById('btnCreateRoom').disabled = true;
   }
 }
 
 // RENDERIZAR FUENTES
-function renderSources() {
-  const container = document.getElementById('sourcesList');
+function renderSources(containerId = 'sourcesList') {
+  const container = document.getElementById(containerId);
   container.innerHTML = '';
 
   sources.forEach((source, index) => {
     const card = document.createElement('div');
     card.className = 'source-card';
     card.onclick = () => selectSource(index);
-
     card.innerHTML = `
       <div class="source-title">${escapeHtml(source.title)}</div>
-      <div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>
+      <div class="source-meta">📡 ${escapeHtml(source.provider)}</div>
     `;
-
     container.appendChild(card);
   });
 
@@ -392,7 +382,6 @@ function renderSources() {
 
 function selectSource(index) {
   selectedSourceIndex = index;
-
   document.querySelectorAll('.source-card').forEach((card, i) => {
     card.classList.toggle('selected', i === index);
   });
@@ -408,7 +397,10 @@ async function createRoom() {
   const roomData = {
     roomName: roomConfig.roomName,
     hostUsername: roomConfig.username,
-    manifest: JSON.stringify(selectedMovie), // ✅ incluye season/episode si es serie
+    manifest: JSON.stringify({
+      ...selectedMovie,
+      episode: selectedEpisode // NUEVO: incluir info del episodio
+    }),
     sourceUrl: sources[selectedSourceIndex].url,
     useHostSource: roomConfig.shareMode === 'host',
     projectorType: roomConfig.projectorType,
@@ -426,10 +418,8 @@ async function createRoom() {
 
     if (data.success) {
       const roomId = data.projectorRoom.id;
-
       sessionStorage.setItem('projectorroom_is_host_' + roomId, 'true');
       sessionStorage.setItem('projectorroom_host_username_' + roomId, roomConfig.username);
-
       window.location.href = `/sala/${roomId}`;
     } else {
       alert('Error creando sala');
