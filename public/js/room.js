@@ -355,6 +355,7 @@ function initRoom() {
   setupButtons();
   loadRatings();
   loadReactions();
+  loadMessages();
   
   console.log('✅ Sala inicializada correctamente');
 }
@@ -688,6 +689,24 @@ async function loadReactions() {
     allReactions = [];
   }
 }
+
+// Cargar mensajes del chat desde la base de datos
+async function loadMessages() {
+  try {
+    const res = await fetch(`/api/projectorrooms/${roomId}/messages`);
+    const data = await res.json();
+    if (data.success && data.messages) {
+      console.log('✅ Mensajes cargados desde BD:', data.messages.length);
+      // Renderizar mensajes históricos
+      data.messages.forEach(msg => {
+        addChatMessage(msg.username, msg.message, msg.is_system);
+      });
+    }
+  } catch (error) {
+    console.error('Error cargando mensajes:', error);
+  }
+}
+
 
 function setupButtons() {
   const btnStartProjection = document.getElementById('btnStartProjection');
