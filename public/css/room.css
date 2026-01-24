@@ -1,3 +1,4 @@
+
 * {
   margin: 0;
   padding: 0;
@@ -108,7 +109,7 @@ body {
 }
 
 .room-info {
-  padding: 20px 25px 25px 25px;
+  padding: 25px;
 }
 
 .movie-meta {
@@ -179,9 +180,9 @@ body {
   transform: translateY(-2px);
 }
 
-/* ⭐ Beta-1.7: Ocultar botón invitar en invitados (IMG_8640 azul) */
+/* ⭐ Beta-1.7: Ocultar botón invitar en invitados */
 .btn-outline-large.guest-hidden {
-  display: none;
+  display: none !important;
 }
 
 /* ==================== CAMBIAR FUENTE ==================== */
@@ -196,7 +197,7 @@ body {
   border: none;
   padding: 16px 24px;
   border-radius: 12px;
-  font-size: 0;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -651,7 +652,7 @@ body {
   border-color: #4a4a4a;
 }
 
-/* ⭐ Beta-1.7: Fondos negro siempre (IMG_8641 amarillo) */
+/* ⭐ Beta-1.7: Fondos negro siempre */
 .option-card {
   background: #0a0a0a;
   border: 2px solid #3a3a3a;
@@ -694,62 +695,119 @@ body {
   font-size: 0.9rem;
 }
 
-/* ⭐ Beta-1.7: Layout mejorado header invitado (IMG_8642 morado) */
-.movie-header {
+/* ⭐ BETA-1.5.1: HEADER INVITADO = ANFITRIÓN */
+.guest-source-container .movie-header {
   margin-bottom: 25px;
 }
 
-.movie-header-wrapper {
+.guest-source-container .movie-header-wrapper {
   display: flex;
-  gap: 15px;
+  gap: 20px;
+  align-items: flex-start;
   margin-bottom: 15px;
 }
 
-.movie-header img {
-  width: 80px;
-  height: 120px;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  object-fit: cover;
+.guest-source-container .movie-header img {
+  width: 80px !important;
+  height: 120px !important;
   flex-shrink: 0;
+  border-radius: 10px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+  object-fit: cover;
 }
 
-.movie-info {
+.guest-source-container .movie-info {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 
-.movie-info h2 {
-  font-size: 1.2rem;
-  margin-bottom: 8px;
+.guest-source-container .movie-info h2 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
   color: #ffffff;
   line-height: 1.3;
+  font-weight: 600;
 }
 
-.movie-meta {
+.guest-source-container .movie-meta {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 15px;
   flex-wrap: wrap;
 }
 
-.movie-meta span {
+.guest-source-container .movie-meta span {
   background: #2a2a2a;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
   color: #cccccc;
+  border: 1px solid #3a3a3a;
   white-space: nowrap;
 }
 
-/* ⭐ Beta-1.7: Sinopsis separada */
-.movie-overview {
+.guest-source-container .movie-overview {
   width: 100%;
+  color: #b0b0b0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ⭐ BETA-1.5.1: SOURCES SCROLL VERTICAL SOLO */
+.sources-list {
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden !important;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3a #1a1a1a;
+}
+
+.sources-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sources-list::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 3px;
+}
+
+.sources-list::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 3px;
+}
+
+.sources-list::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+.source-card {
+  background: #0a0a0a;
+  border: 2px solid #3a3a3a;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  word-break: break-word;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.source-title {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.source-meta {
   color: #999999;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .section-title {
@@ -766,43 +824,6 @@ body {
   font-size: 0.9rem;
 }
 
-.sources-list {
-  max-height: 280px;
-  overflow-y: auto;
-  margin-bottom: 20px;
-}
-
-.source-card {
-  background: #0a0a0a;
-  border: 2px solid #3a3a3a;
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.source-card:hover {
-  border-color: #4a4a4a;
-}
-
-.source-card.selected {
-  background: #0a0a0a;
-  border-color: #ffffff;
-}
-
-.source-title {
-  font-weight: 600;
-  margin-bottom: 5px;
-  color: #ffffff;
-  font-size: 0.95rem;
-}
-
-.source-meta {
-  color: #999999;
-  font-size: 0.85rem;
-}
-
 .loading {
   text-align: center;
   padding: 30px 20px;
@@ -812,21 +833,18 @@ body {
 
 /* Scrollbars oscuros */
 .chat-messages::-webkit-scrollbar,
-.sources-list::-webkit-scrollbar,
 .reactions-content::-webkit-scrollbar,
 .ratings-list::-webkit-scrollbar {
   width: 8px;
 }
 
 .chat-messages::-webkit-scrollbar-track,
-.sources-list::-webkit-scrollbar-track,
 .reactions-content::-webkit-scrollbar-track,
 .ratings-list::-webkit-scrollbar-track {
   background: #1a1a1a;
 }
 
 .chat-messages::-webkit-scrollbar-thumb,
-.sources-list::-webkit-scrollbar-thumb,
 .reactions-content::-webkit-scrollbar-thumb,
 .ratings-list::-webkit-scrollbar-thumb {
   background: #3a3a3a;
@@ -834,8 +852,27 @@ body {
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover,
-.sources-list::-webkit-scrollbar-thumb:hover,
 .reactions-content::-webkit-scrollbar-thumb:hover,
 .ratings-list::-webkit-scrollbar-thumb:hover {
   background: #4a4a4a;
+}
+
+/* Responsive invitado */
+@media (max-width: 768px) {
+  .guest-source-container .movie-header-wrapper {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .guest-source-container .movie-header img {
+    width: 100px;
+    height: 140px;
+    max-width: 100px;
+  }
+
+  .guest-source-container .movie-info h2 {
+    font-size: 1.2rem;
+  }
 }
