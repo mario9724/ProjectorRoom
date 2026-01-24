@@ -160,12 +160,13 @@ body {
   transform: translateY(-2px);
 }
 
+/* ⭐ Beta-1.5: btn-outline-large estilo gris sin bordes (IMG_8632 blanco) */
 .btn-outline-large {
   flex: 1;
   min-width: 200px;
-  background: transparent;
+  background: #1a1a1a;
   color: #ffffff;
-  border: 2px solid #3a3a3a;
+  border: none;
   padding: 16px 24px;
   border-radius: 12px;
   font-size: 1.1rem;
@@ -175,8 +176,8 @@ body {
 }
 
 .btn-outline-large:hover {
-  background: #1a1a1a;
-  border-color: #4a4a4a;
+  background: #2a2a2a;
+  transform: translateY(-2px);
 }
 
 /* ==================== CAMBIAR FUENTE ==================== */
@@ -184,12 +185,11 @@ body {
   margin-bottom: 20px;
 }
 
-/* ⭐ Beta-1.4: Texto cambiado a "Cambiar proyección" via ::after */
 .btn-change-source {
   width: 100%;
   background: #1a1a1a;
   color: #ffffff;
-  border: 1px solid #2a2a2a;
+  border: none;
   padding: 14px 20px;
   border-radius: 10px;
   font-size: 0;
@@ -207,7 +207,6 @@ body {
 
 .btn-change-source:hover {
   background: #2a2a2a;
-  border-color: #3a3a3a;
   transform: translateY(-2px);
 }
 
@@ -219,11 +218,10 @@ body {
   margin-bottom: 25px;
 }
 
-/* ⭐ Beta-1.4: Mismo estilo que btn-change-source */
 .btn-interaction {
   background: #1a1a1a;
   color: #ffffff;
-  border: 1px solid #2a2a2a;
+  border: none;
   padding: 14px 20px;
   border-radius: 10px;
   font-size: 1rem;
@@ -234,7 +232,6 @@ body {
 
 .btn-interaction:hover {
   background: #2a2a2a;
-  border-color: #3a3a3a;
   transform: translateY(-2px);
 }
 
@@ -380,15 +377,17 @@ body {
   margin-bottom: 30px;
 }
 
+/* ⭐ Beta-1.5: Estrellas más pequeñas (IMG_8631 morado) */
 .rating-stars {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 5px;
   margin: 20px 0;
+  flex-wrap: wrap;
 }
 
 .star {
-  font-size: 2rem;
+  font-size: 1.5rem;
   color: #3a3a3a;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -397,7 +396,7 @@ body {
 .star:hover,
 .star.selected {
   color: #ffffff;
-  transform: scale(1.2);
+  transform: scale(1.1);
 }
 
 .roomies-ratings-section {
@@ -649,7 +648,6 @@ body {
   border-color: #4a4a4a;
 }
 
-/* ⭐ Beta-1.4: Fondo negro para option-card (IMG_8630) */
 .option-card {
   background: #0a0a0a;
   border: 2px solid #3a3a3a;
@@ -693,17 +691,12 @@ body {
   font-size: 0.9rem;
 }
 
-/* ⭐ Beta-1.4: Sinopsis ocupa ancho completo (IMG_8629) */
+/* ⭐ Beta-1.5: Layout horizontal para header (IMG_8635 verde) */
 .movie-header {
   display: flex;
-  flex-direction: column;
   gap: 20px;
   margin-bottom: 25px;
-}
-
-.movie-header-top {
-  display: flex;
-  gap: 20px;
+  align-items: flex-start;
 }
 
 .movie-header img {
@@ -718,18 +711,21 @@ body {
 .movie-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .movie-info h2 {
   font-size: 1.3rem;
   margin-bottom: 10px;
   color: #ffffff;
+  line-height: 1.3;
 }
 
 .movie-meta {
   display: flex;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
   flex-wrap: wrap;
 }
 
@@ -741,11 +737,13 @@ body {
   color: #cccccc;
 }
 
-.movie-info p {
+/* ⭐ Beta-1.5: Sinopsis separada, ancho completo */
+.movie-overview {
+  width: 100%;
   color: #999999;
   font-size: 0.9rem;
-  line-height: 1.4;
-  width: 100%;
+  line-height: 1.5;
+  margin-top: 10px;
 }
 
 .section-title {
@@ -768,6 +766,7 @@ body {
   margin-bottom: 20px;
 }
 
+/* ⭐ Beta-1.5: source-card siempre negro (IMG_8634 rojo) */
 .source-card {
   background: #0a0a0a;
   border: 2px solid #3a3a3a;
@@ -779,12 +778,11 @@ body {
 }
 
 .source-card:hover {
-  background: #1a1a1a;
   border-color: #4a4a4a;
 }
 
 .source-card.selected {
-  background: #1a1a1a;
+  background: #0a0a0a;
   border-color: #ffffff;
 }
 
