@@ -84,7 +84,7 @@ body {
 
 .room-backdrop {
   width: 100%;
-  height: 320px;
+  height: 450px; /* ⭐ AUMENTADO de 320px a 450px */
   overflow: hidden;
   position: relative;
 }
@@ -211,20 +211,20 @@ body {
 }
 
 .btn-interaction {
-  background: #1a1a1a;
+  background: transparent; /* ⭐ CAMBIADO de #1a1a1a a transparent */
   color: #ffffff;
-  border: 1px solid #2a2a2a;
+  border: 2px solid #3a3a3a; /* ⭐ CAMBIADO de 1px a 2px */
   padding: 14px 20px;
   border-radius: 10px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600; /* ⭐ CAMBIADO de 500 a 600 */
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-interaction:hover {
-  background: #2a2a2a;
-  border-color: #3a3a3a;
+  background: #1a1a1a;
+  border-color: #4a4a4a;
   transform: translateY(-2px);
 }
 
@@ -560,7 +560,7 @@ body {
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
   .room-backdrop {
-    height: 220px;
+    height: 280px; /* Ajuste para móvil */
   }
 
   .room-actions {
@@ -577,7 +577,7 @@ body {
   }
 }
 
-/* ==================== GUEST CONFIG (ARREGLADO) ==================== */
+/* ==================== GUEST CONFIG ==================== */
 .guest-config-container,
 .guest-source-container {
   display: flex;
@@ -659,7 +659,12 @@ body {
 
 .option-card.selected {
   background: #3a3a3a;
-  border-color: #ffffff;
+  border-color: #ffffff; /* ⭐ Solo borde blanco brillante */
+}
+
+/* ⭐ OCULTAR RADIO BUTTONS */
+.option-card input[type="radio"] {
+  display: none;
 }
 
 .option-content {
@@ -685,9 +690,17 @@ body {
 }
 
 .movie-header img {
-  width: 100px;
+  width: 80px; /* ⭐ REDUCIDO de 100px a 80px */
+  height: 120px; /* ⭐ REDUCIDO proporcionalmente */
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  object-fit: cover;
+  flex-shrink: 0; /* ⭐ AÑADIDO para que no se estire */
+}
+
+.movie-info {
+  flex: 1;
+  min-width: 0; /* ⭐ AÑADIDO para que el texto se ajuste */
 }
 
 .movie-info h2 {
@@ -738,7 +751,7 @@ body {
 }
 
 .source-card {
-  background: #2a2a2a;
+  background: #0a0a0a; /* ⭐ CAMBIADO de #2a2a2a a #0a0a0a (negro) */
   border: 2px solid #3a3a3a;
   border-radius: 10px;
   padding: 15px;
@@ -748,12 +761,12 @@ body {
 }
 
 .source-card:hover {
-  background: #3a3a3a;
+  background: #1a1a1a; /* ⭐ AJUSTADO hover */
   border-color: #4a4a4a;
 }
 
 .source-card.selected {
-  background: #3a3a3a;
+  background: #1a1a1a; /* ⭐ AJUSTADO selected */
   border-color: #ffffff;
 }
 
