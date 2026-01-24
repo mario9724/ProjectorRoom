@@ -352,6 +352,9 @@ function initRoom() {
   }
   
   connectSocket();
+  // ⭐ BETA-1.7: Ocultar botón invitar si es invitado
+if (!isHost)
+
   setupButtons();
   loadRatings();
   loadReactions();
