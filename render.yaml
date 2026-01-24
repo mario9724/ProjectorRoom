@@ -1,22 +1,18 @@
-databases:
-  - name: projectorroom-db
-    databaseName: projectorroom
-    user: admin
-    plan: free
-
 services:
   - type: web
-    name: projector-room-app
-    runtime: node
-    plan: free
-    buildCommand: npm install && node scripts/init-db.js
-    startCommand: node server.js
+    name: projectorroom
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: projectorroom-db
           property: connectionString
-      - key: TMDB_API_KEY
-        sync: false
-      - key: NODE_ENV
-        value: production
+
+databases:
+  - name: projectorroom-db
+    databaseName: projectorroom
+    user: projectorroom
