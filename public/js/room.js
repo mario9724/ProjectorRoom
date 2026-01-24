@@ -352,8 +352,15 @@ function initRoom() {
   }
   
   connectSocket();
-  // ⭐ BETA-1.7: Ocultar botón invitar si es invitado
-if (!isHost)
+
+// ⭐ BETA-1.7: Ocultar botón invitar si es invitado
+if (!isHost) {
+  const btnInvite = document.getElementById('btnCopyInvite');
+  if (btnInvite) {
+    btnInvite.classList.add('guest-hidden');
+  }
+}
+
 
   setupButtons();
   loadRatings();
