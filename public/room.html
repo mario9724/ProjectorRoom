@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala de Proyección</title>
-  <link rel="stylesheet" href="css/room.css">
+  <link rel="stylesheet" href="/css/room.css">
 </head>
 <body>
   <div class="room-container">
@@ -29,6 +29,7 @@
       <div class="room-backdrop">
         <img id="roomBackdrop" src="" alt="Banner">
       </div>
+      
       <div class="room-info">
         <div class="movie-meta">
           <span id="movieYear"></span>
@@ -41,19 +42,29 @@
 
     <!-- BOTONES DE ACCIÓN -->
     <div class="room-actions">
-      <button id="btnStartProjection" class="btn-primary-large">▶️ Proyectar</button>
-      <button id="btnCopyInvite" class="btn-outline-large">👥 Invitar a un roomie</button>
+      <button id="btnStartProjection" class="btn-primary-large">
+        ▶️ Proyectar
+      </button>
+      <button id="btnCopyInvite" class="btn-outline-large">
+        👥 Invitar a un roomie
+      </button>
     </div>
 
     <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
     <div id="changeSourceSection" style="display: none;">
-      <button id="btnChangeSource" class="btn-change-source">🔄 Cambiar proyección</button>
+      <button id="btnChangeSource" class="btn-change-source">
+        🔄 Cambiar fuente de reproducción
+      </button>
     </div>
 
     <!-- BOTONES DE CALIFICACIONES Y REACCIONES -->
     <div class="interaction-buttons">
-      <button id="btnCalifications" class="btn-interaction">⭐ Calificaciones</button>
-      <button id="btnReactions" class="btn-interaction">💬 Reacciones</button>
+      <button id="btnCalifications" class="btn-interaction">
+        ⭐ Calificaciones
+      </button>
+      <button id="btnReactions" class="btn-interaction">
+        💬 Reacciones
+      </button>
     </div>
 
     <!-- CHAT -->
@@ -71,7 +82,7 @@
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
       <h2>⭐ Calificaciones</h2>
-
+      
       <!-- TU CALIFICACIÓN (SIEMPRE EDITABLE) -->
       <div class="your-rating-section">
         <h3>Tu calificación</h3>
@@ -106,17 +117,17 @@
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
       <h2>💬 Reacciones</h2>
-
+      
       <!-- NUEVA REACCIÓN -->
       <div class="new-reaction-section">
         <h3>Agregar nueva reacción</h3>
         <div class="reaction-form">
           <div class="form-group">
-            <label>Minuto</label>
+            <label>⏱️ Minuto</label>
             <input type="number" id="reactionMinute" placeholder="Ej: 45" min="0">
           </div>
           <div class="form-group">
-            <label>Reacción</label>
+            <label>💬 Reacción</label>
             <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
           </div>
           <button id="btnSubmitReaction" class="btn-primary">Enviar reacción</button>
@@ -136,6 +147,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="js/room.js"></script>
+  <script src="/js/room.js"></script>
 </body>
 </html>
