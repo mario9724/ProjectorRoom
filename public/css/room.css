@@ -179,12 +179,16 @@ body {
   transform: translateY(-2px);
 }
 
+/* ⭐ Beta-1.7: Ocultar botón invitar en invitados (IMG_8640 azul) */
+.btn-outline-large.guest-hidden {
+  display: none;
+}
+
 /* ==================== CAMBIAR FUENTE ==================== */
 #changeSourceSection {
   margin-bottom: 20px;
 }
 
-/* ⭐ Beta-1.6: Mismo estilo que btn-outline-large (IMG_8638 morado) */
 .btn-change-source {
   width: 100%;
   background: #1a1a1a;
@@ -647,6 +651,7 @@ body {
   border-color: #4a4a4a;
 }
 
+/* ⭐ Beta-1.7: Fondos negro siempre (IMG_8641 amarillo) */
 .option-card {
   background: #0a0a0a;
   border: 2px solid #3a3a3a;
@@ -661,12 +666,11 @@ body {
 }
 
 .option-card:hover {
-  background: #1a1a1a;
   border-color: #4a4a4a;
 }
 
 .option-card.selected {
-  background: #1a1a1a;
+  background: #0a0a0a;
   border-color: #ffffff;
 }
 
@@ -690,15 +694,14 @@ body {
   font-size: 0.9rem;
 }
 
-/* ⭐ Beta-1.6: Layout para sinopsis full-width (IMG_8637 verde) */
+/* ⭐ Beta-1.7: Layout mejorado header invitado (IMG_8642 morado) */
 .movie-header {
   margin-bottom: 25px;
 }
 
-.movie-header-top {
+.movie-header-wrapper {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  gap: 15px;
   margin-bottom: 15px;
 }
 
@@ -714,30 +717,34 @@ body {
 .movie-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .movie-info h2 {
-  font-size: 1.3rem;
-  margin-bottom: 10px;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
   color: #ffffff;
   line-height: 1.3;
 }
 
 .movie-meta {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .movie-meta span {
   background: #2a2a2a;
-  padding: 5px 10px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #cccccc;
+  white-space: nowrap;
 }
 
-/* ⭐ Beta-1.6: Sinopsis separada, todo el ancho */
+/* ⭐ Beta-1.7: Sinopsis separada */
 .movie-overview {
   width: 100%;
   color: #999999;
