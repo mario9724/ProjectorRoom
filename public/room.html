@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala de Proyección</title>
-  <link rel="stylesheet" href="/css/room.css" />
+  <link rel="stylesheet" href="/css/room.css">
 </head>
 <body>
   <div class="room-container">
+    <!-- HEADER CON TÍTULO -->
     <div class="room-header">
       <div class="room-title-section">
         <div class="room-poster-small">
-          <img id="roomPosterSmall" src="" alt="Poster" />
+          <img id="roomPosterSmall" src="" alt="Poster">
         </div>
-
         <div class="room-title-info">
           <h1 id="roomTitle">Cargando...</h1>
           <div class="room-users-list">
@@ -24,72 +24,84 @@
       </div>
     </div>
 
+    <!-- BACKDROP/BANNER + INFORMACIÓN -->
     <div class="movie-section">
       <div class="room-backdrop">
-        <img id="roomBackdrop" src="" alt="Banner" />
+        <img id="roomBackdrop" src="" alt="Banner">
       </div>
-
+      
       <div class="room-info">
         <div class="movie-meta">
           <span id="movieYear"></span>
           <span id="movieType"></span>
           <span id="movieRating"></span>
         </div>
-
         <p id="movieOverview"></p>
       </div>
     </div>
 
+    <!-- BOTONES DE ACCIÓN -->
     <div class="room-actions">
-      <button id="btnStartProjection" class="btn-primary-large">Proyectar</button>
-      <button id="btnCopyInvite" class="btn-outline-large">Invitar a un roomie</button>
-
-      <!-- ✅ Solo host -->
-      <button id="btnCloseRoom" class="btn-danger-large" style="display:none;">Cerrar sala</button>
+      <button id="btnStartProjection" class="btn-primary-large">
+        ▶️ Proyectar
+      </button>
+      <button id="btnCopyInvite" class="btn-outline-large">
+        👥 Invitar a un roomie
+      </button>
     </div>
 
-    <div id="changeSourceSection" style="display:none; margin-bottom: 20px;">
-      <button id="btnChangeSource" class="btn-change-source">Cambiar fuente de reproducción</button>
+    <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
+    <div id="changeSourceSection" style="display: none;">
+      <button id="btnChangeSource" class="btn-change-source">
+        🔄 Cambiar fuente de reproducción
+      </button>
     </div>
 
+    <!-- BOTONES DE CALIFICACIONES Y REACCIONES -->
     <div class="interaction-buttons">
-      <button id="btnCalifications" class="btn-interaction">Calificaciones</button>
-      <button id="btnReactions" class="btn-interaction">Reacciones</button>
+      <button id="btnCalifications" class="btn-interaction">
+        ⭐ Calificaciones
+      </button>
+      <button id="btnReactions" class="btn-interaction">
+        💬 Reacciones
+      </button>
     </div>
 
+    <!-- CHAT -->
     <div class="chat-section">
-      <h3>Esto dicen los roomies</h3>
+      <h3>💬 Esto dicen los roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
       <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200" />
+        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
         <button id="btnSendChat" class="btn-send">Enviar</button>
       </div>
     </div>
   </div>
 
+  <!-- MODAL CALIFICACIONES -->
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
-      <h2>Calificaciones</h2>
-
+      <h2>⭐ Calificaciones</h2>
+      
+      <!-- TU CALIFICACIÓN (SIEMPRE EDITABLE) -->
       <div class="your-rating-section">
         <h3>Tu calificación</h3>
-
         <div class="rating-stars" id="ratingStars">
-          <span class="star" data-value="1"></span>
-          <span class="star" data-value="2"></span>
-          <span class="star" data-value="3"></span>
-          <span class="star" data-value="4"></span>
-          <span class="star" data-value="5"></span>
-          <span class="star" data-value="6"></span>
-          <span class="star" data-value="7"></span>
-          <span class="star" data-value="8"></span>
-          <span class="star" data-value="9"></span>
-          <span class="star" data-value="10"></span>
+          <span class="star" data-value="1">★</span>
+          <span class="star" data-value="2">★</span>
+          <span class="star" data-value="3">★</span>
+          <span class="star" data-value="4">★</span>
+          <span class="star" data-value="5">★</span>
+          <span class="star" data-value="6">★</span>
+          <span class="star" data-value="7">★</span>
+          <span class="star" data-value="8">★</span>
+          <span class="star" data-value="9">★</span>
+          <span class="star" data-value="10">★</span>
         </div>
-
         <button id="btnSubmitRating" class="btn-primary" style="margin-top: 15px;">Guardar calificación</button>
       </div>
 
+      <!-- CALIFICACIONES DE LOS ROOMIES -->
       <div class="roomies-ratings-section">
         <h3>Calificaciones de los roomies</h3>
         <div id="ratingsContent" class="ratings-list"></div>
@@ -101,28 +113,28 @@
     </div>
   </div>
 
+  <!-- MODAL REACCIONES -->
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
-      <h2>Reacciones</h2>
-
+      <h2>💬 Reacciones</h2>
+      
+      <!-- NUEVA REACCIÓN -->
       <div class="new-reaction-section">
         <h3>Agregar nueva reacción</h3>
-
         <div class="reaction-form">
           <div class="form-group">
-            <label>Minuto</label>
-            <input type="number" id="reactionMinute" placeholder="Ej: 45" min="0" />
+            <label>⏱️ Minuto</label>
+            <input type="number" id="reactionMinute" placeholder="Ej: 45" min="0">
           </div>
-
           <div class="form-group">
-            <label>Reacción</label>
+            <label>💬 Reacción</label>
             <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
           </div>
-
           <button id="btnSubmitReaction" class="btn-primary">Enviar reacción</button>
         </div>
       </div>
 
+      <!-- REACCIONES DE LOS ROOMIES -->
       <div class="roomies-reactions-section">
         <h3>Reacciones de los roomies</h3>
         <div id="reactionsContent" class="reactions-content"></div>
@@ -136,8 +148,5 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
-  <!-- Socket.IO -->
-<script src="https://cdn.socket.io/4.7.5/socket.io.min
-
 </body>
 </html>
