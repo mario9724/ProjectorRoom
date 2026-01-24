@@ -84,7 +84,7 @@ body {
 
 .room-backdrop {
   width: 100%;
-  height: 450px; /* ⭐ Beta-1.2: Aumentado de 320px */
+  height: 450px;
   overflow: hidden;
   position: relative;
 }
@@ -103,7 +103,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top; /* ⭐ Beta-1.3: Ajustar a parte superior */
+  object-position: top;
   display: block;
 }
 
@@ -184,23 +184,31 @@ body {
   margin-bottom: 20px;
 }
 
+/* ⭐ Beta-1.4: Texto cambiado a "Cambiar proyección" via ::after */
 .btn-change-source {
   width: 100%;
-  background: #2a2a2a;
+  background: #1a1a1a;
   color: #ffffff;
-  border: 2px solid #3a3a3a;
-  padding: 12px 20px;
+  border: 1px solid #2a2a2a;
+  padding: 14px 20px;
   border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+}
+
+.btn-change-source::before {
+  content: '🔄 Cambiar proyección';
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .btn-change-source:hover {
-  background: #3a3a3a;
-  border-color: #4a4a4a;
-  transform: translateY(-1px);
+  background: #2a2a2a;
+  border-color: #3a3a3a;
+  transform: translateY(-2px);
 }
 
 /* ==================== BOTONES DE INTERACCIÓN ==================== */
@@ -211,22 +219,23 @@ body {
   margin-bottom: 25px;
 }
 
+/* ⭐ Beta-1.4: Mismo estilo que btn-change-source */
 .btn-interaction {
-  background: #2a2a2a; /* ⭐ Beta-1.3: Igualado con btn-change-source */
+  background: #1a1a1a;
   color: #ffffff;
-  border: 2px solid #3a3a3a;
-  padding: 12px 20px;
+  border: 1px solid #2a2a2a;
+  padding: 14px 20px;
   border-radius: 10px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-interaction:hover {
-  background: #3a3a3a; /* ⭐ Beta-1.3: Igualado con btn-change-source */
-  border-color: #4a4a4a;
-  transform: translateY(-1px);
+  background: #2a2a2a;
+  border-color: #3a3a3a;
+  transform: translateY(-2px);
 }
 
 /* ==================== CHAT ==================== */
@@ -640,8 +649,9 @@ body {
   border-color: #4a4a4a;
 }
 
+/* ⭐ Beta-1.4: Fondo negro para option-card (IMG_8630) */
 .option-card {
-  background: #2a2a2a;
+  background: #0a0a0a;
   border: 2px solid #3a3a3a;
   border-radius: 12px;
   padding: 18px;
@@ -654,16 +664,15 @@ body {
 }
 
 .option-card:hover {
-  background: #3a3a3a;
+  background: #1a1a1a;
   border-color: #4a4a4a;
 }
 
 .option-card.selected {
-  background: #3a3a3a;
+  background: #1a1a1a;
   border-color: #ffffff;
 }
 
-/* ⭐ Beta-1.3: RADIO BUTTONS OCULTOS (pantalla invitado) */
 .option-card input[type="radio"] {
   display: none;
 }
@@ -684,14 +693,21 @@ body {
   font-size: 0.9rem;
 }
 
+/* ⭐ Beta-1.4: Sinopsis ocupa ancho completo (IMG_8629) */
 .movie-header {
   display: flex;
+  flex-direction: column;
   gap: 20px;
   margin-bottom: 25px;
 }
 
+.movie-header-top {
+  display: flex;
+  gap: 20px;
+}
+
 .movie-header img {
-  width: 80px; /* Beta-1.2: Reducido de 100px */
+  width: 80px;
   height: 120px;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -729,6 +745,7 @@ body {
   color: #999999;
   font-size: 0.9rem;
   line-height: 1.4;
+  width: 100%;
 }
 
 .section-title {
@@ -752,7 +769,7 @@ body {
 }
 
 .source-card {
-  background: #0a0a0a; /* Beta-1.2: Fondo negro */
+  background: #0a0a0a;
   border: 2px solid #3a3a3a;
   border-radius: 10px;
   padding: 15px;
