@@ -84,7 +84,7 @@ body {
 
 .room-backdrop {
   width: 100%;
-  height: 450px; /* ⭐ AUMENTADO de 320px a 450px */
+  height: 450px; /* ⭐ Beta-1.2: Aumentado de 320px */
   overflow: hidden;
   position: relative;
 }
@@ -103,6 +103,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top; /* ⭐ Beta-1.3: Ajustar a parte superior */
   display: block;
 }
 
@@ -211,21 +212,21 @@ body {
 }
 
 .btn-interaction {
-  background: transparent; /* ⭐ CAMBIADO de #1a1a1a a transparent */
+  background: #2a2a2a; /* ⭐ Beta-1.3: Igualado con btn-change-source */
   color: #ffffff;
-  border: 2px solid #3a3a3a; /* ⭐ CAMBIADO de 1px a 2px */
-  padding: 14px 20px;
+  border: 2px solid #3a3a3a;
+  padding: 12px 20px;
   border-radius: 10px;
   font-size: 1rem;
-  font-weight: 600; /* ⭐ CAMBIADO de 500 a 600 */
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-interaction:hover {
-  background: #1a1a1a;
+  background: #3a3a3a; /* ⭐ Beta-1.3: Igualado con btn-change-source */
   border-color: #4a4a4a;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 /* ==================== CHAT ==================== */
@@ -560,7 +561,7 @@ body {
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
   .room-backdrop {
-    height: 280px; /* Ajuste para móvil */
+    height: 280px;
   }
 
   .room-actions {
@@ -659,10 +660,10 @@ body {
 
 .option-card.selected {
   background: #3a3a3a;
-  border-color: #ffffff; /* ⭐ Solo borde blanco brillante */
+  border-color: #ffffff;
 }
 
-/* ⭐ OCULTAR RADIO BUTTONS */
+/* ⭐ Beta-1.3: RADIO BUTTONS OCULTOS (pantalla invitado) */
 .option-card input[type="radio"] {
   display: none;
 }
@@ -690,17 +691,17 @@ body {
 }
 
 .movie-header img {
-  width: 80px; /* ⭐ REDUCIDO de 100px a 80px */
-  height: 120px; /* ⭐ REDUCIDO proporcionalmente */
+  width: 80px; /* Beta-1.2: Reducido de 100px */
+  height: 120px;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   object-fit: cover;
-  flex-shrink: 0; /* ⭐ AÑADIDO para que no se estire */
+  flex-shrink: 0;
 }
 
 .movie-info {
   flex: 1;
-  min-width: 0; /* ⭐ AÑADIDO para que el texto se ajuste */
+  min-width: 0;
 }
 
 .movie-info h2 {
@@ -751,7 +752,7 @@ body {
 }
 
 .source-card {
-  background: #0a0a0a; /* ⭐ CAMBIADO de #2a2a2a a #0a0a0a (negro) */
+  background: #0a0a0a; /* Beta-1.2: Fondo negro */
   border: 2px solid #3a3a3a;
   border-radius: 10px;
   padding: 15px;
@@ -761,12 +762,12 @@ body {
 }
 
 .source-card:hover {
-  background: #1a1a1a; /* ⭐ AJUSTADO hover */
+  background: #1a1a1a;
   border-color: #4a4a4a;
 }
 
 .source-card.selected {
-  background: #1a1a1a; /* ⭐ AJUSTADO selected */
+  background: #1a1a1a;
   border-color: #ffffff;
 }
 
