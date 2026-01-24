@@ -53,6 +53,17 @@ async function initDB() {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        room_id VARCHAR(20) REFERENCES projector_rooms(id) ON DELETE CASCADE,
+        username VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        is_system BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     console.log('✅ Base de datos inicializada');
   } catch (error) {
     console.error('❌ Error inicializando base de datos:', error);
