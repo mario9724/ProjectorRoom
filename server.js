@@ -72,6 +72,7 @@ app.put('/api/projectorrooms/:id/movie', (req, res) => {
   room.movieData = movieData;
   room.sourceUrl = sourceUrl;
   room.manifest = manifest;
+  room.roomName = movieData.title || movieData.name || room.roomName;
   room.updatedAt = new Date();
   
   console.log(`🎬 Película actualizada en sala ${roomId}: ${movieData.title || movieData.name}`);
