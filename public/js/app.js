@@ -1,4 +1,4 @@
-// app.js BETA-1.5.3 - FIXED: Películas NO muestran selector
+// app.js BETA-1.5.6 - FIXED: Episode info in separate field
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
 
@@ -442,22 +442,33 @@ async function createRoom() {
     return;
   }
 
+  // ⭐ FIX: Preparar selectedEpisode ANTES de crear roomData
+  let selectedEpisodeData = null;
+
+  if (selectedMovie.type === 'series' && selectedMovie.selectedSeason && selectedMovie.selectedEpisode) {
+    const episodeInfo = selectedMovie.episodes?.find(e => e.episode_number === selectedMovie.selectedEpisode);
+
+    selectedEpisodeData = {
+      season_number: selectedMovie.selectedSeason,
+      episode_number: selectedMovie.selectedEpisode,
+      name: episodeInfo?.name || `Episodio ${selectedMovie.selectedEpisode}`
+    };
+
+    console.log('📺 selectedEpisode preparado:', selectedEpisodeData);
+  }
+
   const roomData = {
     roomName: roomConfig.roomName,
     hostUsername: roomConfig.username,
-    manifest: JSON.stringify({
-      ...selectedMovie,
-      episodeInfo: selectedMovie.selectedSeason ? {
-        season: selectedMovie.selectedSeason,
-        episode: selectedMovie.selectedEpisode,
-        episodeTitle: selectedMovie.episodes?.find(e => e.episode_number === selectedMovie.selectedEpisode)?.name || ''
-      } : null
-    }),
+    manifest: JSON.stringify(selectedMovie),
+    selectedEpisode: selectedEpisodeData ? JSON.stringify(selectedEpisodeData) : null,
     sourceUrl: sources[selectedSourceIndex].url,
     useHostSource: roomConfig.shareMode === 'host',
     projectorType: roomConfig.projectorType,
     customManifest: roomConfig.customManifest
   };
+
+  console.log('📦 roomData a enviar:', roomData);
 
   try {
     const res = await fetch('/api/projectorrooms/create', {
@@ -470,14 +481,12 @@ async function createRoom() {
 
     if (data.success) {
       const roomId = data.projectorRoom.id;
-      
-      // ⭐ GUARDAR EN SESSIONSTORAGE ANTES DE REDIRIGIR
+
       sessionStorage.setItem(`projectorroom:ishost:${roomId}`, 'true');
       sessionStorage.setItem(`projectorroom:hostusername:${roomId}`, roomConfig.username);
-      
+
       console.log('✅ Host guardado:', roomId, roomConfig.username);
-      
-      // ⭐ Pequeño delay para asegurar que se guarda
+
       setTimeout(() => {
         window.location.href = `/sala/${roomId}`;
       }, 100);
