@@ -25,8 +25,8 @@ function generateId() {
 
 // Crear sala
 app.post('/api/projectorrooms/create', async (req, res) => {
-  const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
-  
+  const { roomName, hostUsername, manifest, selectedEpisode, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
+
   if (!roomName || !hostUsername || !manifest || !sourceUrl) {
     return res.json({ success: false, message: 'Datos incompletos' });
   }
@@ -35,13 +35,13 @@ app.post('/api/projectorrooms/create', async (req, res) => {
 
   try {
     await pool.query(
-      `INSERT INTO projector_rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [roomId, roomName, hostUsername, manifest, sourceUrl, useHostSource !== false, projectorType || 'public', customManifest || '']
+      `INSERT INTO projector_rooms (id, room_name, host_username, manifest, selected_episode, source_url, use_host_source, projector_type, custom_manifest)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [roomId, roomName, hostUsername, manifest, selectedEpisode || null, sourceUrl, useHostSource !== false, projectorType || 'public', customManifest || '']
     );
 
     console.log(`✅ Sala creada: ${roomId} - ${roomName} por ${hostUsername}`);
-    
+
     res.json({
       success: true,
       projectorRoom: {
@@ -49,6 +49,7 @@ app.post('/api/projectorrooms/create', async (req, res) => {
         roomName,
         hostUsername,
         manifest,
+        selectedEpisode: selectedEpisode || null,
         sourceUrl,
         useHostSource: useHostSource !== false,
         projectorType: projectorType || 'public',
@@ -67,7 +68,7 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
 
   try {
     const result = await pool.query('SELECT * FROM projector_rooms WHERE id = $1', [roomId]);
-    
+
     if (result.rows.length === 0) {
       return res.json({ success: false, message: 'Sala no encontrada' });
     }
@@ -80,6 +81,7 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
         roomName: room.room_name,
         hostUsername: room.host_username,
         manifest: room.manifest,
+        selectedEpisode: room.selected_episode,
         sourceUrl: room.source_url,
         useHostSource: room.use_host_source,
         projectorType: room.projector_type,
@@ -125,6 +127,22 @@ app.get('/api/projectorrooms/:id/reactions', async (req, res) => {
   }
 });
 
+// Obtener mensajes de chat de una sala
+app.get('/api/projectorrooms/:id/messages', async (req, res) => {
+  const roomId = req.params.id;
+
+  try {
+    const result = await pool.query(
+      'SELECT username, message, is_system, created_at FROM chat_messages WHERE room_id = $1 ORDER BY created_at ASC',
+      [roomId]
+    );
+    res.json({ success: true, messages: result.rows });
+  } catch (error) {
+    console.error('Error obteniendo mensajes:', error);
+    res.json({ success: false, messages: [] });
+  }
+});
+
 // Servir HTML principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -165,24 +183,41 @@ io.on('connection', (socket) => {
         user: { id: socket.id, username },
         users: result.rows
       });
+
+      // Guardar mensaje de sistema
+      await pool.query(
+        'INSERT INTO chat_messages (room_id, username, message, is_system) VALUES ($1, $2, $3, $4)',
+        [roomId, username, `${username} se unió a la sala`, true]
+      );
     } catch (error) {
       console.error('Error al unirse a la sala:', error);
     }
   });
 
   // MENSAJE DE CHAT
-  socket.on('chat-message', ({ roomId, message }) => {
+  socket.on('chat-message', async ({ roomId, message }) => {
     console.log(`💬 [${roomId}] ${socket.username}: ${message}`);
-    io.to(roomId).emit('chat-message', {
-      username: socket.username,
-      message: message
-    });
+
+    try {
+      // Guardar mensaje en la base de datos
+      await pool.query(
+        'INSERT INTO chat_messages (room_id, username, message, is_system) VALUES ($1, $2, $3, $4)',
+        [roomId, socket.username, message, false]
+      );
+
+      io.to(roomId).emit('chat-message', {
+        username: socket.username,
+        message: message
+      });
+    } catch (error) {
+      console.error('Error guardando mensaje:', error);
+    }
   });
 
   // CALIFICACIÓN
   socket.on('add-rating', async ({ roomId, username, rating }) => {
     console.log(`⭐ [${roomId}] ${username} calificó con ${rating}/10`);
-    
+
     try {
       await pool.query(
         'INSERT INTO ratings (room_id, username, rating) VALUES ($1, $2, $3)',
@@ -198,7 +233,7 @@ io.on('connection', (socket) => {
   // REACCIÓN
   socket.on('add-reaction', async ({ roomId, username, time, message }) => {
     console.log(`💬 [${roomId}] ${username} reaccionó en ${time}: ${message}`);
-    
+
     try {
       await pool.query(
         'INSERT INTO reactions (room_id, username, time, message) VALUES ($1, $2, $3, $4)',
@@ -214,7 +249,7 @@ io.on('connection', (socket) => {
   // DESCONEXIÓN
   socket.on('disconnect', async () => {
     console.log('🔴 Usuario desconectado:', socket.id);
-    
+
     const roomId = socket.roomId;
     const username = socket.username;
 
@@ -233,6 +268,14 @@ io.on('connection', (socket) => {
           username: username,
           users: result.rows
         });
+
+        // Guardar mensaje de sistema
+        if (username) {
+          await pool.query(
+            'INSERT INTO chat_messages (room_id, username, message, is_system) VALUES ($1, $2, $3, $4)',
+            [roomId, username, `${username} salió de la sala`, true]
+          );
+        }
       } catch (error) {
         console.error('Error al desconectar:', error);
       }
