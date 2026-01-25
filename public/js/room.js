@@ -13,6 +13,7 @@ let allRatings = [];
 let allReactions = [];
 let currentUsers = [];
 
+// ==================== INICIALIZAR ====================
 window.addEventListener('load', async function() {
   console.log('🚀 Inicializando sala...');
 
@@ -102,41 +103,48 @@ function showGuestConfig() {
   console.log('📝 Renderizando configuración de invitado');
   document.querySelector('.room-container').style.display = 'none';
 
-  let configHTML = `<div class="guest-config-container">
-<div class="step-card">
-<h1>👋 Ey roomie, ¿cómo te llamas?</h1>
-<input type="text" id="guestUsername" placeholder="Tu nombre..." maxlength="20" autofocus>`;
+  let configHTML = `
+    <div class="guest-config-container">
+      <div class="step-card">
+        <h1>👋 Ey roomie, ¿cómo te llamas?</h1>
+        <input type="text" id="guestUsername" placeholder="Tu nombre..." maxlength="20" autofocus>
+  `;
 
   if (roomData.useHostSource === false) {
     configHTML += `
-<div style="margin-top: 30px;">
-<h2 style="font-size: 1.3rem; margin-bottom: 20px; text-align: center;">🎬 ¿Qué proyector quieres usar?</h2>
-<div class="option-card" onclick="selectGuestProjector('public')">
-<input type="radio" name="guestProjectorType" value="public" checked>
-<div class="option-content">
-<div class="option-title">🌐 Proyector público</div>
-<div class="option-desc">Se usará el predeterminado ya configurado</div>
-</div>
-</div>
-<div class="option-card" onclick="selectGuestProjector('custom')">
-<input type="radio" name="guestProjectorType" value="custom">
-<div class="option-content">
-<div class="option-title">⚙️ Proyector personalizado</div>
-<div class="option-desc">Introduce tu manifest.json custom</div>
-</div>
-</div>
-<div id="guestCustomManifestBox" style="display:none; margin-top: 15px;">
-<input type="url" id="guestCustomManifest" placeholder="https://tu-manifest.json">
-</div>
-</div>`;
+      <div style="margin-top: 30px;">
+        <h2 style="font-size: 1.3rem; margin-bottom: 20px; text-align: center;">🎬 ¿Qué proyector quieres usar?</h2>
+
+        <div class="option-card" onclick="selectGuestProjector('public')">
+          <input type="radio" name="guestProjectorType" value="public" checked>
+          <div class="option-content">
+            <div class="option-title">🌐 Proyector público</div>
+            <div class="option-desc">Se usará el predeterminado ya configurado</div>
+          </div>
+        </div>
+
+        <div class="option-card" onclick="selectGuestProjector('custom')">
+          <input type="radio" name="guestProjectorType" value="custom">
+          <div class="option-content">
+            <div class="option-title">⚙️ Proyector personalizado</div>
+            <div class="option-desc">Introduce tu manifest.json custom</div>
+          </div>
+        </div>
+
+        <div id="guestCustomManifestBox" style="display:none; margin-top: 15px;">
+          <input type="url" id="guestCustomManifest" placeholder="https://tu-manifest.json">
+        </div>
+      </div>
+    `;
   }
 
   configHTML += `
-<button class="btn-primary" onclick="submitGuestConfig()" style="margin-top: 30px; width: 100%;">
-Accede a la sala de ${escapeHtml(roomData.hostUsername)} →
-</button>
-</div>
-</div>`;
+        <button class="btn-primary" onclick="submitGuestConfig()" style="margin-top: 30px; width: 100%;">
+          Accede a la sala de ${escapeHtml(roomData.hostUsername)} →
+        </button>
+      </div>
+    </div>
+  `;
 
   document.body.insertAdjacentHTML('beforeend', configHTML);
 }
@@ -202,42 +210,35 @@ async function showGuestSourceSelector() {
 
   const movieData = JSON.parse(roomData.manifest);
 
-  let episodeInfoHTML = '';
-  if (movieData.type === 'series' && roomData.selectedEpisode) {
-    const ep = JSON.parse(roomData.selectedEpisode);
-    const seasonNum = ep.season_number;
-    const episodeNum = String(ep.episode_number).padStart(2, '0');
-    const episodeName = ep.name || '';
+  const selectorHTML = `
+    <div class="guest-source-container">
+      <div class="step-card wide">
+        <div class="movie-header">
+          <img src="${movieData.poster || ''}" alt="Poster">
+          <div class="movie-info">
+            <h2>${escapeHtml(movieData.title || 'Película')}</h2>
+            <div class="movie-meta">
+              <span>⭐ ${movieData.rating || 'N/A'}</span>
+              <span>${movieData.year || 'N/A'}</span>
+              <span>${movieData.type === 'movie' ? 'Película' : 'Serie'}</span>
+            </div>
+            <p>${escapeHtml(movieData.overview || 'Sin descripción')}</p>
+          </div>
+        </div>
 
-    episodeInfoHTML = `<div style="color: #ddd; font-size: 1.2rem; font-weight: 600; margin-bottom: 4px;">[${seasonNum}x${episodeNum}]</div>
-<div style="color: #aaa; font-size: 0.95rem;">${escapeHtml(episodeName)}</div>`;
-  }
+        <h3 class="section-title">🔍 Selecciona tu fuente</h3>
+        <p class="section-subtitle">Elige la mejor calidad para tu reproducción</p>
 
-  const selectorHTML = `<div class="guest-source-container">
-<div class="step-card wide">
-<div class="movie-header">
-<img src="${movieData.poster || ''}" alt="Poster" class="movie-poster">
-<div class="movie-info">
-<h2>${escapeHtml(movieData.title || 'Película')}</h2>
-${episodeInfoHTML}
-<div class="movie-meta">
-<span>⭐ ${movieData.rating || 'N/A'}</span>
-<span>${movieData.year || 'N/A'}</span>
-<span>${movieData.type === 'movie' ? 'Película' : 'Serie'}</span>
-</div>
-<p>${escapeHtml(movieData.overview || 'Sin descripción')}</p>
-</div>
-</div>
-<h3 class="section-title">🔍 Selecciona tu fuente</h3>
-<p class="section-subtitle">Elige la mejor calidad para tu reproducción</p>
-<div id="guestSourcesList" class="sources-list">
-<div class="loading">Cargando fuentes...</div>
-</div>
-<button id="btnJoinRoom" class="btn-primary" disabled onclick="joinRoomWithSource()" style="width: 100%;">
-Unirse a la sala →
-</button>
-</div>
-</div>`;
+        <div id="guestSourcesList" class="sources-list">
+          <div class="loading">Cargando fuentes...</div>
+        </div>
+
+        <button id="btnJoinRoom" class="btn-primary" disabled onclick="joinRoomWithSource()" style="width: 100%;">
+          Unirse a la sala →
+        </button>
+      </div>
+    </div>
+  `;
 
   document.body.insertAdjacentHTML('beforeend', selectorHTML);
   await loadGuestSources(movieData);
@@ -259,7 +260,7 @@ async function loadGuestSources(movieData) {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = movieData.type === 'movie' ? 'movie' : 'series';
-    const streamUrl = baseUrl + '/stream/' + streamType + '/' + movieData.imdbId + '.json';
+    const streamUrl = `${baseUrl}/stream/${streamType}/${movieData.imdbId}.json`;
 
     console.log('🎬 Stream URL:', streamUrl);
 
@@ -286,7 +287,7 @@ async function loadGuestSources(movieData) {
     renderGuestSources();
   } catch (error) {
     console.error('❌ Error cargando fuentes:', error);
-    container.innerHTML = '<div class="loading">❌ Error: ' + error.message + '</div>';
+    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
   }
 }
 
@@ -299,8 +300,10 @@ function renderGuestSources() {
     card.className = 'source-card';
     card.onclick = () => selectGuestSource(index);
 
-    card.innerHTML = `<div class="source-title">${escapeHtml(source.title)}</div>
-<div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>`;
+    card.innerHTML = `
+      <div class="source-title">${escapeHtml(source.title)}</div>
+      <div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>
+    `;
 
     container.appendChild(card);
   });
@@ -350,6 +353,7 @@ function initRoom() {
 
   connectSocket();
 
+  // ⭐ BETA-1.7: Ocultar botón invitar si es invitado
   if (!isHost) {
     const btnInvite = document.getElementById('btnCopyInvite');
     if (btnInvite) {
@@ -370,34 +374,28 @@ function renderRoom() {
 
   const movieData = JSON.parse(roomData.manifest);
 
+  // Poster pequeño (header)
   const posterEl = document.getElementById('roomPosterSmall');
   if (posterEl) posterEl.src = movieData.poster || '';
 
-  let titleText = 'Proyectando ' + movieData.title;
-
-  if (movieData.type === 'series' && roomData.selectedEpisode) {
-    const ep = JSON.parse(roomData.selectedEpisode);
-    titleText += ' [' + ep.season_number + 'x' + String(ep.episode_number).padStart(2, '0') + ']';
-  }
-
-  titleText += ' en ' + roomData.roomName + ' de ' + roomData.hostUsername;
-
   const titleEl = document.getElementById('roomTitle');
-  if (titleEl) titleEl.textContent = titleText;
+  if (titleEl) titleEl.textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
 
+  // Backdrop/Banner (con fallback al poster si no existe)
   const backdropEl = document.getElementById('roomBackdrop');
   if (backdropEl) {
     backdropEl.src = movieData.backdrop || movieData.poster || '';
   }
 
+  // Info de la película
   const yearEl = document.getElementById('movieYear');
   const typeEl = document.getElementById('movieType');
   const ratingEl = document.getElementById('movieRating');
   const overviewEl = document.getElementById('movieOverview');
 
-  if (yearEl) yearEl.textContent = '📅 ' + (movieData.year || 'N/A');
-  if (typeEl) typeEl.textContent = '🎬 ' + (movieData.type === 'movie' ? 'Película' : 'Serie');
-  if (ratingEl) ratingEl.textContent = '⭐ ' + (movieData.rating || 'N/A');
+  if (yearEl) yearEl.textContent = `📅 ${movieData.year || 'N/A'}`;
+  if (typeEl) typeEl.textContent = `🎬 ${movieData.type === 'movie' ? 'Película' : 'Serie'}`;
+  if (ratingEl) ratingEl.textContent = `⭐ ${movieData.rating || 'N/A'}`;
   if (overviewEl) overviewEl.textContent = movieData.overview || 'Sin descripción disponible';
 
   console.log('✅ Interfaz renderizada');
@@ -416,13 +414,13 @@ function connectSocket() {
   socket.on('user-joined', data => {
     console.log('👥 Usuario unido:', data.user.username);
     updateUsersList(data.users);
-    addChatMessage('Sistema', data.user.username + ' se unió a la sala', true);
+    addChatMessage('Sistema', `${data.user.username} se unió a la sala`, true);
   });
 
   socket.on('user-left', data => {
     console.log('👋 Usuario salió:', data.username);
     updateUsersList(data.users);
-    addChatMessage('Sistema', data.username + ' salió de la sala', true);
+    addChatMessage('Sistema', `${data.username} salió de la sala`, true);
   });
 
   socket.on('chat-message', data => {
@@ -454,10 +452,10 @@ function updateUsersList(users) {
     if (users.length === 0) {
       usersNamesEl.textContent = 'No hay usuarios';
     } else if (users.length === 1) {
-      usersNamesEl.textContent = '1 roomie en la sala: ' + users[0].username;
+      usersNamesEl.textContent = `1 roomie en la sala: ${users[0].username}`;
     } else {
       const names = users.map(u => u.username).join(', ');
-      usersNamesEl.textContent = users.length + ' roomies en la sala: ' + names;
+      usersNamesEl.textContent = `${users.length} roomies en la sala: ${names}`;
     }
   }
 }
@@ -472,7 +470,7 @@ function addChatMessage(username, message, isSystem) {
   if (isSystem) {
     messageEl.textContent = message;
   } else {
-    messageEl.innerHTML = '<span class="chat-username">' + escapeHtml(username) + ':</span> ' + escapeHtml(message);
+    messageEl.innerHTML = `<span class="chat-username">${escapeHtml(username)}:</span> ${escapeHtml(message)}`;
   }
 
   container.appendChild(messageEl);
@@ -508,11 +506,11 @@ function startProjection() {
   }
 
   console.log('▶️ Abriendo VLC con:', sourceUrl);
-  window.location.href = 'vlc://' + sourceUrl;
+  window.location.href = `vlc://${sourceUrl}`;
 }
 
 function copyInvite() {
-  const roomUrl = window.location.origin + '/sala/' + roomId;
+  const roomUrl = `${window.location.origin}/sala/${roomId}`;
 
   if (navigator.clipboard) {
     navigator.clipboard.writeText(roomUrl).then(() => {
@@ -581,7 +579,7 @@ function setupRatingStars() {
       socket.emit('add-rating', { roomId, username, rating: selectedRating });
     }
 
-    alert('✅ Has calificado con ' + selectedRating + '/10 estrellas');
+    alert(`✅ Has calificado con ${selectedRating}/10 estrellas`);
   };
 }
 
@@ -597,7 +595,9 @@ function renderAllRatings() {
   allRatings.forEach(rating => {
     const ratingEl = document.createElement('div');
     ratingEl.className = 'rating-item';
-    ratingEl.innerHTML = '<strong>' + escapeHtml(rating.username) + ':</strong> ' + '★'.repeat(rating.rating) + '☆'.repeat(10 - rating.rating) + ' (' + rating.rating + '/10)';
+    ratingEl.innerHTML = `
+      <strong>${escapeHtml(rating.username)}:</strong> ${'★'.repeat(rating.rating)}${'☆'.repeat(10 - rating.rating)} (${rating.rating}/10)
+    `;
     container.appendChild(ratingEl);
   });
 }
@@ -626,7 +626,7 @@ function submitReaction() {
     return;
   }
 
-  const time = minuteNum + ':00';
+  const time = `${minuteNum}:00`;
 
   if (socket && roomId) {
     socket.emit('add-reaction', { roomId, username, time, message });
@@ -658,9 +658,11 @@ function renderAllReactions() {
   allReactions.forEach(reaction => {
     const reactionEl = document.createElement('div');
     reactionEl.className = 'reaction-item';
-    reactionEl.innerHTML = `<div class="reaction-time">⏱️ ${escapeHtml(reaction.time)}</div>
-<div class="reaction-user">${escapeHtml(reaction.username)}</div>
-<div class="reaction-message">${escapeHtml(reaction.message)}</div>`;
+    reactionEl.innerHTML = `
+      <div class="reaction-time">⏱️ ${escapeHtml(reaction.time)}</div>
+      <div class="reaction-user">${escapeHtml(reaction.username)}</div>
+      <div class="reaction-message">${escapeHtml(reaction.message)}</div>
+    `;
     container.appendChild(reactionEl);
   });
 }
@@ -671,7 +673,7 @@ function closeReactionsModal() {
 
 async function loadRatings() {
   try {
-    const res = await fetch('/api/projectorrooms/' + roomId + '/ratings');
+    const res = await fetch(`/api/projectorrooms/${roomId}/ratings`);
     const data = await res.json();
     if (data.success) {
       allRatings = data.ratings;
@@ -685,7 +687,7 @@ async function loadRatings() {
 
 async function loadReactions() {
   try {
-    const res = await fetch('/api/projectorrooms/' + roomId + '/reactions');
+    const res = await fetch(`/api/projectorrooms/${roomId}/reactions`);
     const data = await res.json();
     if (data.success) {
       allReactions = data.reactions;
@@ -699,7 +701,7 @@ async function loadReactions() {
 
 async function loadMessages() {
   try {
-    const res = await fetch('/api/projectorrooms/' + roomId + '/messages');
+    const res = await fetch(`/api/projectorrooms/${roomId}/messages`);
     const data = await res.json();
     if (data.success && data.messages) {
       console.log('✅ Mensajes cargados desde BD:', data.messages.length);
