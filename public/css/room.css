@@ -848,4 +848,27 @@ body {
   margin: 10px 0;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
+/* Info de episodio en selector de fuentes (invitado) */
+.episode-info-text {
+  color: #ffffff;
+  margin: 10px 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.episode-info-text strong {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.episode-title {
+  margin-top: 4px;
+  opacity: 0.9;
+}
+
+.episode-overview {
+  color: #cccccc;
+  line-height: 1.6;
+  margin-top: 10px;
+}
 
