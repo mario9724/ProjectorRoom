@@ -1,6 +1,4 @@
-// app.js COMPLETO CORREGIDO
-// FIX: sessionStorage + Series completas + Fuentes filtradas
-
+// app.js - FIX COMPLETO
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://aiostreamsfortheweebsstable.midnightignite.me/stremio/25123557-beb8-43d4-a498-fbec7d56e903/eyJpIjoiZkJxZjZQd2U3WnE1QlphQnh3UWJtZz09IiwiZSI6IjllZ3RvS3pvY3dpNmdaNEpzaUxuZVhEZDdqSmM0Z20ycFBFQzRJYy9PK2s9IiwidCI6ImEifQ/manifest.json';
 
@@ -11,6 +9,9 @@ let sources = [];
 let selectedSourceIndex = null;
 let roomConfig = { username: '', roomName: '', projectorType: 'public', customManifest: '', shareMode: 'host' };
 
+// ========================================
+// NAVEGACIÓN
+// ========================================
 function goToStep(step) {
   // Validaciones
   if (step === 2) {
@@ -58,6 +59,9 @@ function goToStep(step) {
   }
 }
 
+// ========================================
+// SELECCIÓN DE OPCIONES
+// ========================================
 function selectProjectorType(type) {
   document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
     radio.checked = radio.value === type;
@@ -81,6 +85,9 @@ function selectShareMode(mode) {
   event.currentTarget.classList.add('selected');
 }
 
+// ========================================
+// BÚSQUEDA DE PELÍCULAS
+// ========================================
 function initSearch() {
   const input = document.getElementById('searchInput');
   if (!input) return;
@@ -119,7 +126,8 @@ async function searchMovies(query) {
         backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : null,
         rating: item.vote_average ? item.vote_average.toFixed(1) : 'N/A',
         overview: item.overview || 'Sin descripción disponible',
-        type: item.media_type === 'movie' ? 'movie' : 'series'
+        type: item.media_type === 'movie' ? 'movie' : 'series',
+        mediaType: item.media_type
       }));
 
     if (filtered.length === 0) {
@@ -138,26 +146,16 @@ function renderMovieGrid(movies) {
   const container = document.getElementById('searchResults');
   container.innerHTML = '';
 
-  movies.forEach((movie, index) => {
+  movies.forEach((movie) => {
     const card = document.createElement('div');
     card.className = 'movie-card';
     card.onclick = () => selectMovie(movie);
 
-    const imdbBadge = movie.imdbId 
-      ? `<span class="imdb-badge">✅ ${movie.imdbId}</span>`
-      : '<span class="imdb-badge no-imdb">⚠️ Sin IMDb</span>';
-
     card.innerHTML = `
-      <img src="${movie.poster}" alt="${escapeHtml(movie.title)}" class="movie-poster">
-      <div class="movie-info">
-        <h3 class="movie-title">${escapeHtml(movie.title)}</h3>
-        ${imdbBadge}
-        <div class="movie-meta">
-          <span>⭐ ${movie.rating}</span>
-          <span>${movie.year || 'N/A'}</span>
-          <span>${movie.type === 'movie' ? '🎬 Película' : '📺 Serie'}</span>
-        </div>
-        <p class="movie-overview">${escapeHtml(movie.overview)}</p>
+      <img src="${movie.poster}" alt="${escapeHtml(movie.title)}">
+      <div class="movie-card-info">
+        <div class="movie-card-title">${escapeHtml(movie.title)}</div>
+        <div class="movie-card-meta">⭐ ${movie.rating}</div>
       </div>
     `;
 
@@ -165,6 +163,9 @@ function renderMovieGrid(movies) {
   });
 }
 
+// ========================================
+// SELECCIONAR PELÍCULA
+// ========================================
 async function selectMovie(movie) {
   console.log('✅ Seleccionando:', movie.title);
 
@@ -185,7 +186,7 @@ async function selectMovie(movie) {
 
     console.log('✅ IMDb ID:', movie.imdbId);
 
-    // GUARDAR EN SESSIONSTORAGE
+    // GUARDAR EN SESSIONSTORAGE ← FIX PRINCIPAL
     selectedMovie = movie;
     sessionStorage.setItem('projectorroom:selectedmovie', JSON.stringify(movie));
 
@@ -203,15 +204,28 @@ async function selectMovie(movie) {
   }
 }
 
+// ========================================
+// RENDERIZAR PELÍCULA SELECCIONADA
+// ========================================
 function renderSelectedMovie() {
-  document.getElementById('selectedPoster').src = selectedMovie.poster;
-  document.getElementById('selectedTitle').textContent = selectedMovie.title;
-  document.getElementById('selectedRating').textContent = selectedMovie.rating;
-  document.getElementById('selectedYear').textContent = selectedMovie.year;
-  document.getElementById('selectedType').textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
-  document.getElementById('selectedOverview').textContent = selectedMovie.overview;
+  const posterEl = document.getElementById('selectedPoster');
+  const titleEl = document.getElementById('selectedTitle');
+  const ratingEl = document.getElementById('selectedRating');
+  const yearEl = document.getElementById('selectedYear');
+  const typeEl = document.getElementById('selectedType');
+  const overviewEl = document.getElementById('selectedOverview');
+
+  if (posterEl) posterEl.src = selectedMovie.poster;
+  if (titleEl) titleEl.textContent = selectedMovie.title;
+  if (ratingEl) ratingEl.textContent = selectedMovie.rating;
+  if (yearEl) yearEl.textContent = selectedMovie.year;
+  if (typeEl) typeEl.textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
+  if (overviewEl) overviewEl.textContent = selectedMovie.overview;
 }
 
+// ========================================
+// CARGAR FUENTES
+// ========================================
 async function loadSources() {
   const container = document.getElementById('sourcesList');
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
@@ -229,7 +243,8 @@ async function loadSources() {
       // SERIES: Necesita episodio específico
       alert('⚠️ Para series, selecciona episodio en la sala.');
       container.innerHTML = '<div class="loading">📺 Series necesitan episodio específico</div>';
-      document.getElementById('btnCreateRoom').disabled = true;
+      const btnCreateRoom = document.getElementById('btnCreateRoom');
+      if (btnCreateRoom) btnCreateRoom.disabled = true;
       return;
     }
 
@@ -242,7 +257,7 @@ async function loadSources() {
 
     const data = await res.json();
 
-    // FILTRAR SOLO HTTP DIRECTOS
+    // FILTRAR SOLO HTTP DIRECTOS (NO TORRENTS)
     sources = (data.streams || [])
       .filter(s => {
         if (!s?.url) return false;
@@ -257,15 +272,15 @@ async function loadSources() {
       .map(s => ({
         url: s.url,
         title: s.title || s.name || 'Stream',
-        provider: manifest.name || 'Addon',
-        quality: s.quality || 'N/A'
+        provider: manifest.name || 'Addon'
       }));
 
     console.log('✅', sources.length, 'fuentes HTTP encontradas');
 
     if (sources.length === 0) {
       container.innerHTML = '<div class="loading">😕 Solo torrents disponibles<br><small>Prueba otro addon</small></div>';
-      document.getElementById('btnCreateRoom').disabled = true;
+      const btnCreateRoom = document.getElementById('btnCreateRoom');
+      if (btnCreateRoom) btnCreateRoom.disabled = true;
       return;
     }
 
@@ -273,10 +288,14 @@ async function loadSources() {
   } catch (error) {
     console.error('❌ Error cargando fuentes:', error);
     container.innerHTML = `<div class="loading">❌ ${error.message}</div>`;
-    document.getElementById('btnCreateRoom').disabled = true;
+    const btnCreateRoom = document.getElementById('btnCreateRoom');
+    if (btnCreateRoom) btnCreateRoom.disabled = true;
   }
 }
 
+// ========================================
+// RENDERIZAR FUENTES
+// ========================================
 function renderSources() {
   const container = document.getElementById('sourcesList');
   container.innerHTML = '';
@@ -286,16 +305,16 @@ function renderSources() {
     card.className = 'source-card';
     card.onclick = () => selectSource(index);
 
-    const qualityBadge = source.quality !== 'N/A' ? `<span class="quality-badge">${source.quality}</span>` : '';
-
     card.innerHTML = `
       <div class="source-title">${escapeHtml(source.title)}</div>
-      <div class="source-meta">🔌 ${escapeHtml(source.provider)} ${qualityBadge}</div>`;
+      <div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>
+    `;
 
     container.appendChild(card);
   });
 
-  document.getElementById('btnCreateRoom').disabled = false;
+  const btnCreateRoom = document.getElementById('btnCreateRoom');
+  if (btnCreateRoom) btnCreateRoom.disabled = false;
 }
 
 function selectSource(index) {
@@ -305,6 +324,9 @@ function selectSource(index) {
   });
 }
 
+// ========================================
+// CREAR SALA
+// ========================================
 async function createRoom() {
   if (selectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
@@ -350,6 +372,9 @@ async function createRoom() {
   }
 }
 
+// ========================================
+// UTILIDADES
+// ========================================
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
