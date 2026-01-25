@@ -835,39 +835,3 @@ body {
 .ratings-list::-webkit-scrollbar-thumb:hover {
   background: #4a4a4a;
 }
-
-/* Badge de episodio en selector de fuentes */
-.episode-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: inline-block;
-  margin: 10px 0;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-/* Info de episodio en selector de fuentes (invitado) */
-.episode-info-text {
-  color: #ffffff;
-  margin: 10px 0;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.episode-info-text strong {
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.episode-title {
-  margin-top: 4px;
-  opacity: 0.9;
-}
-
-.episode-overview {
-  color: #cccccc;
-  line-height: 1.6;
-  margin-top: 10px;
-}
