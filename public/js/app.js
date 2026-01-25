@@ -470,9 +470,17 @@ async function createRoom() {
 
     if (data.success) {
       const roomId = data.projectorRoom.id;
+      
+      // ⭐ GUARDAR EN SESSIONSTORAGE ANTES DE REDIRIGIR
       sessionStorage.setItem(`projectorroom:ishost:${roomId}`, 'true');
       sessionStorage.setItem(`projectorroom:hostusername:${roomId}`, roomConfig.username);
-      window.location.href = `/sala/${roomId}`;
+      
+      console.log('✅ Host guardado:', roomId, roomConfig.username);
+      
+      // ⭐ Pequeño delay para asegurar que se guarda
+      setTimeout(() => {
+        window.location.href = `/sala/${roomId}`;
+      }, 100);
     } else {
       alert('Error creando sala');
     }
@@ -482,6 +490,7 @@ async function createRoom() {
     alert('Error creando sala');
   }
 }
+
 
 // ==================== UTILIDADES ====================
 
