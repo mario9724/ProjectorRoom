@@ -854,3 +854,36 @@ body {
     font-size: 1.2rem;
   }
 }
+.season-episode-selector {
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.episode-select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.3);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.episode-select:hover:not(:disabled) {
+  border-color: rgba(255,255,255,0.3);
+  background: rgba(0,0,0,0.5);
+}
+
+.episode-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.episode-select option {
+  background: #1a1a1a;
+  color: white;
+}
