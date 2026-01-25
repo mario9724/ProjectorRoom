@@ -38,11 +38,11 @@ window.addEventListener('load', async function() {
     return;
   }
 
-  isHost = sessionStorage.getItem(`projectorroom:ishost:${roomId}`) === 'true';
+  isHost = sessionStorage.getItem(\`projectorroom:ishost:\${roomId}\`) === 'true';
   console.log('👤 ¿Es anfitrión?', isHost);
 
   if (isHost) {
-    username = sessionStorage.getItem(`projectorroom:hostusername:${roomId}`);
+    username = sessionStorage.getItem(\`projectorroom:hostusername:\${roomId}\`);
     console.log('🎯 Username anfitrión:', username);
 
     if (!username) {
@@ -89,7 +89,7 @@ window.addEventListener('load', async function() {
 });
 
 async function loadRoomData() {
-  const res = await fetch(`/api/projectorrooms/${roomId}`);
+  const res = await fetch(\`/api/projectorrooms/\${roomId}\`);
   const data = await res.json();
 
   if (!data.success) {
@@ -103,15 +103,15 @@ function showGuestConfig() {
   console.log('📝 Renderizando configuración de invitado');
   document.querySelector('.room-container').style.display = 'none';
 
-  let configHTML = `
+  let configHTML = \`
     <div class="guest-config-container">
       <div class="step-card">
         <h1>👋 Ey roomie, ¿cómo te llamas?</h1>
         <input type="text" id="guestUsername" placeholder="Tu nombre..." maxlength="20" autofocus>
-  `;
+  \`;
 
   if (roomData.useHostSource === false) {
-    configHTML += `
+    configHTML += \`
       <div style="margin-top: 30px;">
         <h2 style="font-size: 1.3rem; margin-bottom: 20px; text-align: center;">🎬 ¿Qué proyector quieres usar?</h2>
 
@@ -135,16 +135,16 @@ function showGuestConfig() {
           <input type="url" id="guestCustomManifest" placeholder="https://tu-manifest.json">
         </div>
       </div>
-    `;
+    \`;
   }
 
-  configHTML += `
+  configHTML += \`
         <button class="btn-primary" onclick="submitGuestConfig()" style="margin-top: 30px; width: 100%;">
-          Accede a la sala de ${escapeHtml(roomData.hostUsername)} →
+          Accede a la sala de \${escapeHtml(roomData.hostUsername)} →
         </button>
       </div>
     </div>
-  `;
+  \`;
 
   document.body.insertAdjacentHTML('beforeend', configHTML);
 }
@@ -217,23 +217,23 @@ async function showGuestSourceSelector() {
     const seasonNum = ep.season_number;
     const episodeNum = String(ep.episode_number).padStart(2, '0');
     const episodeName = ep.name || '';
-    episodeInfo = '<div style="color: #ddd; font-size: 1.1rem; margin-top: 8px; font-weight: 500;">[' + seasonNum + 'x' + episodeNum + '] ' + escapeHtml(episodeName) + '</div>';
+    episodeInfo = \`<div style="color: #ddd; font-size: 1.1rem; margin-top: 8px; font-weight: 500;">[\${seasonNum}x\${episodeNum}] \${escapeHtml(episodeName)}</div>\`;
   }
 
-  const selectorHTML = `
+  const selectorHTML = \`
     <div class="guest-source-container">
       <div class="step-card wide">
         <div class="movie-header">
-          <img src="${movieData.poster || ''}" alt="Poster">
+          <img src="\${movieData.poster || ''}" alt="Poster">
           <div class="movie-info">
-            <h2>${escapeHtml(movieData.title || 'Película')}</h2>
-            ${episodeInfo}
+            <h2>\${escapeHtml(movieData.title || 'Película')}</h2>
+            \${episodeInfo}
             <div class="movie-meta">
-              <span>⭐ ${movieData.rating || 'N/A'}</span>
-              <span>${movieData.year || 'N/A'}</span>
-              <span>${movieData.type === 'movie' ? 'Película' : 'Serie'}</span>
+              <span>⭐ \${movieData.rating || 'N/A'}</span>
+              <span>\${movieData.year || 'N/A'}</span>
+              <span>\${movieData.type === 'movie' ? 'Película' : 'Serie'}</span>
             </div>
-            <p>${escapeHtml(movieData.overview || 'Sin descripción')}</p>
+            <p>\${escapeHtml(movieData.overview || 'Sin descripción')}</p>
           </div>
         </div>
 
@@ -249,7 +249,7 @@ async function showGuestSourceSelector() {
         </button>
       </div>
     </div>
-  `;
+  \`;
 
   document.body.insertAdjacentHTML('beforeend', selectorHTML);
   await loadGuestSources(movieData);
@@ -271,7 +271,7 @@ async function loadGuestSources(movieData) {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = movieData.type === 'movie' ? 'movie' : 'series';
-    const streamUrl = `${baseUrl}/stream/${streamType}/${movieData.imdbId}.json`;
+    const streamUrl = \`\${baseUrl}/stream/\${streamType}/\${movieData.imdbId}.json\`;
 
     console.log('🎬 Stream URL:', streamUrl);
 
@@ -298,7 +298,7 @@ async function loadGuestSources(movieData) {
     renderGuestSources();
   } catch (error) {
     console.error('❌ Error cargando fuentes:', error);
-    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
+    container.innerHTML = \`<div class="loading">❌ Error: \${error.message}</div>\`;
   }
 }
 
@@ -311,10 +311,10 @@ function renderGuestSources() {
     card.className = 'source-card';
     card.onclick = () => selectGuestSource(index);
 
-    card.innerHTML = `
-      <div class="source-title">${escapeHtml(source.title)}</div>
-      <div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>
-    `;
+    card.innerHTML = \`
+      <div class="source-title">\${escapeHtml(source.title)}</div>
+      <div class="source-meta">🔌 \${escapeHtml(source.provider)}</div>
+    \`;
 
     container.appendChild(card);
   });
@@ -390,14 +390,14 @@ function renderRoom() {
   if (posterEl) posterEl.src = movieData.poster || '';
 
   // ⭐ Construir título con episodio si es serie (FORMATO 1x02)
-  let titleText = `Proyectando ${movieData.title}`;
+  let titleText = \`Proyectando \${movieData.title}\`;
 
   if (movieData.type === 'series' && roomData.selectedEpisode) {
     const ep = JSON.parse(roomData.selectedEpisode);
-    titleText += ` (${ep.season_number}x${String(ep.episode_number).padStart(2, '0')})`;
+    titleText += \` (\${ep.season_number}x\${String(ep.episode_number).padStart(2, '0')})\`;
   }
 
-  titleText += ` en ${roomData.roomName} de ${roomData.hostUsername}`;
+  titleText += \` en \${roomData.roomName} de \${roomData.hostUsername}\`;
 
   const titleEl = document.getElementById('roomTitle');
   if (titleEl) titleEl.textContent = titleText;
@@ -414,9 +414,9 @@ function renderRoom() {
   const ratingEl = document.getElementById('movieRating');
   const overviewEl = document.getElementById('movieOverview');
 
-  if (yearEl) yearEl.textContent = `📅 ${movieData.year || 'N/A'}`;
-  if (typeEl) typeEl.textContent = `🎬 ${movieData.type === 'movie' ? 'Película' : 'Serie'}`;
-  if (ratingEl) ratingEl.textContent = `⭐ ${movieData.rating || 'N/A'}`;
+  if (yearEl) yearEl.textContent = \`📅 \${movieData.year || 'N/A'}\`;
+  if (typeEl) typeEl.textContent = \`🎬 \${movieData.type === 'movie' ? 'Película' : 'Serie'}\`;
+  if (ratingEl) ratingEl.textContent = \`⭐ \${movieData.rating || 'N/A'}\`;
   if (overviewEl) overviewEl.textContent = movieData.overview || 'Sin descripción disponible';
 
   console.log('✅ Interfaz renderizada');
@@ -435,13 +435,13 @@ function connectSocket() {
   socket.on('user-joined', data => {
     console.log('👥 Usuario unido:', data.user.username);
     updateUsersList(data.users);
-    addChatMessage('Sistema', `${data.user.username} se unió a la sala`, true);
+    addChatMessage('Sistema', \`\${data.user.username} se unió a la sala\`, true);
   });
 
   socket.on('user-left', data => {
     console.log('👋 Usuario salió:', data.username);
     updateUsersList(data.users);
-    addChatMessage('Sistema', `${data.username} salió de la sala`, true);
+    addChatMessage('Sistema', \`\${data.username} salió de la sala\`, true);
   });
 
   socket.on('chat-message', data => {
@@ -473,10 +473,10 @@ function updateUsersList(users) {
     if (users.length === 0) {
       usersNamesEl.textContent = 'No hay usuarios';
     } else if (users.length === 1) {
-      usersNamesEl.textContent = `1 roomie en la sala: ${users[0].username}`;
+      usersNamesEl.textContent = \`1 roomie en la sala: \${users[0].username}\`;
     } else {
       const names = users.map(u => u.username).join(', ');
-      usersNamesEl.textContent = `${users.length} roomies en la sala: ${names}`;
+      usersNamesEl.textContent = \`\${users.length} roomies en la sala: \${names}\`;
     }
   }
 }
@@ -491,7 +491,7 @@ function addChatMessage(username, message, isSystem) {
   if (isSystem) {
     messageEl.textContent = message;
   } else {
-    messageEl.innerHTML = `<span class="chat-username">${escapeHtml(username)}:</span> ${escapeHtml(message)}`;
+    messageEl.innerHTML = \`<span class="chat-username">\${escapeHtml(username)}:</span> \${escapeHtml(message)}\`;
   }
 
   container.appendChild(messageEl);
@@ -527,11 +527,11 @@ function startProjection() {
   }
 
   console.log('▶️ Abriendo VLC con:', sourceUrl);
-  window.location.href = `vlc://${sourceUrl}`;
+  window.location.href = \`vlc://\${sourceUrl}\`;
 }
 
 function copyInvite() {
-  const roomUrl = `${window.location.origin}/sala/${roomId}`;
+  const roomUrl = \`\${window.location.origin}/sala/\${roomId}\`;
 
   if (navigator.clipboard) {
     navigator.clipboard.writeText(roomUrl).then(() => {
@@ -600,7 +600,7 @@ function setupRatingStars() {
       socket.emit('add-rating', { roomId, username, rating: selectedRating });
     }
 
-    alert(`✅ Has calificado con ${selectedRating}/10 estrellas`);
+    alert(\`✅ Has calificado con \${selectedRating}/10 estrellas\`);
   };
 }
 
@@ -616,9 +616,9 @@ function renderAllRatings() {
   allRatings.forEach(rating => {
     const ratingEl = document.createElement('div');
     ratingEl.className = 'rating-item';
-    ratingEl.innerHTML = `
-      <strong>${escapeHtml(rating.username)}:</strong> ${'★'.repeat(rating.rating)}${'☆'.repeat(10 - rating.rating)} (${rating.rating}/10)
-    `;
+    ratingEl.innerHTML = \`
+      <strong>\${escapeHtml(rating.username)}:</strong> \${'★'.repeat(rating.rating)}\${'☆'.repeat(10 - rating.rating)} (\${rating.rating}/10)
+    \`;
     container.appendChild(ratingEl);
   });
 }
@@ -647,7 +647,7 @@ function submitReaction() {
     return;
   }
 
-  const time = `${minuteNum}:00`;
+  const time = \`\${minuteNum}:00\`;
 
   if (socket && roomId) {
     socket.emit('add-reaction', { roomId, username, time, message });
@@ -679,11 +679,11 @@ function renderAllReactions() {
   allReactions.forEach(reaction => {
     const reactionEl = document.createElement('div');
     reactionEl.className = 'reaction-item';
-    reactionEl.innerHTML = `
-      <div class="reaction-time">⏱️ ${escapeHtml(reaction.time)}</div>
-      <div class="reaction-user">${escapeHtml(reaction.username)}</div>
-      <div class="reaction-message">${escapeHtml(reaction.message)}</div>
-    `;
+    reactionEl.innerHTML = \`
+      <div class="reaction-time">⏱️ \${escapeHtml(reaction.time)}</div>
+      <div class="reaction-user">\${escapeHtml(reaction.username)}</div>
+      <div class="reaction-message">\${escapeHtml(reaction.message)}</div>
+    \`;
     container.appendChild(reactionEl);
   });
 }
@@ -694,7 +694,7 @@ function closeReactionsModal() {
 
 async function loadRatings() {
   try {
-    const res = await fetch(`/api/projectorrooms/${roomId}/ratings`);
+    const res = await fetch(\`/api/projectorrooms/\${roomId}/ratings\`);
     const data = await res.json();
     if (data.success) {
       allRatings = data.ratings;
@@ -708,7 +708,7 @@ async function loadRatings() {
 
 async function loadReactions() {
   try {
-    const res = await fetch(`/api/projectorrooms/${roomId}/reactions`);
+    const res = await fetch(\`/api/projectorrooms/\${roomId}/reactions\`);
     const data = await res.json();
     if (data.success) {
       allReactions = data.reactions;
@@ -722,7 +722,7 @@ async function loadReactions() {
 
 async function loadMessages() {
   try {
-    const res = await fetch(`/api/projectorrooms/${roomId}/messages`);
+    const res = await fetch(\`/api/projectorrooms/\${roomId}/messages\`);
     const data = await res.json();
     if (data.success && data.messages) {
       console.log('✅ Mensajes cargados desde BD:', data.messages.length);
