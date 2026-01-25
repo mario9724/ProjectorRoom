@@ -309,17 +309,15 @@ async function loadEpisodes(seasonNum) {
 
   try {
     const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNum}?api_key=${TMDB_API_KEY}&language=es-ES`;
-    console.log('🔗 URL episodios:', url);
+    console.log('🔗 URL:', url);
     
     const res = await fetch(url);
     console.log('📊 Status:', res.status);
     
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     
     const data = await res.json();
-    console.log('📋 Datos:', data.episodes?.length || 0);
+    console.log('📋 Episodios:', data.episodes?.length || 0);
 
     let episodesHTML = '<option value="">Selecciona episodio</option>';
     
@@ -327,21 +325,20 @@ async function loadEpisodes(seasonNum) {
       data.episodes.forEach(ep => {
         episodesHTML += `<option value="${ep.episode_number}">Ep ${ep.episode_number}: ${ep.name}</option>`;
       });
+      selectedMovie.episodes = data.episodes;
     } else {
-      // ⭐ FALLBACK: episodios genéricos
       for (let i = 1; i <= 25; i++) {
         episodesHTML += `<option value="${i}">Episodio ${i}</option>`;
       }
+      selectedMovie.episodes = [];
     }
 
     episodeSelect.innerHTML = episodesHTML;
     episodeSelect.disabled = false;
-    selectedMovie.episodes = data.episodes || [];
 
   } catch (error) {
-    console.error('❌ Error loadEpisodes:', error);
+    console.error('❌ Error:', error);
     
-    // ⭐ FALLBACK automático
     let episodesHTML = '<option value="">Selecciona episodio</option>';
     for (let i = 1; i <= 25; i++) {
       episodesHTML += `<option value="${i}">Episodio ${i}</option>`;
@@ -349,8 +346,10 @@ async function loadEpisodes(seasonNum) {
     
     episodeSelect.innerHTML = episodesHTML;
     episodeSelect.disabled = false;
+    selectedMovie.episodes = [];
   }
 }
+
 
 
 // ==================== FUENTES ====================
