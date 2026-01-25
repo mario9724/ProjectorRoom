@@ -1,4 +1,4 @@
-// app.js BETA-1.5.1 - Selector de episodios para series
+// app.js BETA-1.5.1 - Selector de episodios para series (FIXED)
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
 
@@ -280,7 +280,7 @@ function renderSeasonSelector() {
       selectedMovie.selectedEpisode = parseInt(episodeNum);
       console.log(`✅ T${selectedMovie.selectedSeason}E${selectedMovie.selectedEpisode}`);
 
-      updateEpisodeImdbId();
+      loadSources();
     }
   });
 }
@@ -311,25 +311,6 @@ async function loadEpisodes(seasonNum) {
   }
 }
 
-async function updateEpisodeImdbId() {
-  try {
-    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${selectedMovie.selectedSeason}/episode/${selectedMovie.selectedEpisode}/external_ids?api_key=${TMDB_API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.imdb_id) {
-      selectedMovie.episodeImdbId = data.imdb_id;
-      console.log(`✅ IMDb episodio: ${selectedMovie.episodeImdbId}`);
-    }
-
-    loadSources();
-
-  } catch (error) {
-    console.error('Error obteniendo IMDb del episodio:', error);
-    loadSources();
-  }
-}
-
 // ==================== FUENTES ====================
 
 async function loadSources() {
@@ -347,8 +328,13 @@ async function loadSources() {
     let streamUrl;
 
     if (selectedMovie.type === 'series' && selectedMovie.selectedSeason && selectedMovie.selectedEpisode) {
-      streamUrl = `${baseUrl}stream/series/${selectedMovie.imdbId}:${selectedMovie.selectedSeason}:${selectedMovie.selectedEpisode}.json`;
-      console.log('📺 Episodio:', streamUrl);
+      // ⭐ FORMATO CORRECTO: tt1190634:1:1 (usar ID de la SERIE, no del episodio)
+      const season = selectedMovie.selectedSeason;
+      const episode = selectedMovie.selectedEpisode;
+
+      streamUrl = `${baseUrl}stream/series/${selectedMovie.imdbId}:${season}:${episode}.json`;
+      console.log('📺 Buscando episodio:', streamUrl);
+
     } else if (selectedMovie.type === 'series') {
       container.innerHTML = '<div class="loading">⚠️ Selecciona temporada y episodio</div>';
       document.getElementById('btnCreateRoom').disabled = true;
@@ -375,6 +361,7 @@ async function loadSources() {
       return;
     }
 
+    console.log(`✅ ${sources.length} fuentes encontradas`);
     renderSources();
 
   } catch (error) {
