@@ -210,11 +210,13 @@ async function showGuestSourceSelector() {
 
   const movieData = JSON.parse(roomData.manifest);
 
-  // Construir información de episodio si es serie
+  // ⭐ Construir información de episodio si es serie (TEXTO SIMPLE GRIS)
   let episodeInfo = '';
   if (movieData.type === 'series' && roomData.selectedEpisode) {
     const ep = JSON.parse(roomData.selectedEpisode);
-    episodeInfo = `<div class="episode-badge">📺 T${ep.season_number} E${ep.episode_number}: ${escapeHtml(ep.name || '')}</div>`;
+    const seasonNum = ep.season_number;
+    const episodeNum = String(ep.episode_number).padStart(2, '0');
+    episodeInfo = `<div style="color: #999; font-size: 0.95rem; margin-top: 8px;">${seasonNum}x${episodeNum}</div>`;
   }
 
   const selectorHTML = `
@@ -386,7 +388,7 @@ function renderRoom() {
   const posterEl = document.getElementById('roomPosterSmall');
   if (posterEl) posterEl.src = movieData.poster || '';
 
-  // Construir título con episodio si es serie
+  // ⭐ Construir título con episodio si es serie (FORMATO 1x02)
   let titleText = `Proyectando ${movieData.title}`;
 
   if (movieData.type === 'series' && roomData.selectedEpisode) {
