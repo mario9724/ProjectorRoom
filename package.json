@@ -1,15 +1,24 @@
 {
   "name": "projectorroom",
-  "version": "1.0.0",
-  "description": "Salas de proyección con VLC",
+  "version": "1.6.0-stable",
+  "description": "Sala de proyección colaborativa con Stremio",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "init-db": "node init-db.js"
+    "dev": "nodemon server.js"
   },
+  "keywords": [
+    "stremio",
+    "watch-together",
+    "streaming"
+  ],
+  "author": "ProjectorRoom Team",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.6.1",
-    "pg": "^8.11.3"
+    "socket.io": "^4.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
