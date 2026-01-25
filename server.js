@@ -25,7 +25,7 @@ function generateId() {
 
 // Crear sala
 app.post('/api/projectorrooms/create', async (req, res) => {
-  const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
+  const { roomName, hostUsername, manifest, selectedEpisode, sourceUrl, useHostSource, projectorType, customManifest } = req.body;
 
   if (!roomName || !hostUsername || !manifest || !sourceUrl) {
     return res.json({ success: false, message: 'Datos incompletos' });
@@ -35,9 +35,9 @@ app.post('/api/projectorrooms/create', async (req, res) => {
 
   try {
     await pool.query(
-      `INSERT INTO projector_rooms (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [roomId, roomName, hostUsername, manifest, sourceUrl, useHostSource !== false, projectorType || 'public', customManifest || '']
+      `INSERT INTO projector_rooms (id, room_name, host_username, manifest, selected_episode, source_url, use_host_source, projector_type, custom_manifest)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [roomId, roomName, hostUsername, manifest, selectedEpisode || null, sourceUrl, useHostSource !== false, projectorType || 'public', customManifest || '']
     );
 
     console.log(`✅ Sala creada: ${roomId} - ${roomName} por ${hostUsername}`);
@@ -49,6 +49,7 @@ app.post('/api/projectorrooms/create', async (req, res) => {
         roomName,
         hostUsername,
         manifest,
+        selectedEpisode: selectedEpisode || null,
         sourceUrl,
         useHostSource: useHostSource !== false,
         projectorType: projectorType || 'public',
@@ -80,6 +81,7 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
         roomName: room.room_name,
         hostUsername: room.host_username,
         manifest: room.manifest,
+        selectedEpisode: room.selected_episode,
         sourceUrl: room.source_url,
         useHostSource: room.use_host_source,
         projectorType: room.projector_type,
