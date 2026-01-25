@@ -871,4 +871,20 @@ body {
   line-height: 1.6;
   margin-top: 10px;
 }
+.movie-header-parallel {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.episode-parallel {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: linear-gradient(135deg, #2a2a40 0%, #1a1a2e 100%);
+  border-radius: 12px;
+  border-left: 4px solid #00d9ff;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 217, 255, 0.2);
+}
 
