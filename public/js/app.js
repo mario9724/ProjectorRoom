@@ -186,6 +186,30 @@ async function selectMovie(movie) {
     goToStep(6);
     renderSelectedMovie();
 
+    // ⭐ OCULTAR selector ANTES de decidir qué hacer
+    const seasonContainer = document.getElementById('seasonSelector');
+    if (seasonContainer) {
+      seasonContainer.style.display = 'none';
+      seasonContainer.innerHTML = ''; // ⭐ Limpiar contenido
+    }
+
+    if (selectedMovie.type === 'series') {
+      await loadSeasons();
+    } else {
+      console.log('🎬 Es película, cargando fuentes directamente');
+      loadSources();
+    }
+
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error obteniendo información');
+  }
+}
+
+
+    goToStep(6);
+    renderSelectedMovie();
+
     // ⭐ Si es serie, cargar temporadas; si es película, cargar fuentes directamente
     if (selectedMovie.type === 'series') {
       await loadSeasons();
