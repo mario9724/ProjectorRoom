@@ -42,7 +42,7 @@ isHost = sessionStorage.getItem(`projectorroom:ishost:${roomId}`) === 'true';
   console.log('👤 ¿Es anfitrión?', isHost);
   
   if (isHost) {
-    username = sessionStorage.getItem('projectorroom_host_username_' + roomId);
+username = sessionStorage.getItem(`projectorroom:hostusername:${roomId}`);
     console.log('🎯 Username anfitrión:', username);
     
     if (!username) {
