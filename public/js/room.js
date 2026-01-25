@@ -38,7 +38,7 @@ window.addEventListener('load', async function() {
     return;
   }
   
-  isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
+isHost = sessionStorage.getItem(`projectorroom:ishost:${roomId}`) === 'true';
   console.log('👤 ¿Es anfitrión?', isHost);
   
   if (isHost) {
