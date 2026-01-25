@@ -233,14 +233,21 @@ async function loadSeasons() {
 
 function renderSeasonSelector() {
   const container = document.getElementById('seasonSelector');
-  if (!container) return;
+  if (!container) {
+    console.error('❌ seasonSelector NO existe en HTML');
+    return;
+  }
 
-  // ⭐ Solo mostrar si es SERIE
+  console.log('🔍 selectedMovie.type:', selectedMovie.type);
+
+  // ⭐ Solo ocultar si es PELÍCULA
   if (selectedMovie.type !== 'series') {
+    console.log('🎬 Es película, ocultando selector');
     container.style.display = 'none';
     return;
   }
 
+  console.log('📺 Es serie, mostrando selector');
   container.style.display = 'block';
 
   let seasonsHTML = '<option value="">Selecciona temporada</option>';
@@ -275,7 +282,6 @@ function renderSeasonSelector() {
       document.getElementById('episodeSelect').innerHTML = '<option value="">Primero selecciona temporada</option>';
       return;
     }
-
     await loadEpisodes(seasonNum);
   });
 
@@ -285,12 +291,10 @@ function renderSeasonSelector() {
       selectedMovie.selectedSeason = parseInt(document.getElementById('seasonSelect').value);
       selectedMovie.selectedEpisode = parseInt(episodeNum);
       console.log(`✅ T${selectedMovie.selectedSeason}E${selectedMovie.selectedEpisode}`);
-
       loadSources();
     }
   });
 }
-
 
 async function loadEpisodes(seasonNum) {
   const episodeSelect = document.getElementById('episodeSelect');
