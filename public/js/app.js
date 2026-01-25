@@ -17,10 +17,6 @@ let shareSource = true;
 const updatingRoomId = sessionStorage.getItem('projectorroom_updating_room');
 if (updatingRoomId) {
   console.log('🔄 Modo actualización de sala:', updatingRoomId);
-  // Saltar directamente a búsqueda
-  window.addEventListener('load', function() {
-    goToStep(5);
-  });
 }
 
 // NAVEGACIÓN ENTRE PASOS
@@ -34,7 +30,7 @@ function goToStep(step) {
         return;
       }
     }
-    
+
     if (step === 3) {
       const roomName = document.getElementById('roomName').value.trim();
       if (!roomName) {
@@ -42,7 +38,7 @@ function goToStep(step) {
         return;
       }
     }
-    
+
     if (step === 4) {
       projectorType = document.querySelector('input[name="projectorType"]:checked').value;
       if (projectorType === 'custom') {
@@ -56,12 +52,12 @@ function goToStep(step) {
         manifestUrl = PUBLIC_MANIFEST;
       }
     }
-    
+
     if (step === 5) {
       shareSource = document.querySelector('input[name="shareMode"]:checked').value === 'host';
     }
   }
-  
+
   // Ocultar paso actual
   if (currentStep > 0) {
     const currentStepEl = document.getElementById('step' + currentStep);
@@ -69,11 +65,11 @@ function goToStep(step) {
       currentStepEl.classList.remove('active');
     }
   }
-  
+
   // Mostrar nuevo paso
   currentStep = step;
   document.getElementById('step' + step).classList.add('active');
-  
+
   // Inicializar búsqueda en paso 5
   if (step === 5) {
     setTimeout(initSearch, 100);
@@ -85,13 +81,13 @@ function selectProjectorType(type) {
   document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
     radio.checked = radio.value === type;
   });
-  
+
   document.querySelectorAll('#step3 .option-card').forEach(card => {
     card.classList.remove('selected');
   });
-  
+
   event.currentTarget.classList.add('selected');
-  
+
   const customBox = document.getElementById('customManifestBox');
   customBox.style.display = type === 'custom' ? 'block' : 'none';
 }
@@ -101,11 +97,11 @@ function selectShareMode(mode) {
   document.querySelectorAll('input[name="shareMode"]').forEach(radio => {
     radio.checked = radio.value === mode;
   });
-  
+
   document.querySelectorAll('#step4 .option-card').forEach(card => {
     card.classList.remove('selected');
   });
-  
+
   event.currentTarget.classList.add('selected');
 }
 
@@ -113,18 +109,18 @@ function selectShareMode(mode) {
 function initSearch() {
   const input = document.getElementById('searchInput');
   if (!input) return;
-  
+
   input.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     const query = this.value.trim();
-    
+
     if (query.length < 2) {
       document.getElementById('searchResults').innerHTML = '<div class="no-results">Escribe al menos 2 caracteres para buscar</div>';
       return;
     }
-    
+
     document.getElementById('searchResults').innerHTML = '<div class="loading">🔍 Buscando...</div>';
-    
+
     searchTimeout = setTimeout(() => searchMovie(query), 500);
   });
 }
@@ -134,14 +130,14 @@ async function searchMovie(query) {
   try {
     const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=es-ES`);
     const data = await res.json();
-    
+
     const results = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
-    
+
     if (results.length === 0) {
       document.getElementById('searchResults').innerHTML = '<div class="no-results">No se encontraron resultados</div>';
       return;
     }
-    
+
     let html = '';
     results.slice(0, 8).forEach(item => {
       const title = item.title || item.name;
@@ -150,7 +146,7 @@ async function searchMovie(query) {
         ? `https://image.tmdb.org/t/p/w200${item.poster_path}`
         : '/images/placeholder.png';
       const type = item.media_type === 'movie' ? 'Película' : 'Serie';
-      
+
       html += `
         <div class="movie-result-card" onclick='selectMovie(${JSON.stringify(item)})'>
           <img src="${poster}" alt="${title}">
@@ -165,7 +161,7 @@ async function searchMovie(query) {
         </div>
       `;
     });
-    
+
     document.getElementById('searchResults').innerHTML = html;
   } catch (error) {
     console.error('Error buscando:', error);
@@ -173,26 +169,27 @@ async function searchMovie(query) {
   }
 }
 
-// SELECCIONAR PELÍCULA
+// ⭐ FIX: SELECCIONAR PELÍCULA (guardar media_type correctamente)
 async function selectMovie(movie) {
   selectedMovie = movie;
-  selectedMediaType = movie.media_type;
-  
+  selectedMediaType = movie.media_type || 'movie'; // ← FIX: Tomar de movie.media_type
+
   console.log('Película seleccionada:', movie);
-  
+  console.log('Media type:', selectedMediaType);
+
   document.getElementById('step5').classList.remove('active');
   document.getElementById('step6').classList.add('active');
   currentStep = 6;
-  
+
   // Render info
   const poster = movie.poster_path 
     ? `https://image.tmdb.org/t/p/w300${movie.poster_path}`
     : '/images/placeholder.png';
-  
+
   const title = movie.title || movie.name;
   const year = (movie.release_date || movie.first_air_date || '').substring(0, 4);
   const type = movie.media_type === 'movie' ? 'Película' : 'Serie';
-  
+
   document.getElementById('selectedMovieInfo').innerHTML = `
     <img src="${poster}" alt="${title}">
     <div>
@@ -205,55 +202,72 @@ async function selectMovie(movie) {
       <p>${movie.overview || 'Sin descripción disponible.'}</p>
     </div>
   `;
-  
+
   // Cargar fuentes
   await loadSources();
 }
 
-// CARGAR FUENTES
+// ⭐ FIX: CARGAR FUENTES (usar selectedMediaType correcto)
 async function loadSources() {
   const sourcesList = document.getElementById('sourcesList');
   sourcesList.innerHTML = '<div class="loading">🔍 Buscando fuentes disponibles...</div>';
-  
+
   try {
+    console.log('🔍 Manifest URL:', manifestUrl);
+
     const manifestRes = await fetch(manifestUrl);
     const manifest = await manifestRes.json();
-    
+
+    console.log('✅ Manifest cargado:', manifest);
+
     const catalogUrl = manifest.catalogs.find(c => c.id === 'webstreamr-search')?.extra?.[0]?.search?.catalogURL;
-    
+
     if (!catalogUrl) {
       throw new Error('No se encontró URL de catálogo en el manifest');
     }
-    
-    const searchUrl = catalogUrl.replace('{SEARCH_QUERY}', encodeURIComponent(selectedMovie.title || selectedMovie.name));
-    
+
+    const searchQuery = selectedMovie.title || selectedMovie.name;
+    const searchUrl = catalogUrl.replace('{SEARCH_QUERY}', encodeURIComponent(searchQuery));
+
+    console.log('🔍 Buscando en catálogo:', searchUrl);
+
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
-    
+
+    console.log('✅ Resultados búsqueda:', searchData);
+
     if (!searchData.metas || searchData.metas.length === 0) {
       sourcesList.innerHTML = '<div class="no-results">❌ No se encontraron fuentes para esta película</div>';
       return;
     }
-    
+
     const year = (selectedMovie.release_date || selectedMovie.first_air_date || '').substring(0, 4);
     const matchedMeta = searchData.metas.find(m => {
-      const titleMatch = m.name?.toLowerCase().includes((selectedMovie.title || selectedMovie.name)?.toLowerCase());
+      const titleMatch = m.name?.toLowerCase().includes(searchQuery.toLowerCase());
       const yearMatch = m.name?.includes(year);
       return titleMatch || yearMatch;
     }) || searchData.metas[0];
-    
+
+    console.log('🎯 Meta seleccionado:', matchedMeta);
+    console.log('🎬 Media type para stream:', selectedMediaType);
+
+    // ⭐ FIX: Usar selectedMediaType (ya tiene el valor correcto)
     const streamUrl = `https://webstreamr.hayd.uk/stream/${selectedMediaType}/${matchedMeta.id}.json`;
-    
+
+    console.log('🔗 Stream URL:', streamUrl);
+
     const streamRes = await fetch(streamUrl);
     const streamData = await streamRes.json();
-    
+
+    console.log('✅ Streams:', streamData);
+
     if (!streamData.streams || streamData.streams.length === 0) {
       sourcesList.innerHTML = '<div class="no-results">❌ No se encontraron streams para esta película</div>';
       return;
     }
-    
+
     sources = streamData.streams;
-    
+
     let html = '';
     sources.forEach((stream, index) => {
       const title = stream.title || stream.name || `Fuente ${index + 1}`;
@@ -261,7 +275,7 @@ async function loadSources() {
       if (stream.quality) metaInfo.push(stream.quality);
       if (stream.size) metaInfo.push(stream.size);
       if (stream.source) metaInfo.push(`📡 ${stream.source}`);
-      
+
       html += `
         <div class="source-card" onclick="selectSource(${index})">
           <div class="source-title">${title}</div>
@@ -269,11 +283,11 @@ async function loadSources() {
         </div>
       `;
     });
-    
+
     sourcesList.innerHTML = html;
-    
+
   } catch (error) {
-    console.error('Error cargando fuentes:', error);
+    console.error('❌ Error cargando fuentes:', error);
     sourcesList.innerHTML = '<div class="no-results">❌ Error al cargar fuentes. Intenta de nuevo.</div>';
   }
 }
@@ -282,29 +296,29 @@ async function loadSources() {
 function selectSource(index) {
   selectedSourceIndex = index;
   selectedSource = sources[index];
-  
+
   document.querySelectorAll('.source-card').forEach(card => {
     card.classList.remove('selected');
   });
-  
+
   document.querySelectorAll('.source-card')[index].classList.add('selected');
-  
+
   console.log('Fuente seleccionada:', selectedSource);
 }
 
 // ⭐ BETA-1.6: CREAR O ACTUALIZAR SALA
 async function createRoom() {
   const updatingRoomId = sessionStorage.getItem('projectorroom_updating_room');
-  
+
   // Si estamos actualizando
   if (updatingRoomId) {
     if (!selectedSource) {
       alert('Por favor, selecciona una fuente de video');
       return;
     }
-    
+
     console.log('🔄 Actualizando sala existente:', updatingRoomId);
-    
+
     try {
       const updateRes = await fetch(`/api/projectorrooms/${updatingRoomId}/movie`, {
         method: 'PUT',
@@ -317,15 +331,15 @@ async function createRoom() {
           manifest: manifestUrl
         })
       });
-      
+
       const updateData = await updateRes.json();
-      
+
       if (updateData.success) {
         console.log('✅ Sala actualizada');
-        
+
         // Limpiar flag
         sessionStorage.removeItem('projectorroom_updating_room');
-        
+
         // Volver a sala
         window.location.href = `/sala/${updatingRoomId}`;
       } else {
@@ -335,23 +349,23 @@ async function createRoom() {
       console.error('Error:', error);
       alert('Error de conexión');
     }
-    
+
     return;
   }
-  
+
   // CREAR SALA NUEVA
   const hostUsername = document.getElementById('hostUsername').value.trim();
-  
+
   if (!hostUsername) {
     alert('Por favor, introduce tu nombre');
     return;
   }
-  
+
   if (!selectedSource) {
     alert('Por favor, selecciona una fuente de video');
     return;
   }
-  
+
   try {
     const res = await fetch('/api/projectorrooms/create', {
       method: 'POST',
@@ -374,12 +388,12 @@ async function createRoom() {
 
     if (data.success) {
       const roomId = data.projectorRoom.id;
-      
+
       sessionStorage.setItem('projectorroom_is_host_' + roomId, 'true');
       sessionStorage.setItem('projectorroom_host_username_' + roomId, hostUsername);
-      
+
       console.log('✅ Sala creada:', roomId);
-      
+
       window.location.href = `/sala/${roomId}`;
     } else {
       alert('Error: ' + data.message);
