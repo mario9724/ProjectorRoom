@@ -235,25 +235,31 @@ function renderSeasonSelector() {
   const container = document.getElementById('seasonSelector');
   if (!container) return;
 
+  // ⭐ Solo mostrar si es SERIE
+  if (selectedMovie.type !== 'series') {
+    container.style.display = 'none';
+    return;
+  }
+
   container.style.display = 'block';
 
   let seasonsHTML = '<option value="">Selecciona temporada</option>';
   selectedMovie.seasons.forEach(season => {
-    seasonsHTML += `<option value="${season.season_number}">Temporada ${season.season_number} (${season.episode_count} eps)</option>`;
+    seasonsHTML += `<option value="${season.season_number}">Temporada ${season.season_number} (${season.episode_count} episodios)</option>`;
   });
 
   container.innerHTML = `
     <div class="season-episode-selector">
-      <h3 class="section-title">Selecciona episodio</h3>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+      <h3 class="section-title">📺 Selecciona episodio</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
         <div>
-          <label style="display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem;">Temporada</label>
+          <label style="display: block; margin-bottom: 8px; color: #aaa; font-size: 0.95rem; font-weight: 500;">Temporada</label>
           <select id="seasonSelect" class="episode-select">
             ${seasonsHTML}
           </select>
         </div>
         <div>
-          <label style="display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem;">Episodio</label>
+          <label style="display: block; margin-bottom: 8px; color: #aaa; font-size: 0.95rem; font-weight: 500;">Episodio</label>
           <select id="episodeSelect" class="episode-select" disabled>
             <option value="">Primero selecciona temporada</option>
           </select>
@@ -284,6 +290,7 @@ function renderSeasonSelector() {
     }
   });
 }
+
 
 async function loadEpisodes(seasonNum) {
   const episodeSelect = document.getElementById('episodeSelect');
