@@ -1,11 +1,3 @@
-// Protección contra errores de Eruda
-window.addEventListener('error', function(e) {
-  if (e.message.includes('eruda')) {
-    e.preventDefault();
-    return false;
-  }
-});
-
 // app.js BETA-1.5.1 - Selector de episodios para series (FIXED)
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
