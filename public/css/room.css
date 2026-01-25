@@ -836,21 +836,3 @@ body {
   background: #4a4a4a;
 }
 
-/* ⭐ BETA-1.5.1: Responsive invitado */
-@media (max-width: 768px) {
-  .movie-header-wrapper {
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
-    text-align: center;
-  }
-
-  .movie-header img {
-    width: 100px;
-    height: 140px;
-  }
-
-  .movie-info h2 {
-    font-size: 1.2rem;
-  }
-}
