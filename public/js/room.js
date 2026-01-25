@@ -210,6 +210,13 @@ async function showGuestSourceSelector() {
 
   const movieData = JSON.parse(roomData.manifest);
 
+  // Construir información de episodio si es serie
+  let episodeInfo = '';
+  if (movieData.type === 'series' && roomData.selectedEpisode) {
+    const ep = JSON.parse(roomData.selectedEpisode);
+    episodeInfo = `<div class="episode-badge">📺 T${ep.season_number} E${ep.episode_number}: ${escapeHtml(ep.name || '')}</div>`;
+  }
+
   const selectorHTML = `
     <div class="guest-source-container">
       <div class="step-card wide">
@@ -217,6 +224,7 @@ async function showGuestSourceSelector() {
           <img src="${movieData.poster || ''}" alt="Poster">
           <div class="movie-info">
             <h2>${escapeHtml(movieData.title || 'Película')}</h2>
+            ${episodeInfo}
             <div class="movie-meta">
               <span>⭐ ${movieData.rating || 'N/A'}</span>
               <span>${movieData.year || 'N/A'}</span>
@@ -378,8 +386,18 @@ function renderRoom() {
   const posterEl = document.getElementById('roomPosterSmall');
   if (posterEl) posterEl.src = movieData.poster || '';
 
+  // Construir título con episodio si es serie
+  let titleText = `Proyectando ${movieData.title}`;
+
+  if (movieData.type === 'series' && roomData.selectedEpisode) {
+    const ep = JSON.parse(roomData.selectedEpisode);
+    titleText += ` (${ep.season_number}x${String(ep.episode_number).padStart(2, '0')})`;
+  }
+
+  titleText += ` en ${roomData.roomName} de ${roomData.hostUsername}`;
+
   const titleEl = document.getElementById('roomTitle');
-  if (titleEl) titleEl.textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
+  if (titleEl) titleEl.textContent = titleText;
 
   // Backdrop/Banner (con fallback al poster si no existe)
   const backdropEl = document.getElementById('roomBackdrop');
