@@ -100,36 +100,39 @@
       </div>
     </div>
     
-    <!-- PASO 6: Selección de fuentes -->
-    <div id="step6" class="step">
-      <div class="step-card wide">
-        <div class="movie-header">
-          <img id="selectedPoster" src="" alt="Poster">
-          <div class="movie-info">
-            <h2 id="selectedTitle">-</h2>
-            <div class="movie-meta">
-              <span id="selectedRating">⭐ -</span>
-              <span id="selectedYear">-</span>
-              <span id="selectedType">-</span>
-            </div>
-            <p id="selectedOverview">-</p>
-          </div>
+<!-- PASO 6: Selección de fuentes -->
+<div id="step6" class="step">
+  <div class="step-card wide">
+    <div class="movie-header">
+      <img id="selectedPoster" src="" alt="Poster">
+      <div class="movie-info">
+        <h2 id="selectedTitle">-</h2>
+        <div class="movie-meta">
+          <span id="selectedRating">⭐ -</span>
+          <span id="selectedYear">-</span>
+          <span id="selectedType">-</span>
         </div>
-        
-        <h3 class="section-title">🔍 Fuentes disponibles</h3>
-        <p class="section-subtitle">Selecciona la mejor calidad para tu sala</p>
-        
-        <div id="sourcesList" class="sources-list">
-          <div class="loading">Cargando fuentes...</div>
-        </div>
-        
-        <div class="actions">
-          <button class="btn-secondary" onclick="goToStep(5)">← Volver</button>
-          <button id="btnCreateRoom" class="btn-primary" disabled onclick="createRoom()">Crear sala →</button>
-        </div>
+        <p id="selectedOverview">-</p>
       </div>
     </div>
     
+    <!-- ⭐ SELECTOR DE EPISODIOS (solo series) -->
+    <div id="seasonSelector" style="display: none;"></div>
+    
+    <h3 class="section-title">🔍 Fuentes disponibles</h3>
+    <p class="section-subtitle">Selecciona la mejor calidad para tu sala</p>
+    
+    <div id="sourcesList" class="sources-list">
+      <div class="loading">Cargando fuentes...</div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn-secondary" onclick="goToStep(5)">← Volver</button>
+      <button id="btnCreateRoom" class="btn-primary" disabled onclick="createRoom()">Crear sala →</button>
+    </div>
+  </div>
+</div>
+
     <!-- PASO 7: Sala creada -->
     <div id="step7" class="step">
       <div class="step-card wide">
