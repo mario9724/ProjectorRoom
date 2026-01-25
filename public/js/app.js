@@ -1,4 +1,4 @@
-// app.js BETA-1.5.1 - Selector de episodios para series (FIXED)
+// app.js BETA-1.5.3 - FIXED: Películas NO muestran selector
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
 const PUBLIC_MANIFEST = 'https://webstreamr.hayd.uk/%7B%22multi%22%3A%22on%22%2C%22al%22%3A%22on%22%2C%22de%22%3A%22on%22%2C%22es%22%3A%22on%22%2C%22fr%22%3A%22on%22%2C%22hi%22%3A%22on%22%2C%22it%22%3A%22on%22%2C%22mx%22%3A%22on%22%2C%22ta%22%3A%22on%22%2C%22te%22%3A%22on%22%7D/manifest.json';
 
@@ -18,7 +18,6 @@ let roomConfig = {
 // ==================== NAVEGACIÓN ====================
 
 function goToStep(step) {
-  // Validaciones
   if (step === 2) {
     const username = document.getElementById('username').value.trim();
     if (!username) {
@@ -52,14 +51,10 @@ function goToStep(step) {
     roomConfig.shareMode = document.querySelector('input[name="shareMode"]:checked').value;
   }
 
-  // Ocultar paso actual
   document.getElementById('step' + currentStep).classList.remove('active');
-
-  // Mostrar nuevo paso
   currentStep = step;
   document.getElementById('step' + step).classList.add('active');
 
-  // Inicializar búsqueda en paso 5
   if (step === 5) {
     setTimeout(initSearch, 100);
   }
@@ -186,34 +181,18 @@ async function selectMovie(movie) {
     goToStep(6);
     renderSelectedMovie();
 
-    // ⭐ OCULTAR selector ANTES de decidir qué hacer
+    // ⭐ SIEMPRE ocultar selector primero
     const seasonContainer = document.getElementById('seasonSelector');
     if (seasonContainer) {
       seasonContainer.style.display = 'none';
-      seasonContainer.innerHTML = ''; // ⭐ Limpiar contenido
+      seasonContainer.innerHTML = '';
     }
 
     if (selectedMovie.type === 'series') {
+      console.log('📺 Es serie, cargando temporadas');
       await loadSeasons();
     } else {
       console.log('🎬 Es película, cargando fuentes directamente');
-      loadSources();
-    }
-
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Error obteniendo información');
-  }
-}
-
-
-    goToStep(6);
-    renderSelectedMovie();
-
-    // ⭐ Si es serie, cargar temporadas; si es película, cargar fuentes directamente
-    if (selectedMovie.type === 'series') {
-      await loadSeasons();
-    } else {
       loadSources();
     }
 
@@ -264,7 +243,6 @@ function renderSeasonSelector() {
 
   console.log('🔍 selectedMovie.type:', selectedMovie.type);
 
-  // ⭐ Solo ocultar si es PELÍCULA
   if (selectedMovie.type !== 'series') {
     console.log('🎬 Es película, ocultando selector');
     container.style.display = 'none';
@@ -330,17 +308,17 @@ async function loadEpisodes(seasonNum) {
   try {
     const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNum}?api_key=${TMDB_API_KEY}&language=es-ES`;
     console.log('🔗 URL:', url);
-    
+
     const res = await fetch(url);
     console.log('📊 Status:', res.status);
-    
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    
+
     const data = await res.json();
     console.log('📋 Episodios:', data.episodes?.length || 0);
 
     let episodesHTML = '<option value="">Selecciona episodio</option>';
-    
+
     if (data.episodes && data.episodes.length > 0) {
       data.episodes.forEach(ep => {
         episodesHTML += `<option value="${ep.episode_number}">Ep ${ep.episode_number}: ${ep.name}</option>`;
@@ -358,19 +336,17 @@ async function loadEpisodes(seasonNum) {
 
   } catch (error) {
     console.error('❌ Error:', error);
-    
+
     let episodesHTML = '<option value="">Selecciona episodio</option>';
     for (let i = 1; i <= 25; i++) {
       episodesHTML += `<option value="${i}">Episodio ${i}</option>`;
     }
-    
+
     episodeSelect.innerHTML = episodesHTML;
     episodeSelect.disabled = false;
     selectedMovie.episodes = [];
   }
 }
-
-
 
 // ==================== FUENTES ====================
 
@@ -389,7 +365,6 @@ async function loadSources() {
     let streamUrl;
 
     if (selectedMovie.type === 'series' && selectedMovie.selectedSeason && selectedMovie.selectedEpisode) {
-      // ⭐ FORMATO CORRECTO: tt1190634:1:1 (usar ID de la SERIE, no del episodio)
       const season = selectedMovie.selectedSeason;
       const episode = selectedMovie.selectedEpisode;
 
