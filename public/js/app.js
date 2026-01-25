@@ -170,9 +170,46 @@ async function searchMovie(query) {
 }
 
 // ⭐ FIX: SELECCIONAR PELÍCULA (guardar media_type correctamente)
+// ⭐ BETA-1.5.1: selectMovie CON SELECTOR EPISODIOS
 async function selectMovie(movie) {
-  selectedMovie = movie;
-  selectedMediaType = movie.media_type || 'movie'; // ← FIX: Tomar de movie.media_type
+  selectedMovie = {
+    id: movie.id,
+    type: movie.media_type === 'movie' ? 'movie' : 'series',
+    title: movie.title || movie.name,
+    poster: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+    rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A',
+    year: (movie.release_date || movie.first_air_date || '').substring(0, 4),
+    overview: movie.overview || 'Sin descripción disponible'
+  };
+  
+  try {
+    const type = movie.media_type === 'movie' ? 'movie' : 'tv';
+    const url = `https://api.themoviedb.org/3/${type}/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    selectedMovie.imdbId = data.imdb_id;
+    
+    if (!selectedMovie.imdbId) {
+      alert('No se encontró IMDb ID');
+      return;
+    }
+    
+    // ⭐ CLAVE: Para series cargar temporadas, para películas ir directo
+    if (selectedMovie.type === 'series') {
+      await loadSeasons();
+    } else {
+      goToStep(6);
+      renderSelectedMovie();
+      loadSources();
+    }
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error obteniendo información');
+  }
+}
+
 
   console.log('Película seleccionada:', movie);
   console.log('Media type:', selectedMediaType);
