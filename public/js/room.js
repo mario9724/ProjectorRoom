@@ -12,15 +12,40 @@ let customManifest = '';
 window.addEventListener('load', function() {
   console.log('🚀 Inicializando creación de sala');
 
+  // DIAGNÓSTICO: Verificar sessionStorage
+  console.log('🔍 Verificando sessionStorage...');
   const movieDataStr = sessionStorage.getItem('projectorroom:selectedmovie');
-  if (!movieDataStr) {
-    alert('No se encontró la película/serie seleccionada');
-    window.location.href = '/';
-    return;
+
+  console.log('📋 sessionStorage keys:', Object.keys(sessionStorage));
+  console.log('📦 projectorroom:selectedmovie existe:', movieDataStr ? 'SÍ' : 'NO');
+
+  if (movieDataStr) {
+    console.log('📄 Contenido:', movieDataStr.substring(0, 100) + '...');
   }
 
-  selectedMovie = JSON.parse(movieDataStr);
-  console.log('🎬 Película/Serie:', selectedMovie);
+  if (!movieDataStr) {
+    console.error('❌ No se encontró projectorroom:selectedmovie en sessionStorage');
+    console.log('🔍 Intentando recuperar de localStorage...');
+
+    const fromLocal = localStorage.getItem('projectorroom:selectedmovie');
+    if (fromLocal) {
+      console.log('✅ Encontrado en localStorage, restaurando...');
+      sessionStorage.setItem('projectorroom:selectedmovie', fromLocal);
+    } else {
+      alert('No se encontró la película/serie seleccionada.\n\nPor favor, vuelve a buscar y seleccionar.');
+      window.location.href = '/';
+      return;
+    }
+  }
+
+  selectedMovie = JSON.parse(movieDataStr || sessionStorage.getItem('projectorroom:selectedmovie'));
+  console.log('✅ Película/Serie cargada:', selectedMovie);
+  console.log('📊 Datos:', {
+    title: selectedMovie.title,
+    type: selectedMovie.type,
+    imdbId: selectedMovie.imdbId,
+    tmdbId: selectedMovie.tmdbId
+  });
 
   renderMovieInfo();
   setupEventListeners();
@@ -29,7 +54,7 @@ window.addEventListener('load', function() {
     console.log('📺 Es serie, cargando temporadas');
     loadSeasons();
   } else {
-    console.log('🎥 Es película');
+    console.log('🎥 Es película, cargando fuentes');
     loadSources();
   }
 });
@@ -69,24 +94,19 @@ async function loadSeasons() {
 }
 
 function renderSeasonSelector() {
-  console.log('🔍 selectedMovie.type:', selectedMovie.type);
+  const selector = document.getElementById('episodeSelectorContainer');
+  if (selector) {
+    selector.style.display = 'block';
 
-  if (selectedMovie.type === 'series') {
-    console.log('📺 Es serie, mostrando selector');
-    const selector = document.getElementById('episodeSelectorContainer');
-    if (selector) {
-      selector.style.display = 'block';
+    const seasonSelect = document.getElementById('seasonSelect');
+    seasonSelect.innerHTML = '<option value="">Selecciona temporada</option>';
 
-      const seasonSelect = document.getElementById('seasonSelect');
-      seasonSelect.innerHTML = '<option value="">Selecciona temporada</option>';
-
-      seasons.forEach(season => {
-        const option = document.createElement('option');
-        option.value = season.season_number;
-        option.textContent = `Temporada ${season.season_number}`;
-        seasonSelect.appendChild(option);
-      });
-    }
+    seasons.forEach(season => {
+      const option = document.createElement('option');
+      option.value = season.season_number;
+      option.textContent = `Temporada ${season.season_number}`;
+      seasonSelect.appendChild(option);
+    });
   }
 }
 
@@ -102,20 +122,13 @@ window.onSeasonChange = async function() {
 
   try {
     const url = `https://api.themoviedb.org/3/tv/${selectedMovie.tmdbId}/season/${seasonNum}?api_key=${TMDB_API_KEY}&language=es-ES`;
-    console.log('🔗 URL:', url);
-
     const res = await fetch(url);
-    console.log('📊 Status:', res.status);
-
     const data = await res.json();
-    console.log('📋 Episodios:', data.episodes.length);
 
     const episodeSelect = document.getElementById('episodeSelect');
     episodeSelect.innerHTML = '<option value="">Selecciona episodio</option>';
 
     data.episodes.forEach(ep => {
-      console.log('✅ T' + seasonNum + 'E' + ep.episode_number);
-
       const option = document.createElement('option');
       option.value = JSON.stringify({
         season_number: seasonNum,
@@ -155,7 +168,6 @@ async function loadSources() {
   sourcesContainer.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
 
   const manifestUrl = projectType === 'custom' ? customManifest : PUBLIC_MANIFEST;
-  console.log('📡 Manifest:', manifestUrl);
 
   try {
     const manifest = await fetch(manifestUrl).then(r => r.json());
@@ -171,11 +183,8 @@ async function loadSources() {
         return;
       }
 
-      // CONSTRUCCIÓN CORRECTA DE LA URL PARA SERIES
       const seasonNum = selectedEpisode.season_number;
       const episodeNum = selectedEpisode.episode_number;
-
-      // Formato: /stream/series/tt123456:1:1.json
       streamUrl = `${baseUrl}/stream/series/${selectedMovie.imdbId}:${seasonNum}:${episodeNum}.json`;
     }
 
@@ -188,7 +197,6 @@ async function loadSources() {
     }
 
     const data = await res.json();
-    console.log('📊 Respuesta:', data);
 
     const sources = (data.streams || [])
       .filter(s => s && s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')))
@@ -243,7 +251,6 @@ function setupEventListeners() {
   sourceTypeRadios.forEach(radio => {
     radio.addEventListener('change', e => {
       useHostSource = e.target.value === 'host';
-      console.log('🔄 useHostSource:', useHostSource);
     });
   });
 
