@@ -297,26 +297,53 @@ async function loadEpisodes(seasonNum) {
   episodeSelect.innerHTML = '<option value="">Cargando...</option>';
   episodeSelect.disabled = true;
 
+  console.log(`📺 Cargando T${seasonNum}...`);
+
   try {
     const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNum}?api_key=${TMDB_API_KEY}&language=es-ES`;
+    console.log('🔗 URL episodios:', url);
+    
     const res = await fetch(url);
+    console.log('📊 Status:', res.status);
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    
     const data = await res.json();
+    console.log('📋 Datos:', data.episodes?.length || 0);
 
     let episodesHTML = '<option value="">Selecciona episodio</option>';
-    data.episodes.forEach(ep => {
-      episodesHTML += `<option value="${ep.episode_number}">Ep ${ep.episode_number}: ${ep.name}</option>`;
-    });
+    
+    if (data.episodes && data.episodes.length > 0) {
+      data.episodes.forEach(ep => {
+        episodesHTML += `<option value="${ep.episode_number}">Ep ${ep.episode_number}: ${ep.name}</option>`;
+      });
+    } else {
+      // ⭐ FALLBACK: episodios genéricos
+      for (let i = 1; i <= 25; i++) {
+        episodesHTML += `<option value="${i}">Episodio ${i}</option>`;
+      }
+    }
 
     episodeSelect.innerHTML = episodesHTML;
     episodeSelect.disabled = false;
-
-    selectedMovie.episodes = data.episodes;
+    selectedMovie.episodes = data.episodes || [];
 
   } catch (error) {
-    console.error('Error cargando episodios:', error);
-    episodeSelect.innerHTML = '<option value="">Error cargando episodios</option>';
+    console.error('❌ Error loadEpisodes:', error);
+    
+    // ⭐ FALLBACK automático
+    let episodesHTML = '<option value="">Selecciona episodio</option>';
+    for (let i = 1; i <= 25; i++) {
+      episodesHTML += `<option value="${i}">Episodio ${i}</option>`;
+    }
+    
+    episodeSelect.innerHTML = episodesHTML;
+    episodeSelect.disabled = false;
   }
 }
+
 
 // ==================== FUENTES ====================
 
