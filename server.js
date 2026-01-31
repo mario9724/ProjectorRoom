@@ -40,6 +40,23 @@ function formatRatingForClient(rating) {
   };
 }
 
+// Convertir datos de sala de snake_case a camelCase para el frontend
+function formatRoomForClient(room) {
+  if (!room) return null;
+  
+  return {
+    id: room.id,
+    roomName: room.room_name,
+    hostUsername: room.host_username,
+    manifest: room.manifest,
+    sourceUrl: room.source_url,
+    useHostSource: room.use_host_source,
+    projectorType: room.projector_type,
+    customManifest: room.custom_manifest,
+    createdAt: room.created_at
+  };
+}
+
 // Inicializar base de datos al arrancar
 db.initDatabase().catch(err => {
   console.error('Error crítico al inicializar DB:', err);
@@ -92,7 +109,7 @@ app.post('/api/projectorrooms/create', async (req, res) => {
     
     res.json({ 
       success: true, 
-      projectorRoom: room
+      projectorRoom: formatRoomForClient(room)
     });
     
   } catch (error) {
@@ -116,7 +133,7 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
     
     res.json({ 
       success: true, 
-      projectorRoom: room
+      projectorRoom: formatRoomForClient(room)
     });
     
   } catch (error) {
@@ -147,7 +164,7 @@ app.get('/api/projectorrooms/:id/full', async (req, res) => {
     
     res.json({ 
       success: true, 
-      projectorRoom: room,
+      projectorRoom: formatRoomForClient(room),
       mediaInfo,
       cast,
       crew,
