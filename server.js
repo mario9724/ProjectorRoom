@@ -2,170 +2,230 @@ const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
-const { Pool } = require('pg');
+const db = require('./database');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
-const PORT = process.env.PORT || 3000;
 
-// ⭐ PostgreSQL Pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
-
-// Base de datos de usuarios conectados (solo en memoria, no crítico)
-let roomUsers = {}; // { roomId: [{ id, username }] }
 
 // Generar ID único
 function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
-// ==================== RUTAS API ====================
-
-// ⭐ SETUP: Crear tabla (ejecutar una sola vez)
-app.get('/api/setup', async (req, res) => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS projector_rooms (
-        id VARCHAR(50) PRIMARY KEY,
-        room_name VARCHAR(255) NOT NULL,
-        host_username VARCHAR(100) NOT NULL,
-        manifest TEXT NOT NULL,
-        source_url TEXT NOT NULL,
-        use_host_source BOOLEAN DEFAULT true,
-        projector_type VARCHAR(50) DEFAULT 'public',
-        custom_manifest TEXT,
-        tmdb_id INTEGER,
-        media_type VARCHAR(20) DEFAULT 'movie',
-        movie_data JSONB,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-
-    console.log('✅ Tabla projector_rooms creada/verificada');
-    res.json({ success: true, message: 'Base de datos inicializada' });
-  } catch (error) {
-    console.error('❌ Error setup:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
+// Inicializar base de datos al arrancar
+db.initDatabase().catch(err => {
+  console.error('Error crítico al inicializar DB:', err);
+  process.exit(1);
 });
+
+// ==================== RUTAS API ====================
 
 // Crear sala
 app.post('/api/projectorrooms/create', async (req, res) => {
-  const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest, tmdbId, mediaType, movieData } = req.body;
-
-  if (!roomName || !hostUsername || !manifest || !sourceUrl) {
-    return res.json({ success: false, message: 'Datos incompletos' });
-  }
-
-  const roomId = generateId();
-
   try {
-    const result = await pool.query(`
-      INSERT INTO projector_rooms 
-      (id, room_name, host_username, manifest, source_url, use_host_source, projector_type, custom_manifest, tmdb_id, media_type, movie_data, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-      RETURNING *
-    `, [
-      roomId,
+    const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest, mediaInfo, cast, crew } = req.body;
+    
+    if (!roomName || !hostUsername || !manifest || !sourceUrl) {
+      return res.json({ success: false, message: 'Datos incompletos' });
+    }
+    
+    const roomId = generateId();
+    
+    const roomData = {
+      id: roomId,
       roomName,
       hostUsername,
       manifest,
       sourceUrl,
-      useHostSource !== false,
-      projectorType || 'public',
-      customManifest || '',
-      tmdbId || null,
-      mediaType || 'movie',
-      JSON.stringify(movieData || {})
-    ]);
-
-    const room = result.rows[0];
-    console.log(`✅ Sala creada: ${roomId} - ${roomName} por ${hostUsername}`);
-
-    res.json({
-      success: true,
-      projectorRoom: room
-    });
-  } catch (error) {
-    console.error('❌ Error creando sala:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ⭐ BETA-1.6: Actualizar película de sala existente
-app.put('/api/projectorrooms/:id/movie', async (req, res) => {
-  const roomId = req.params.id;
-  const { tmdbId, mediaType, movieData, sourceUrl, manifest } = req.body;
-
-  try {
-    const result = await pool.query(`
-      UPDATE projector_rooms 
-      SET 
-        tmdb_id = $1, 
-        media_type = $2, 
-        movie_data = $3, 
-        source_url = $4, 
-        manifest = $5, 
-        room_name = COALESCE($6, room_name),
-        updated_at = NOW()
-      WHERE id = $7
-      RETURNING *
-    `, [
-      tmdbId,
-      mediaType,
-      JSON.stringify(movieData),
-      sourceUrl,
-      manifest,
-      movieData.title || movieData.name,
-      roomId
-    ]);
-
-    if (result.rows.length === 0) {
-      return res.json({ success: false, message: 'Sala no encontrada' });
+      useHostSource,
+      projectorType,
+      customManifest
+    };
+    
+    // Crear sala en DB
+    const room = await db.createRoom(roomData);
+    
+    // Guardar información de la película/serie si está disponible
+    if (mediaInfo) {
+      await db.saveMediaInfo(roomId, mediaInfo);
+      
+      // Guardar cast si está disponible
+      if (cast && Array.isArray(cast)) {
+        await db.saveMediaCast(roomId, cast);
+      }
+      
+      // Guardar crew si está disponible
+      if (crew && Array.isArray(crew)) {
+        await db.saveMediaCrew(roomId, crew);
+      }
     }
-
-    const room = result.rows[0];
-    console.log(`🎬 Película actualizada en sala ${roomId}: ${movieData.title || movieData.name}`);
-
-    res.json({
-      success: true,
+    
+    console.log(`✅ Sala creada: ${roomId} - ${roomName} por ${hostUsername}`);
+    
+    res.json({ 
+      success: true, 
       projectorRoom: room
     });
+    
   } catch (error) {
-    console.error('❌ Error actualizando sala:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error creando sala:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al crear la sala' 
+    });
   }
 });
 
 // Obtener sala por ID
 app.get('/api/projectorrooms/:id', async (req, res) => {
-  const roomId = req.params.id;
-
   try {
-    const result = await pool.query('SELECT * FROM projector_rooms WHERE id = $1', [roomId]);
-
-    if (result.rows.length === 0) {
+    const roomId = req.params.id;
+    const room = await db.getRoomById(roomId);
+    
+    if (!room) {
       return res.json({ success: false, message: 'Sala no encontrada' });
     }
-
-    res.json({
-      success: true,
-      projectorRoom: result.rows[0]
+    
+    res.json({ 
+      success: true, 
+      projectorRoom: room
     });
+    
   } catch (error) {
-    console.error('❌ Error obteniendo sala:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error obteniendo sala:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener la sala' 
+    });
+  }
+});
+
+// Obtener información completa de la sala (con media info, cast, crew)
+app.get('/api/projectorrooms/:id/full', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    
+    const [room, mediaInfo, cast, crew, stats] = await Promise.all([
+      db.getRoomById(roomId),
+      db.getMediaInfo(roomId),
+      db.getMediaCast(roomId),
+      db.getMediaCrew(roomId),
+      db.getRoomStats(roomId)
+    ]);
+    
+    if (!room) {
+      return res.json({ success: false, message: 'Sala no encontrada' });
+    }
+    
+    res.json({ 
+      success: true, 
+      projectorRoom: room,
+      mediaInfo,
+      cast,
+      crew,
+      stats
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo sala completa:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener la información de la sala' 
+    });
+  }
+});
+
+// Obtener mensajes de chat de una sala
+app.get('/api/projectorrooms/:id/messages', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const limit = parseInt(req.query.limit) || 100;
+    
+    const messages = await db.getChatMessages(roomId, limit);
+    
+    res.json({ 
+      success: true, 
+      messages 
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo mensajes:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener mensajes' 
+    });
+  }
+});
+
+// Obtener calificaciones de una sala
+app.get('/api/projectorrooms/:id/ratings', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    
+    const [ratings, avgRating] = await Promise.all([
+      db.getRatings(roomId),
+      db.getAverageRating(roomId)
+    ]);
+    
+    res.json({ 
+      success: true, 
+      ratings,
+      average: avgRating
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo calificaciones:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener calificaciones' 
+    });
+  }
+});
+
+// Obtener reacciones de una sala
+app.get('/api/projectorrooms/:id/reactions', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const reactions = await db.getReactions(roomId);
+    
+    res.json({ 
+      success: true, 
+      reactions 
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo reacciones:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener reacciones' 
+    });
+  }
+});
+
+// Obtener estadísticas de una sala
+app.get('/api/projectorrooms/:id/stats', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const stats = await db.getRoomStats(roomId);
+    
+    res.json({ 
+      success: true, 
+      stats 
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo estadísticas:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener estadísticas' 
+    });
   }
 });
 
@@ -183,105 +243,150 @@ app.get('/sala/:id', (req, res) => {
 
 io.on('connection', (socket) => {
   console.log('🔌 Usuario conectado:', socket.id);
-
+  
   // UNIRSE A SALA
-  socket.on('join-room', ({ roomId, username }) => {
-    console.log(`👤 ${username} se unió a sala ${roomId}`);
-
-    socket.join(roomId);
-
-    if (!roomUsers[roomId]) {
-      roomUsers[roomId] = [];
-    }
-
-    // Agregar usuario
-    roomUsers[roomId].push({
-      id: socket.id,
-      username: username
-    });
-
-    // Guardar datos en socket
-    socket.roomId = roomId;
-    socket.username = username;
-
-    // Notificar a todos en la sala
-    io.to(roomId).emit('user-joined', {
-      user: { id: socket.id, username },
-      users: roomUsers[roomId]
-    });
-  });
-
-  // ⭐ BETA-1.6: Cambio de película por anfitrión
-  socket.on('change-movie', ({ roomId, movieData }) => {
-    console.log(`🎬 [${roomId}] Anfitrión cambió la película a: ${movieData.title || movieData.name}`);
-
-    // Notificar a todos los invitados (excepto anfitrión)
-    socket.to(roomId).emit('movie-changed', {
-      movieData: movieData,
-      message: 'El anfitrión ha cambiado la película'
-    });
-
-    // Mensaje en chat
-    io.to(roomId).emit('chat-message', {
-      username: 'Sistema',
-      message: `🎬 La película ha sido cambiada a: ${movieData.title || movieData.name}`,
-      isSystem: true
-    });
-  });
-
-  // MENSAJE DE CHAT
-  socket.on('chat-message', ({ roomId, message }) => {
-    console.log(`💬 [${roomId}] ${socket.username}: ${message}`);
-
-    io.to(roomId).emit('chat-message', {
-      username: socket.username,
-      message: message
-    });
-  });
-
-  // CALIFICACIÓN
-  socket.on('add-rating', ({ roomId, username, rating }) => {
-    console.log(`⭐ [${roomId}] ${username} calificó con ${rating}/10`);
-
-    io.to(roomId).emit('rating-added', {
-      username,
-      rating
-    });
-  });
-
-  // REACCIÓN
-  socket.on('add-reaction', ({ roomId, username, time, message }) => {
-    console.log(`💬 [${roomId}] ${username} reaccionó en ${time}: ${message}`);
-
-    io.to(roomId).emit('reaction-added', {
-      username,
-      time,
-      message
-    });
-  });
-
-  // DESCONEXIÓN
-  socket.on('disconnect', () => {
-    console.log('🔴 Usuario desconectado:', socket.id);
-
-    const roomId = socket.roomId;
-    const username = socket.username;
-
-    if (roomId && roomUsers[roomId]) {
-      // Remover usuario de la sala
-      roomUsers[roomId] = roomUsers[roomId].filter(user => user.id !== socket.id);
-
-      // Notificar a los demás
-      io.to(roomId).emit('user-left', {
-        username: username,
-        users: roomUsers[roomId]
+  socket.on('join-room', async ({ roomId, username }) => {
+    try {
+      console.log(`👤 ${username} se unió a sala ${roomId}`);
+      
+      socket.join(roomId);
+      
+      // Guardar usuario en DB
+      await db.addUserToRoom(roomId, socket.id, username);
+      
+      // Obtener usuarios activos
+      const activeUsers = await db.getActiveUsersInRoom(roomId);
+      
+      // Guardar datos en socket
+      socket.roomId = roomId;
+      socket.username = username;
+      
+      // Obtener mensajes históricos del chat
+      const chatHistory = await db.getChatMessages(roomId, 50);
+      
+      // Enviar historial de chat al usuario que se unió
+      socket.emit('chat-history', { messages: chatHistory });
+      
+      // Obtener calificaciones existentes
+      const [ratings, avgRating] = await Promise.all([
+        db.getRatings(roomId),
+        db.getAverageRating(roomId)
+      ]);
+      
+      // Enviar calificaciones al usuario que se unió
+      socket.emit('ratings-history', { ratings, average: avgRating });
+      
+      // Obtener reacciones existentes
+      const reactions = await db.getReactions(roomId);
+      
+      // Enviar reacciones al usuario que se unió
+      socket.emit('reactions-history', { reactions });
+      
+      // Notificar a todos en la sala
+      io.to(roomId).emit('user-joined', {
+        user: { id: socket.id, username },
+        users: activeUsers
       });
-
-      // Limpiar sala si está vacía
-      if (roomUsers[roomId].length === 0) {
-        delete roomUsers[roomId];
-        console.log(`🗑️ Sala ${roomId} limpiada (sin usuarios conectados)`);
+      
+    } catch (error) {
+      console.error('Error al unirse a sala:', error);
+      socket.emit('error', { message: 'Error al unirse a la sala' });
+    }
+  });
+  
+  // MENSAJE DE CHAT
+  socket.on('chat-message', async ({ roomId, message }) => {
+    try {
+      console.log(`💬 [${roomId}] ${socket.username}: ${message}`);
+      
+      // Guardar mensaje en DB
+      const savedMessage = await db.saveChatMessage(roomId, socket.username, message);
+      
+      // Emitir a todos en la sala
+      io.to(roomId).emit('chat-message', {
+        username: socket.username,
+        message: message,
+        created_at: savedMessage.created_at
+      });
+      
+    } catch (error) {
+      console.error('Error guardando mensaje:', error);
+      socket.emit('error', { message: 'Error al enviar mensaje' });
+    }
+  });
+  
+  // CALIFICACIÓN
+  socket.on('add-rating', async ({ roomId, username, rating }) => {
+    try {
+      console.log(`⭐ [${roomId}] ${username} calificó con ${rating}/10`);
+      
+      // Guardar calificación en DB
+      await db.saveRating(roomId, username, rating);
+      
+      // Obtener promedio actualizado
+      const avgRating = await db.getAverageRating(roomId);
+      
+      // Emitir a todos en la sala
+      io.to(roomId).emit('rating-added', {
+        username,
+        rating,
+        average: avgRating
+      });
+      
+    } catch (error) {
+      console.error('Error guardando calificación:', error);
+      socket.emit('error', { message: 'Error al guardar calificación' });
+    }
+  });
+  
+  // REACCIÓN
+  socket.on('add-reaction', async ({ roomId, username, time, message }) => {
+    try {
+      console.log(`💬 [${roomId}] ${username} reaccionó en ${time}: ${message}`);
+      
+      // Guardar reacción en DB
+      const savedReaction = await db.saveReaction(roomId, username, time, message);
+      
+      // Emitir a todos en la sala
+      io.to(roomId).emit('reaction-added', {
+        username,
+        time_minutes: time,
+        message,
+        created_at: savedReaction.created_at
+      });
+      
+    } catch (error) {
+      console.error('Error guardando reacción:', error);
+      socket.emit('error', { message: 'Error al guardar reacción' });
+    }
+  });
+  
+  // DESCONEXIÓN
+  socket.on('disconnect', async () => {
+    try {
+      console.log('🔴 Usuario desconectado:', socket.id);
+      
+      const roomId = socket.roomId;
+      const username = socket.username;
+      
+      if (roomId) {
+        // Marcar usuario como desconectado en DB
+        await db.removeUserFromRoom(socket.id);
+        
+        // Obtener usuarios activos restantes
+        const activeUsers = await db.getActiveUsersInRoom(roomId);
+        
+        // Notificar a los demás
+        io.to(roomId).emit('user-left', {
+          username: username,
+          users: activeUsers
+        });
+        
+        console.log(`👋 ${username} salió de sala ${roomId}`);
       }
+      
+    } catch (error) {
+      console.error('Error en desconexión:', error);
     }
   });
 });
@@ -290,5 +395,9 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📊 PostgreSQL: ${process.env.DATABASE_URL ? 'CONECTADO' : '❌ NO CONFIGURADO'}`);
+});
+
+// Manejo de errores no capturados
+process.on('unhandledRejection', (err) => {
+  console.error('Error no manejado:', err);
 });
