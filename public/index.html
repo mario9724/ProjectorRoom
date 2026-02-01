@@ -96,7 +96,8 @@
         
         <div id="searchResults" class="movie-grid"></div>
         
-        <button class="btn-secondary" onclick="goToStep(4)">← Volver</button>
+        <!-- ⭐ BOTÓN VOLVER CONDICIONAL -->
+        <button class="btn-secondary" onclick="if (!isChangingContent) goToStep(4)">← Volver</button>
       </div>
     </div>
     
@@ -122,16 +123,16 @@
           
           <!-- Selector de temporada -->
           <div id="seasonSelectorContainer" style="margin-bottom: 20px;">
-            <label for="seasonSelect" class="selector-label">Temporada</label>
-            <select id="seasonSelect" class="episode-select">
+            <label for="seasonSelect" style="display: block; margin-bottom: 10px; font-weight: 500;">Temporada</label>
+            <select id="seasonSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px;">
               <option value="">Selecciona una temporada...</option>
             </select>
           </div>
           
           <!-- Selector de episodio -->
           <div id="episodeSelectorContainer" style="display: none;">
-            <label for="episodeSelect" class="selector-label">Episodio</label>
-            <select id="episodeSelect" class="episode-select">
+            <label for="episodeSelect" style="display: block; margin-bottom: 10px; font-weight: 500;">Episodio</label>
+            <select id="episodeSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px;">
               <option value="">Selecciona un episodio...</option>
             </select>
           </div>
