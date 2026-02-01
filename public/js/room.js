@@ -503,26 +503,91 @@ function sendChatMessage() {
 // ==================== REPRODUCCIÓN EN PICTURE-IN-PICTURE ====================
 
 function startProjection() {
-  let sourceUrl;
-  
-  if (isHost || roomData.useHostSource) {
-    sourceUrl = roomData.sourceUrl;
-    console.log('🎬 Usando fuente del anfitrión:', sourceUrl);
-  } else {
-    sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-    console.log('🎬 Usando fuente del invitado:', sourceUrl);
-  }
-  
-  if (!sourceUrl) {
-    alert('No se encontró la fuente de reproducción');
-    return;
-  }
-  
-  console.log('▶️ Abriendo en Picture-in-Picture:', sourceUrl);
-  
-  // Intentar abrir en PIP
-  openInPictureInPicture(sourceUrl);
+    let sourceUrl;
+
+    if (isHost) {
+        if (roomData.useHostSource) {
+            sourceUrl = roomData.sourceUrl;
+            console.log('Usando fuente del anfitrión,', sourceUrl);
+        } else {
+            // Si el anfitrión no comparte fuente, no debería pasar por aquí,
+            // pero mantenemos el control.
+            sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
+            console.log('Usando fuente local del anfitrión,', sourceUrl);
+        }
+    } else {
+        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
+        console.log('Usando fuente del invitado,', sourceUrl);
+    }
+
+    if (!sourceUrl) {
+        alert('No se encontró la fuente de reproducción');
+        return;
+    }
+
+    console.log('Reproduciendo embebido,', sourceUrl);
+
+    const backdropImg = document.getElementById('roomBackdrop');
+    const videoContainer = document.getElementById('videoContainer');
+    const videoEl = document.getElementById('roomVideoPlayer');
+
+    if (!videoContainer || !videoEl) {
+        alert('No se encontró el contenedor de vídeo');
+        return;
+    }
+
+    // Ocultar imagen y mostrar vídeo
+    if (backdropImg) {
+        backdropImg.style.display = 'none';
+    }
+    videoContainer.style.display = 'block';
+
+    // Asignar la URL m3u (o lo que venga) al reproductor
+    // Si la URL es HLS (.m3u8) y el navegador no la soporta nativamente,
+    // aquí podrías integrar hls.js o similar, pero no tocamos nada más por ahora.
+    videoEl.src = sourceUrl;
+    videoEl.load();
+    videoEl.play().catch(err => {
+        console.warn('Error al iniciar reproducción:', err);
+    });
+
+    // Picture-in-Picture nativo (cuando el navegador lo soporte)
+    videoEl.addEventListener('enterpictureinpicture', () => {
+        console.log('Entró en PiP');
+    });
+    videoEl.addEventListener('leavepictureinpicture', () => {
+        console.log('Salió de PiP');
+    });
+
+    // Exponer helpers para que puedas enganchar PiP / Cast desde botones futuros
+    window.enterPiP = async () => {
+        if ('pictureInPictureEnabled' in document) {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    await videoEl.requestPictureInPicture();
+                }
+            } catch (e) {
+                console.error('Error PiP:', e);
+            }
+        } else {
+            alert('Picture-in-Picture no soportado en este navegador');
+        }
+    };
+
+    // Placeholders para Chromecast / AirPlay: necesitan integración extra
+    // (botones con cast.framework / AirPlay JS), pero no modificamos nada más.
+    window.castToChromecast = () => {
+        alert('Chromecast requiere integrar el sender SDK de Google en otro cambio.');
+    };
+
+    window.castToAirPlay = () => {
+        // En Safari, el propio control nativo muestra el icono de AirPlay.
+        alert('AirPlay se gestiona desde los controles del reproductor en Safari.');
+    };
 }
+
 
 async function openInPictureInPicture(videoUrl) {
   // Verificar soporte de PIP
