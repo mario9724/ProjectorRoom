@@ -10,8 +10,6 @@
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 </head>
 <body>
-  <video id="hiddenVideo" class="video-js" style="display:none;"></video>
-
   <div class="room-container">
     <div class="room-header">
       <div class="room-title-section">
@@ -29,7 +27,11 @@
     </div>
 
     <div class="movie-section">
-      <div class="room-backdrop">
+      <div id="videoWrapper" style="display: none; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
+        <video id="mainVideo" class="video-js vjs-big-play-centered" controls preload="auto" width="100%" height="100%" data-setup="{}"></video>
+      </div>
+
+      <div id="backdropWrapper" class="room-backdrop">
         <img id="roomBackdrop" src="" alt="Banner">
       </div>
       
@@ -45,7 +47,7 @@
 
     <div class="room-actions">
       <button id="btnStartProjection" class="btn-primary-large">
-        ▶️ Proyectar
+        ▶️ Proyectar en sala
       </button>
       <button id="btnCopyInvite" class="btn-outline-large">
         👥 Invitar a un roomie
@@ -58,21 +60,17 @@
 
     <div id="changeSourceSection" style="display: none;">
       <button id="btnChangeSource" class="btn-change-source">
-        🔄 Cambiar fuente de reproducción
+        🔄 Cambiar mi fuente
       </button>
     </div>
 
     <div class="interaction-buttons">
-      <button id="btnCalifications" class="btn-interaction">
-        ⭐ Calificaciones
-      </button>
-      <button id="btnReactions" class="btn-interaction">
-        💬 Reacciones
-      </button>
+      <button id="btnCalifications" class="btn-interaction">⭐ Calificaciones</button>
+      <button id="btnReactions" class="btn-interaction">💬 Reacciones</button>
     </div>
 
     <div class="chat-section">
-      <h3>💬 Esto dicen los roomies</h3>
+      <h3>💬 Chat de Roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
       <div class="chat-input">
         <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
