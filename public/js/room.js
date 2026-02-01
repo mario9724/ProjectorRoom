@@ -260,7 +260,15 @@ async function loadGuestSources(movieData) {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = movieData.type === 'movie' ? 'movie' : 'series';
-    const streamUrl = `${baseUrl}/stream/${streamType}/${movieData.imdbId}.json`;
+    
+    // ⭐ Construir URL con temporada y episodio si es serie
+    let streamUrl = `${baseUrl}/stream/${streamType}/${movieData.imdbId}`;
+    
+    if (movieData.type === 'tv' && movieData.season && movieData.episode) {
+      streamUrl += `:${movieData.season}:${movieData.episode}`;
+    }
+    
+    streamUrl += '.json';
     
     console.log('🎬 Stream URL:', streamUrl);
     
@@ -343,7 +351,6 @@ function initRoom() {
   
   renderRoom();
   
-  // ⭐ Mostrar botón "Cambiar contenido" SOLO a anfitriones
   if (isHost) {
     const btnChangeContent = document.getElementById('btnChangeContent');
     if (btnChangeContent) {
@@ -352,7 +359,6 @@ function initRoom() {
     console.log('🔄 Botón "Cambiar contenido" habilitado para anfitrión');
   }
 
-  // ⭐ Mostrar botón "Cambiar fuente" SOLO a invitados sin fuente compartida
   if (!isHost && roomData.useHostSource === false) {
     const changeSourceSection = document.getElementById('changeSourceSection');
     if (changeSourceSection) {
@@ -374,20 +380,27 @@ function renderRoom() {
   
   const movieData = JSON.parse(roomData.manifest);
   
-  // Poster pequeño (header)
   const posterEl = document.getElementById('roomPosterSmall');
   if (posterEl) posterEl.src = movieData.poster || '';
   
   const titleEl = document.getElementById('roomTitle');
-  if (titleEl) titleEl.textContent = `Proyectando ${movieData.title} en ${roomData.roomName} de ${roomData.hostUsername}`;
+  if (titleEl) {
+    let title = `Proyectando ${movieData.title}`;
+    
+    // ⭐ Añadir info de temporada y episodio si es serie
+    if (movieData.type === 'tv' && movieData.season && movieData.episode) {
+      title += ` - T${movieData.season}E${movieData.episode}`;
+    }
+    
+    title += ` en ${roomData.roomName} de ${roomData.hostUsername}`;
+    titleEl.textContent = title;
+  }
   
-  // Backdrop/Banner (con fallback al poster si no existe)
   const backdropEl = document.getElementById('roomBackdrop');
   if (backdropEl) {
     backdropEl.src = movieData.backdrop || movieData.poster || '';
   }
   
-  // Info de la película
   const yearEl = document.getElementById('movieYear');
   const typeEl = document.getElementById('movieType');
   const ratingEl = document.getElementById('movieRating');
@@ -461,7 +474,6 @@ function connectSocket() {
     allReactions = data.reactions || [];
   });
 
-  // ⭐ Escuchar cambio de contenido por anfitrión
   socket.on('content-changed', data => {
     console.log('🔄 Contenido cambiado por anfitrión');
     
@@ -549,15 +561,12 @@ function startProjection() {
         return;
     }
 
-    // Ocultar imagen y mostrar vídeo
     if (backdropImg) backdropImg.style.display = 'none';
     videoContainer.style.display = 'block';
 
-    // Detectar formato
     const isMKV = sourceUrl.toLowerCase().includes('.mkv');
     const isM3U8 = sourceUrl.includes('.m3u8');
 
-    // Error handler mejorado
     videoEl.onerror = (e) => {
         console.error('❌ Error vídeo:', e);
         const msg = isMKV 
@@ -568,7 +577,6 @@ function startProjection() {
         videoContainer.style.display = 'none';
     };
 
-    // Soporte HLS + directo
     if (isM3U8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(sourceUrl);
@@ -584,13 +592,9 @@ function startProjection() {
         console.log('✅ Reproducción directa');
     }
 
-    // 📱 AirPlay nativo (Safari)
     setupAirPlay(videoEl);
-
-    // 📺 Chromecast (Google Cast)
     setupChromecast(sourceUrl);
 
-    // PiP nativo
     videoEl.addEventListener('enterpictureinpicture', () => console.log('📱 PiP ON'));
     videoEl.addEventListener('leavepictureinpicture', () => console.log('📱 PiP OFF'));
 }
@@ -613,16 +617,13 @@ function openExternalPlayer() {
 
     console.log('📺 Abriendo en pantalla externa:', sourceUrl);
 
-    // Detectar plataforma
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     const isAndroid = /Android/i.test(navigator.userAgent);
 
     if (isIOS) {
-        // iOS: Abrir en Infuse directamente
         const infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(sourceUrl)}`;
         window.location.href = infuseUrl;
         
-        // Fallback si Infuse no está instalado (después de 1.5s)
         setTimeout(() => {
             if (confirm('¿Infuse no se abrió?\n\n✅ OK → Copiar URL\n❌ Cancelar')) {
                 if (navigator.clipboard) {
@@ -636,11 +637,9 @@ function openExternalPlayer() {
         }, 1500);
         
     } else if (isAndroid) {
-        // Android: Abrir selector de apps
         const intent = `intent:${sourceUrl}#Intent;type=video/*;action=android.intent.action.VIEW;end`;
         window.location.href = intent;
         
-        // Fallback
         setTimeout(() => {
             const opened = window.open(sourceUrl, '_blank');
             if (!opened) {
@@ -655,7 +654,6 @@ function openExternalPlayer() {
         }, 1000);
         
     } else {
-        // Desktop: Abrir en nueva pestaña (VLC detecta automáticamente)
         const opened = window.open(sourceUrl, '_blank');
         
         if (!opened || opened.closed) {
@@ -670,13 +668,11 @@ function openExternalPlayer() {
     }
 }
 
-// 📱 AirPlay Setup
 function setupAirPlay(videoEl) {
     const btnAirPlay = document.getElementById('btnAirPlayControl');
     
     if (!btnAirPlay) return;
 
-    // Safari con AirPlay
     if (videoEl.webkitShowPlaybackTargetPicker) {
         videoEl.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
             if (e.availability === 'available') {
@@ -693,13 +689,11 @@ function setupAirPlay(videoEl) {
     }
 }
 
-// 📺 Chromecast Setup
 function setupChromecast(sourceUrl) {
     const btnChromecast = document.getElementById('btnChromecastControl');
     
     if (!btnChromecast) return;
 
-    // Esperar a que Google Cast SDK cargue
     window['__onGCastApiAvailable'] = function(isAvailable) {
         if (!isAvailable) {
             console.log('⚠️ Chromecast SDK no disponible');
@@ -720,7 +714,6 @@ function setupChromecast(sourceUrl) {
             const session = castContext.getCurrentSession();
             
             if (session) {
-                // Ya hay sesión activa, enviar media
                 const mediaInfo = new chrome.cast.media.MediaInfo(sourceUrl, 'video/mp4');
                 const request = new chrome.cast.media.LoadRequest(mediaInfo);
                 
@@ -729,7 +722,6 @@ function setupChromecast(sourceUrl) {
                     (err) => console.error('❌ Error Chromecast:', err)
                 );
             } else {
-                // Abrir selector de dispositivos
                 castContext.requestSession().then(
                     () => {
                         const newSession = castContext.getCurrentSession();
@@ -773,7 +765,6 @@ function changeSource() {
   window.location.reload();
 }
 
-// ⭐ NUEVA FUNCIÓN: Cambiar contenido (solo anfitrión)
 async function changeContent() {
     if (!isHost) {
         alert('Solo el anfitrión puede cambiar el contenido');
@@ -793,7 +784,6 @@ async function changeContent() {
     console.log('🔄 Anfitrión cambiando contenido de la sala...');
 
     try {
-        // Resetear calificaciones y reacciones en backend
         const res = await fetch(`/api/projectorrooms/${roomId}/reset-content`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -807,7 +797,6 @@ async function changeContent() {
 
         console.log('✅ Contenido reseteado');
 
-        // ⭐ GUARDAR configuración ANTES de redirigir
         sessionStorage.setItem('projectorroom_changing_content', roomId);
         sessionStorage.setItem('projectorroom_change_room_name', roomData.roomName);
         sessionStorage.setItem('projectorroom_change_use_host_source', roomData.useHostSource);
@@ -815,28 +804,20 @@ async function changeContent() {
         sessionStorage.setItem('projectorroom_custom_manifest_' + roomId, roomData.customManifest || '');
         sessionStorage.setItem('projectorroom_host_username_' + roomId, roomData.hostUsername);
 
-        console.log('💾 Configuración guardada:', {
-            roomId,
-            roomName: roomData.roomName,
-            useHostSource: roomData.useHostSource,
-            projectorType: roomData.projectorType
-        });
+        console.log('💾 Configuración guardada');
 
-        // Notificar a todos los usuarios via Socket.IO
         if (socket) {
             socket.emit('content-changed', { roomId });
         }
 
-        // Redirigir a búsqueda
-        console.log('🔀 Redirigiendo a búsqueda...');
+        console.log('🔀 Redirigiendo...');
         window.location.href = '/';
 
     } catch (error) {
-        console.error('❌ Error cambiando contenido:', error);
+        console.error('❌ Error:', error);
         alert('Error cambiando contenido. Intenta de nuevo.');
     }
 }
-
 
 function openCalificationsModal() {
   const modal = document.getElementById('modalCalifications');
