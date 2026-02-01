@@ -837,35 +837,6 @@ async function changeContent() {
     }
 }
 
-        // Resetear calificaciones y reacciones en backend
-        const res = await fetch(`/api/projectorrooms/${roomId}/reset-content`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await res.json();
-        
-        if (!data.success) {
-            throw new Error(data.message || 'Error reseteando contenido');
-        }
-
-        // Notificar a todos los usuarios via Socket.IO
-        if (socket) {
-            socket.emit('content-changed', { roomId });
-        }
-
-        // Guardar que se va a cambiar contenido
-        sessionStorage.setItem('projectorroom_changing_content_' + roomId, 'true');
-
-        // Redirigir a búsqueda (mantiene configuración de sala)
-        alert('🔍 Selecciona nueva película/serie...');
-        window.location.href = `/?changeContent=${roomId}`;
-
-    } catch (error) {
-        console.error('❌ Error cambiando contenido:', error);
-        alert('Error cambiando contenido. Intenta de nuevo.');
-    }
-}
 
 function openCalificationsModal() {
   const modal = document.getElementById('modalCalifications');
