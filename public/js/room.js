@@ -417,7 +417,6 @@ function connectSocket() {
     addChatMessage(data.username, data.message, false);
   });
   
-  // Cargar historial de chat al unirse
   socket.on('chat-history', data => {
     console.log('📜 Cargando historial de chat:', data.messages.length, 'mensajes');
     data.messages.forEach(msg => {
@@ -433,7 +432,6 @@ function connectSocket() {
     }
   });
   
-  // Cargar historial de calificaciones al unirse
   socket.on('ratings-history', data => {
     console.log('📜 Cargando historial de calificaciones:', data.ratings.length, 'ratings');
     allRatings = data.ratings || [];
@@ -448,7 +446,6 @@ function connectSocket() {
     }
   });
   
-  // Cargar historial de reacciones al unirse
   socket.on('reactions-history', data => {
     console.log('📜 Cargando historial de reacciones:', data.reactions.length, 'reacciones');
     allReactions = data.reactions || [];
@@ -505,7 +502,6 @@ function sendChatMessage() {
 function startProjection() {
     let sourceUrl;
 
-    // 🔧 FALLBACK CORRECTO
     if (roomData.sourceUrl) {
         sourceUrl = roomData.sourceUrl;
         console.log('🎥 Usando fuente del anfitrión:', sourceUrl);
@@ -522,7 +518,7 @@ function startProjection() {
         return;
     }
 
-    console.log('▶️ Reproduciendo:', sourceUrl);
+    console.log('▶️ Reproduciendo embebido:', sourceUrl);
 
     const backdropImg = document.getElementById('roomBackdrop');
     const videoContainer = document.getElementById('videoContainer');
@@ -537,16 +533,23 @@ function startProjection() {
     if (backdropImg) backdropImg.style.display = 'none';
     videoContainer.style.display = 'block';
 
-    // Error handler
+    // Detectar formato
+    const isMKV = sourceUrl.toLowerCase().includes('.mkv');
+    const isM3U8 = sourceUrl.includes('.m3u8');
+
+    // Error handler mejorado
     videoEl.onerror = (e) => {
         console.error('❌ Error vídeo:', e);
-        alert('No se puede reproducir.\n\nVerifica CORS y formato');
+        const msg = isMKV 
+            ? '❌ MKV no soportado en navegador.\n\nUsa el botón "📺 Usar pantalla externa"'
+            : '❌ No se puede reproducir.\n\nVerifica CORS y formato.';
+        alert(msg);
         if (backdropImg) backdropImg.style.display = 'block';
         videoContainer.style.display = 'none';
     };
 
     // Soporte HLS + directo
-    if (sourceUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+    if (isM3U8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(sourceUrl);
         hls.attachMedia(videoEl);
@@ -561,9 +564,128 @@ function startProjection() {
         console.log('✅ Reproducción directa');
     }
 
+    // 📱 AirPlay nativo (Safari)
+    setupAirPlay(videoEl);
+
+    // 📺 Chromecast (Google Cast)
+    setupChromecast(sourceUrl);
+
     // PiP nativo
     videoEl.addEventListener('enterpictureinpicture', () => console.log('📱 PiP ON'));
     videoEl.addEventListener('leavepictureinpicture', () => console.log('📱 PiP OFF'));
+}
+
+function openExternalPlayer() {
+    let sourceUrl;
+
+    if (roomData.sourceUrl) {
+        sourceUrl = roomData.sourceUrl;
+    } else if (isHost) {
+        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
+    } else {
+        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
+    }
+
+    if (!sourceUrl) {
+        alert('❌ No se encontró fuente de reproducción');
+        return;
+    }
+
+    console.log('📺 Abriendo en pantalla externa:', sourceUrl);
+
+    // Abrir URL en nueva pestaña (VLC/Infuse/apps externas detectan automáticamente)
+    const opened = window.open(sourceUrl, '_blank');
+    
+    if (opened) {
+        alert('✅ Abriendo en VLC/Infuse...\n\nSi no se abre automáticamente:\n1. Copia la URL\n2. Abre VLC/Infuse manualmente\n3. Pega la URL');
+    } else {
+        // Fallback: copiar al portapapeles
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(sourceUrl).then(() => {
+                alert('✅ URL copiada al portapapeles\n\nPégala en VLC/Infuse/tu reproductor favorito');
+            });
+        } else {
+            prompt('Copia esta URL en VLC/Infuse:', sourceUrl);
+        }
+    }
+}
+
+// 📱 AirPlay Setup
+function setupAirPlay(videoEl) {
+    const btnAirPlay = document.getElementById('btnAirPlayControl');
+    
+    if (!btnAirPlay) return;
+
+    // Safari con AirPlay
+    if (videoEl.webkitShowPlaybackTargetPicker) {
+        videoEl.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
+            if (e.availability === 'available') {
+                btnAirPlay.style.display = 'block';
+                console.log('✅ AirPlay disponible');
+            }
+        });
+
+        btnAirPlay.onclick = () => {
+            videoEl.webkitShowPlaybackTargetPicker();
+        };
+    } else {
+        console.log('⚠️ AirPlay no soportado (solo Safari)');
+    }
+}
+
+// 📺 Chromecast Setup
+function setupChromecast(sourceUrl) {
+    const btnChromecast = document.getElementById('btnChromecastControl');
+    
+    if (!btnChromecast) return;
+
+    // Esperar a que Google Cast SDK cargue
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (!isAvailable) {
+            console.log('⚠️ Chromecast SDK no disponible');
+            return;
+        }
+
+        console.log('✅ Chromecast SDK cargado');
+
+        const castContext = cast.framework.CastContext.getInstance();
+        castContext.setOptions({
+            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+
+        btnChromecast.style.display = 'block';
+
+        btnChromecast.onclick = () => {
+            const session = castContext.getCurrentSession();
+            
+            if (session) {
+                // Ya hay sesión activa, enviar media
+                const mediaInfo = new chrome.cast.media.MediaInfo(sourceUrl, 'video/mp4');
+                const request = new chrome.cast.media.LoadRequest(mediaInfo);
+                
+                session.loadMedia(request).then(
+                    () => console.log('✅ Enviado a Chromecast'),
+                    (err) => console.error('❌ Error Chromecast:', err)
+                );
+            } else {
+                // Abrir selector de dispositivos
+                castContext.requestSession().then(
+                    () => {
+                        const newSession = castContext.getCurrentSession();
+                        const mediaInfo = new chrome.cast.media.MediaInfo(sourceUrl, 'video/mp4');
+                        const request = new chrome.cast.media.LoadRequest(mediaInfo);
+                        
+                        newSession.loadMedia(request).then(
+                            () => console.log('✅ Enviado a Chromecast'),
+                            (err) => console.error('❌ Error Chromecast:', err)
+                        );
+                    },
+                    (err) => console.log('❌ No se seleccionó dispositivo:', err)
+                );
+            }
+        };
+    };
 }
 
 function copyInvite() {
@@ -749,6 +871,7 @@ function loadReactions() {
 
 function setupButtons() {
   const btnStartProjection = document.getElementById('btnStartProjection');
+  const btnExternalPlayer = document.getElementById('btnExternalPlayer');
   const btnCopyInvite = document.getElementById('btnCopyInvite');
   const btnChangeSource = document.getElementById('btnChangeSource');
   const btnChangeMovie = document.getElementById('btnChangeMovie');
@@ -761,6 +884,7 @@ function setupButtons() {
   const chatInput = document.getElementById('chatInput');
   
   if (btnStartProjection) btnStartProjection.onclick = startProjection;
+  if (btnExternalPlayer) btnExternalPlayer.onclick = openExternalPlayer;
   if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
   if (btnChangeSource) btnChangeSource.onclick = changeSource;
   if (btnChangeMovie) btnChangeMovie.onclick = changeMovie;
