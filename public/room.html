@@ -24,19 +24,15 @@
 
     <!-- BACKDROP/BANNER + INFORMACIÓN -->
     <div class="movie-section">
-      <div class="room-backdrop">
+    <div class="room-backdrop">
         <img id="roomBackdrop" src="" alt="Banner">
-      </div>
-      
-      <div class="room-info">
-        <div class="movie-meta">
-          <span id="movieYear"></span>
-          <span id="movieType"></span>
-          <span id="movieRating"></span>
+        <!-- Contenedor del reproductor embebido -->
+        <div id="videoContainer" class="video-container" style="display:none;">
+            <video id="roomVideoPlayer" controls playsinline style="width:100%;height:100%;background:black;"></video>
         </div>
-        <p id="movieOverview"></p>
-      </div>
     </div>
+    ...
+</div>
 
     <!-- BOTONES DE ACCIÓN -->
     <div class="room-actions">
