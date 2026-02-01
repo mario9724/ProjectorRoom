@@ -6,6 +6,11 @@ let searchTimeout = null;
 let selectedMovie = null;
 let sources = [];
 let selectedSourceIndex = null;
+
+// ⭐ NUEVO: Variables para cambio de contenido
+let isChangingContent = false;
+let changingRoomId = null;
+
 let roomConfig = {
   username: '',
   roomName: '',
@@ -14,44 +19,73 @@ let roomConfig = {
   shareMode: 'host'
 };
 
+// ⭐ NUEVO: Verificar si estamos cambiando contenido al cargar
+window.addEventListener('load', function() {
+  changingRoomId = sessionStorage.getItem('projectorroom_changing_content');
+  
+  if (changingRoomId) {
+    console.log('🔄 Modo: Cambiar contenido de sala', changingRoomId);
+    isChangingContent = true;
+    
+    // Recuperar configuración guardada
+    roomConfig.username = sessionStorage.getItem('projectorroom_host_username_' + changingRoomId) || '';
+    roomConfig.roomName = sessionStorage.getItem('projectorroom_change_room_name') || '';
+    roomConfig.shareMode = sessionStorage.getItem('projectorroom_change_use_host_source') === 'true' ? 'host' : 'guest';
+    roomConfig.projectorType = sessionStorage.getItem('projectorroom_projector_type_' + changingRoomId) || 'public';
+    roomConfig.customManifest = sessionStorage.getItem('projectorroom_custom_manifest_' + changingRoomId) || '';
+    
+    // Ir directamente a búsqueda (paso 5)
+    goToStep(5);
+  }
+});
+
 // NAVEGACIÓN ENTRE PASOS
 function goToStep(step) {
-  // Validaciones
-  if (step === 2) {
-    const username = document.getElementById('username').value.trim();
-    if (!username) {
-      alert('Por favor, escribe tu nombre');
-      return;
-    }
-    roomConfig.username = username;
+  // ⭐ Si estamos cambiando contenido, saltar directamente a búsqueda
+  if (isChangingContent && step < 5) {
+    step = 5;
   }
   
-  if (step === 3) {
-    const roomName = document.getElementById('roomName').value.trim();
-    if (!roomName) {
-      alert('Por favor, escribe el nombre de la sala');
-      return;
-    }
-    roomConfig.roomName = roomName;
-  }
-  
-  if (step === 4) {
-    roomConfig.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
-    if (roomConfig.projectorType === 'custom') {
-      roomConfig.customManifest = document.getElementById('customManifest').value.trim();
-      if (!roomConfig.customManifest) {
-        alert('Por favor, introduce la URL del manifest.json');
+  // Validaciones (solo si NO estamos cambiando contenido)
+  if (!isChangingContent) {
+    if (step === 2) {
+      const username = document.getElementById('username').value.trim();
+      if (!username) {
+        alert('Por favor, escribe tu nombre');
         return;
       }
+      roomConfig.username = username;
     }
-  }
-  
-  if (step === 5) {
-    roomConfig.shareMode = document.querySelector('input[name="shareMode"]:checked').value;
+    
+    if (step === 3) {
+      const roomName = document.getElementById('roomName').value.trim();
+      if (!roomName) {
+        alert('Por favor, escribe el nombre de la sala');
+        return;
+      }
+      roomConfig.roomName = roomName;
+    }
+    
+    if (step === 4) {
+      roomConfig.projectorType = document.querySelector('input[name="projectorType"]:checked').value;
+      if (roomConfig.projectorType === 'custom') {
+        roomConfig.customManifest = document.getElementById('customManifest').value.trim();
+        if (!roomConfig.customManifest) {
+          alert('Por favor, introduce la URL del manifest.json');
+          return;
+        }
+      }
+    }
+    
+    if (step === 5) {
+      roomConfig.shareMode = document.querySelector('input[name="shareMode"]:checked').value;
+    }
   }
   
   // Ocultar paso actual
-  document.getElementById('step' + currentStep).classList.remove('active');
+  if (!isChangingContent) {
+    document.getElementById('step' + currentStep).classList.remove('active');
+  }
   
   // Mostrar nuevo paso
   currentStep = step;
@@ -100,7 +134,7 @@ function initSearch() {
     const query = this.value.trim();
     
     if (query.length < 2) {
-      document.getElementById('searchResults').innerHTML = '<div class="loading">Escribe al menos 2 caracteres...</div>';
+      document.getElementById('searchResults').innerHTML = '';
       return;
     }
     
@@ -108,223 +142,116 @@ function initSearch() {
   });
 }
 
-// BUSCAR PELÍCULAS
+// BUSCAR PELÍCULAS/SERIES
 async function searchMovies(query) {
-  const container = document.getElementById('searchResults');
-  container.innerHTML = '<div class="loading">🔍 Buscando...</div>';
+  const resultsContainer = document.getElementById('searchResults');
+  resultsContainer.innerHTML = '<div class="loading">Buscando...</div>';
   
   try {
-    const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(query)}`;
-    const res = await fetch(url);
+    const res = await fetch(
+      `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(query)}&page=1`
+    );
     const data = await res.json();
     
-    const filtered = (data.results || []).filter(item => 
+    const filtered = data.results.filter(item => 
       (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
     );
     
     if (filtered.length === 0) {
-      container.innerHTML = '<div class="loading">😕 No se encontraron resultados</div>';
+      resultsContainer.innerHTML = '<div class="loading">No se encontraron resultados</div>';
       return;
     }
     
-    renderMovieGrid(filtered);
+    resultsContainer.innerHTML = '';
+    
+    filtered.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'movie-card';
+      card.onclick = () => selectMovie(item);
+      
+      const title = item.title || item.name;
+      const year = item.release_date || item.first_air_date;
+      const yearText = year ? year.split('-')[0] : 'N/A';
+      const type = item.media_type === 'movie' ? 'Película' : 'Serie';
+      
+      card.innerHTML = `
+        <img src="https://image.tmdb.org/t/p/w200${item.poster_path}" alt="${title}">
+        <div class="movie-info">
+          <div class="movie-title">${title}</div>
+          <div class="movie-meta">${yearText} · ${type}</div>
+        </div>
+      `;
+      
+      resultsContainer.appendChild(card);
+    });
+    
   } catch (error) {
     console.error('Error buscando:', error);
-    container.innerHTML = '<div class="loading">❌ Error en la búsqueda</div>';
+    resultsContainer.innerHTML = '<div class="loading">Error al buscar</div>';
   }
-}
-
-// RENDERIZAR GRID
-function renderMovieGrid(movies) {
-  const container = document.getElementById('searchResults');
-  container.innerHTML = '';
-  
-  movies.forEach(movie => {
-    const card = document.createElement('div');
-    card.className = 'movie-card';
-    card.onclick = () => selectMovie(movie);
-    
-    card.innerHTML = `
-      <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" alt="${movie.title || movie.name}">
-      <div class="movie-card-info">
-        <div class="movie-card-title">${escapeHtml(movie.title || movie.name)}</div>
-        <div class="movie-card-meta">⭐ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
-      </div>
-    `;
-    
-    container.appendChild(card);
-  });
 }
 
 // SELECCIONAR PELÍCULA
 async function selectMovie(movie) {
-  selectedMovie = {
-    id: movie.id,
-    type: movie.media_type === 'movie' ? 'movie' : 'series',
-    title: movie.title || movie.name,
-    poster: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
-    rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A',
-    year: (movie.release_date || movie.first_air_date || '').substring(0, 4),
-    overview: movie.overview || 'Sin descripción disponible',
-    selectedSeason: null,
-    selectedEpisode: null
-  };
+  selectedMovie = movie;
+  console.log('🎬 Película seleccionada:', movie);
   
   // Obtener IMDb ID
   try {
-    const type = movie.media_type === 'movie' ? 'movie' : 'tv';
-    const url = `https://api.themoviedb.org/3/${type}/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`;
-    const res = await fetch(url);
+    const detailsUrl = `https://api.themoviedb.org/3/${movie.media_type}/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`;
+    const res = await fetch(detailsUrl);
     const data = await res.json();
-    selectedMovie.imdbId = data.imdb_id;
     
-    if (!selectedMovie.imdbId) {
+    selectedMovie.imdb_id = data.imdb_id;
+    
+    if (!selectedMovie.imdb_id) {
       alert('No se encontró IMDb ID para este contenido');
       return;
     }
     
-    goToStep(6);
-    renderSelectedMovie();
+    console.log('✅ IMDb ID:', selectedMovie.imdb_id);
     
-    // Si es serie, cargar temporadas y mostrar selector
-    if (selectedMovie.type === 'series') {
-      await loadSeasons();
-    } else {
-      // Si es película, cargar fuentes directamente
-      loadSources();
-    }
+    // Ocultar búsqueda y mostrar fuentes
+    document.getElementById('searchStep').style.display = 'none';
+    document.getElementById('sourcesStep').style.display = 'block';
+    
+    // Mostrar info de la película
+    renderMovieInfo();
+    
+    // Cargar fuentes
+    await loadSources();
+    
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
-    alert('Error obteniendo información');
+    alert('Error obteniendo información de la película');
   }
 }
 
-// RENDERIZAR PELÍCULA SELECCIONADA
-function renderSelectedMovie() {
-  document.getElementById('selectedPoster').src = selectedMovie.poster;
-  document.getElementById('selectedTitle').textContent = selectedMovie.title;
-  document.getElementById('selectedRating').textContent = `⭐ ${selectedMovie.rating}`;
-  document.getElementById('selectedYear').textContent = selectedMovie.year;
-  document.getElementById('selectedType').textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
-  document.getElementById('selectedOverview').textContent = selectedMovie.overview;
+// RENDERIZAR INFO DE PELÍCULA
+function renderMovieInfo() {
+  const container = document.getElementById('selectedMovieInfo');
+  if (!container) return;
   
-  // Ocultar selector de episodios si es película
-  if (selectedMovie.type === 'movie') {
-    document.getElementById('episodeSelector').style.display = 'none';
-  }
-}
-
-// ==================== SELECTOR DE EPISODIOS ====================
-
-// CARGAR TEMPORADAS DESDE TMDB
-async function loadSeasons() {
-  try {
-    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}?api_key=${TMDB_API_KEY}&language=es-ES`;
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    // Filtrar temporadas válidas (excluir especiales si season_number es 0)
-    selectedMovie.seasons = data.seasons.filter(s => s.season_number > 0);
-    
-    // Mostrar selector de episodios
-    document.getElementById('episodeSelector').style.display = 'block';
-    renderSeasons();
-    
-    // Ocultar fuentes hasta que se seleccione episodio
-    document.getElementById('sourcesList').innerHTML = '<div class="loading">👆 Primero selecciona una temporada y episodio</div>';
-    document.getElementById('btnCreateRoom').disabled = true;
-    
-  } catch (error) {
-    console.error('Error cargando temporadas:', error);
-    alert('Error al cargar las temporadas');
-  }
-}
-
-// RENDERIZAR SELECTOR DE TEMPORADAS
-function renderSeasons() {
-  const select = document.getElementById('seasonSelect');
-  select.innerHTML = '<option value="">Selecciona una temporada...</option>';
+  const title = selectedMovie.title || selectedMovie.name;
+  const year = selectedMovie.release_date || selectedMovie.first_air_date;
+  const yearText = year ? year.split('-')[0] : 'N/A';
+  const type = selectedMovie.media_type === 'movie' ? 'Película' : 'Serie';
+  const rating = selectedMovie.vote_average ? selectedMovie.vote_average.toFixed(1) : 'N/A';
   
-  selectedMovie.seasons.forEach(season => {
-    const option = document.createElement('option');
-    option.value = season.season_number;
-    option.textContent = `Temporada ${season.season_number} (${season.episode_count} episodios)`;
-    select.appendChild(option);
-  });
-  
-  // Event listener para cuando se selecciona una temporada
-  select.onchange = (e) => {
-    const seasonNumber = parseInt(e.target.value);
-    if (seasonNumber) {
-      selectSeason(seasonNumber);
-    } else {
-      // Si deselecciona, ocultar episodios
-      document.getElementById('episodeSelectorContainer').style.display = 'none';
-      document.getElementById('episodeSelect').innerHTML = '<option value="">Selecciona un episodio...</option>';
-    }
-  };
-}
-
-// SELECCIONAR TEMPORADA Y CARGAR EPISODIOS
-async function selectSeason(seasonNumber) {
-  selectedMovie.selectedSeason = seasonNumber;
-  selectedMovie.selectedEpisode = null;
-  
-  // Cargar episodios de esta temporada
-  await loadEpisodes(seasonNumber);
-}
-
-// CARGAR EPISODIOS DE UNA TEMPORADA (EN ESPAÑOL)
-async function loadEpisodes(seasonNumber) {
-  try {
-    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=es-ES`;
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    selectedMovie.episodes = data.episodes;
-    
-    // Mostrar contenedor de episodios y renderizar
-    document.getElementById('episodeSelectorContainer').style.display = 'block';
-    renderEpisodes();
-    
-  } catch (error) {
-    console.error('Error cargando episodios:', error);
-    alert('Error al cargar los episodios');
-  }
-}
-
-// RENDERIZAR SELECTOR DE EPISODIOS
-function renderEpisodes() {
-  const select = document.getElementById('episodeSelect');
-  select.innerHTML = '<option value="">Selecciona un episodio...</option>';
-  
-  selectedMovie.episodes.forEach(episode => {
-    const option = document.createElement('option');
-    option.value = episode.episode_number;
-    // Formato: "1. Nombre del Episodio"
-    option.textContent = `${episode.episode_number}. ${episode.name || 'Sin título'}`;
-    select.appendChild(option);
-  });
-  
-  // Event listener para cuando se selecciona un episodio
-  select.onchange = (e) => {
-    const episodeNumber = parseInt(e.target.value);
-    if (episodeNumber) {
-      selectEpisode(episodeNumber);
-    } else {
-      // Si deselecciona, ocultar fuentes
-      document.getElementById('sourcesList').innerHTML = '<div class="loading">👆 Selecciona un episodio</div>';
-      document.getElementById('btnCreateRoom').disabled = true;
-    }
-  };
-}
-
-// SELECCIONAR EPISODIO Y CARGAR FUENTES
-function selectEpisode(episodeNumber) {
-  selectedMovie.selectedEpisode = episodeNumber;
-  
-  // Ahora sí, cargar las fuentes para este episodio específico
-  loadSources();
+  container.innerHTML = `
+    <div class="movie-header">
+      <img src="https://image.tmdb.org/t/p/w200${selectedMovie.poster_path}" alt="${title}">
+      <div class="movie-details">
+        <h2>${title}</h2>
+        <div class="movie-meta">
+          <span>⭐ ${rating}</span>
+          <span>${yearText}</span>
+          <span>${type}</span>
+        </div>
+        <p>${selectedMovie.overview || 'Sin descripción disponible'}</p>
+      </div>
+    </div>
+  `;
 }
 
 // CARGAR FUENTES
@@ -336,23 +263,15 @@ async function loadSources() {
     ? roomConfig.customManifest 
     : PUBLIC_MANIFEST;
   
+  console.log('📡 Cargando desde manifest:', manifestUrl);
+  
   try {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
-    const streamType = selectedMovie.type === 'movie' ? 'movie' : 'series';
+    const streamType = selectedMovie.media_type === 'movie' ? 'movie' : 'series';
+    const streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdb_id}.json`;
     
-    // Construir URL según el tipo de contenido
-    let streamUrl;
-    if (selectedMovie.type === 'movie') {
-      streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdbId}.json`;
-    } else {
-      // Para series: incluir temporada y episodio
-      const season = selectedMovie.selectedSeason;
-      const episode = selectedMovie.selectedEpisode;
-      streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdbId}:${season}:${episode}.json`;
-    }
-    
-    console.log('🔍 Buscando en:', streamUrl);
+    console.log('🎬 Stream URL:', streamUrl);
     
     const res = await fetch(streamUrl);
     if (!res.ok) throw new Error('No se encontraron fuentes');
@@ -367,17 +286,18 @@ async function loadSources() {
         provider: manifest.name || 'Addon'
       }));
     
+    console.log('✅ Fuentes encontradas:', sources.length);
+    
     if (sources.length === 0) {
       container.innerHTML = '<div class="loading">😕 No se encontraron fuentes disponibles</div>';
-      document.getElementById('btnCreateRoom').disabled = true;
       return;
     }
     
     renderSources();
+    
   } catch (error) {
-    console.error('Error cargando fuentes:', error);
+    console.error('❌ Error cargando fuentes:', error);
     container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
-    document.getElementById('btnCreateRoom').disabled = true;
   }
 }
 
@@ -402,6 +322,7 @@ function renderSources() {
   document.getElementById('btnCreateRoom').disabled = false;
 }
 
+// SELECCIONAR FUENTE
 function selectSource(index) {
   selectedSourceIndex = index;
   
@@ -410,51 +331,121 @@ function selectSource(index) {
   });
 }
 
-// CREAR SALA Y REDIRIGIR
+// ⭐ MODIFICADO: CREAR O ACTUALIZAR SALA
 async function createRoom() {
   if (selectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
     return;
   }
   
-  const roomData = {
-    roomName: roomConfig.roomName,
-    hostUsername: roomConfig.username,
-    manifest: JSON.stringify(selectedMovie),
-    sourceUrl: sources[selectedSourceIndex].url,
-    useHostSource: roomConfig.shareMode === 'host',
-    projectorType: roomConfig.projectorType,
-    customManifest: roomConfig.customManifest
-  };
+  const selectedSource = sources[selectedSourceIndex];
+  console.log('✅ Fuente seleccionada:', selectedSource.url);
+  
+  const manifest = JSON.stringify({
+    imdbId: selectedMovie.imdb_id,
+    title: selectedMovie.title || selectedMovie.name,
+    year: (selectedMovie.release_date || selectedMovie.first_air_date || '').split('-')[0],
+    poster: selectedMovie.poster_path 
+      ? `https://image.tmdb.org/t/p/w500${selectedMovie.poster_path}` 
+      : '',
+    backdrop: selectedMovie.backdrop_path 
+      ? `https://image.tmdb.org/t/p/original${selectedMovie.backdrop_path}` 
+      : '',
+    overview: selectedMovie.overview || '',
+    rating: selectedMovie.vote_average || 0,
+    type: selectedMovie.media_type || 'movie'
+  });
   
   try {
-    const res = await fetch('/api/projectorrooms/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(roomData)
-    });
-    
-    const data = await res.json();
-    
-    if (data.success) {
-      const roomId = data.projectorRoom.id;
+    if (isChangingContent && changingRoomId) {
+      // ⭐ ACTUALIZAR SALA EXISTENTE
+      console.log('🔄 Actualizando sala:', changingRoomId);
       
-      // MARCAR COMO ANFITRIÓN (no mostrar configuración de invitado)
+      const updateRes = await fetch(`/api/projectorrooms/${changingRoomId}/update-content`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manifest,
+          sourceUrl: roomConfig.shareMode === 'host' ? selectedSource.url : null
+        })
+      });
+      
+      const updateData = await updateRes.json();
+      
+      if (!updateData.success) {
+        throw new Error(updateData.message || 'Error actualizando sala');
+      }
+      
+      console.log('✅ Sala actualizada correctamente');
+      
+      // Limpiar sessionStorage
+      sessionStorage.removeItem('projectorroom_changing_content');
+      sessionStorage.removeItem('projectorroom_change_room_name');
+      sessionStorage.removeItem('projectorroom_change_use_host_source');
+      
+      // Si no comparte fuente, guardar la seleccionada localmente
+      if (roomConfig.shareMode !== 'host') {
+        localStorage.setItem('projectorroom_guest_source_' + changingRoomId, selectedSource.url);
+      }
+      
+      alert('✅ Contenido actualizado correctamente');
+      window.location.href = `/sala/${changingRoomId}`;
+      
+    } else {
+      // ⭐ CREAR NUEVA SALA
+      console.log('🆕 Creando nueva sala...');
+      
+      const res = await fetch('/api/projectorrooms/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomName: roomConfig.roomName,
+          hostUsername: roomConfig.username,
+          manifest,
+          sourceUrl: roomConfig.shareMode === 'host' ? selectedSource.url : '',
+          useHostSource: roomConfig.shareMode === 'host',
+          projectorType: roomConfig.projectorType,
+          customManifest: roomConfig.customManifest || null
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Error creando sala');
+      }
+      
+      const roomId = data.projectorRoom.id;
+      console.log('✅ Sala creada:', roomId);
+      
+      // Guardar sesión del anfitrión
       sessionStorage.setItem('projectorroom_is_host_' + roomId, 'true');
       sessionStorage.setItem('projectorroom_host_username_' + roomId, roomConfig.username);
       
-      // REDIRIGIR A LA SALA
+      // Si no comparte fuente, guardar la seleccionada localmente
+      if (roomConfig.shareMode !== 'host') {
+        localStorage.setItem('projectorroom_guest_source_' + roomId, selectedSource.url);
+      }
+      
       window.location.href = `/sala/${roomId}`;
-    } else {
-      alert('Error creando sala');
     }
+    
   } catch (error) {
-    console.error('Error:', error);
-    alert('Error creando sala');
+    console.error('❌ Error:', error);
+    alert('Error: ' + error.message);
   }
 }
 
-// UTILIDADES
+// VOLVER A BÚSQUEDA
+function backToSearch() {
+  document.getElementById('searchStep').style.display = 'block';
+  document.getElementById('sourcesStep').style.display = 'none';
+  selectedMovie = null;
+  sources = [];
+  selectedSourceIndex = null;
+}
+
+// ESCAPE HTML
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
