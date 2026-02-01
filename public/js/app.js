@@ -7,7 +7,7 @@ let selectedMovie = null;
 let sources = [];
 let selectedSourceIndex = null;
 
-// ⭐ NUEVO: Variables para cambio de contenido
+// ⭐ Variables para cambio de contenido
 let isChangingContent = false;
 let changingRoomId = null;
 
@@ -19,7 +19,7 @@ let roomConfig = {
   shareMode: 'host'
 };
 
-// ⭐ NUEVO: Verificar si estamos cambiando contenido al cargar
+// ⭐ Verificar si estamos cambiando contenido al cargar
 window.addEventListener('load', function() {
   changingRoomId = sessionStorage.getItem('projectorroom_changing_content');
   
@@ -34,6 +34,8 @@ window.addEventListener('load', function() {
     roomConfig.projectorType = sessionStorage.getItem('projectorroom_projector_type_' + changingRoomId) || 'public';
     roomConfig.customManifest = sessionStorage.getItem('projectorroom_custom_manifest_' + changingRoomId) || '';
     
+    console.log('📋 Config recuperada:', roomConfig);
+    
     // Ir directamente a búsqueda (paso 5)
     goToStep(5);
   }
@@ -41,6 +43,8 @@ window.addEventListener('load', function() {
 
 // NAVEGACIÓN ENTRE PASOS
 function goToStep(step) {
+  console.log('📍 Navegando al paso', step);
+  
   // ⭐ Si estamos cambiando contenido, saltar directamente a búsqueda
   if (isChangingContent && step < 5) {
     step = 5;
@@ -131,7 +135,12 @@ function selectShareMode(mode) {
 // INICIALIZAR BÚSQUEDA
 function initSearch() {
   const input = document.getElementById('searchInput');
-  if (!input) return;
+  if (!input) {
+    console.error('❌ No se encontró #searchInput');
+    return;
+  }
+  
+  console.log('🔍 Inicializando búsqueda...');
   
   // Limpiar listener anterior
   const newInput = input.cloneNode(true);
@@ -353,7 +362,7 @@ function selectSource(index) {
   });
 }
 
-// ⭐ MODIFICADO: CREAR O ACTUALIZAR SALA
+// ⭐ CREAR O ACTUALIZAR SALA (CON MEJOR ERROR HANDLING)
 async function createRoom() {
   if (selectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
@@ -392,7 +401,16 @@ async function createRoom() {
         })
       });
       
+      console.log('📡 Response status:', updateRes.status);
+      
+      if (!updateRes.ok) {
+        const errorText = await updateRes.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`HTTP ${updateRes.status}: ${errorText}`);
+      }
+      
       const updateData = await updateRes.json();
+      console.log('📦 Update ', updateData);
       
       if (!updateData.success) {
         throw new Error(updateData.message || 'Error actualizando sala');
@@ -417,21 +435,34 @@ async function createRoom() {
       // ⭐ CREAR NUEVA SALA
       console.log('🆕 Creando nueva sala...');
       
+      const requestBody = {
+        roomName: roomConfig.roomName,
+        hostUsername: roomConfig.username,
+        manifest,
+        sourceUrl: roomConfig.shareMode === 'host' ? selectedSource.url : '',
+        useHostSource: roomConfig.shareMode === 'host',
+        projectorType: roomConfig.projectorType,
+        customManifest: roomConfig.customManifest || null
+      };
+      
+      console.log('📤 Request body:', requestBody);
+      
       const res = await fetch('/api/projectorrooms/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomName: roomConfig.roomName,
-          hostUsername: roomConfig.username,
-          manifest,
-          sourceUrl: roomConfig.shareMode === 'host' ? selectedSource.url : '',
-          useHostSource: roomConfig.shareMode === 'host',
-          projectorType: roomConfig.projectorType,
-          customManifest: roomConfig.customManifest || null
-        })
+        body: JSON.stringify(requestBody)
       });
       
+      console.log('📡 Response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+      
       const data = await res.json();
+      console.log('📦 Response ', data);
       
       if (!data.success) {
         throw new Error(data.message || 'Error creando sala');
@@ -453,7 +484,10 @@ async function createRoom() {
     }
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error completo:', error);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     alert('Error: ' + error.message);
   }
 }
