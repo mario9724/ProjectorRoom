@@ -116,9 +116,22 @@
           </div>
         </div>
         
-        <!-- ⭐ NUEVO: Selector episodios para series -->
-<div id="seasonSelector" style="display: none; margin-top: 25px;"></div>
-
+        <!-- ⭐ Selector de temporada y episodio para series -->
+        <div id="episodeSelector" style="display: none; margin: 25px 0;">
+          <h3 class="section-title">📺 Selecciona el episodio</h3>
+          
+          <!-- Selector de temporada -->
+          <div id="seasonSelectorContainer" style="margin-bottom: 20px;">
+            <p class="section-subtitle">Temporada</p>
+            <div id="seasonButtons" class="episode-grid"></div>
+          </div>
+          
+          <!-- Selector de episodio -->
+          <div id="episodeSelectorContainer" style="display: none;">
+            <p class="section-subtitle">Episodio</p>
+            <div id="episodeButtons" class="episode-grid"></div>
+          </div>
+        </div>
         
         <h3 class="section-title">🔍 Fuentes disponibles</h3>
         <p class="section-subtitle">Selecciona la mejor calidad para tu sala</p>
