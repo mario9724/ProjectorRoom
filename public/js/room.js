@@ -1,903 +1,626 @@
+// ==================== CONFIGURACIÓN ====================
+
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
-const PUBLIC_MANIFEST = 'https://aiostreams-nightly.stremio.ru/stremio/f18d6a2e-742d-4ae6-8866-2c7b2484031f/eyJpIjoiM2tVUUwxWGhTUlE3azRrK2E4eFZJdz09IiwiZSI6ImxDWkE2dGJPYXFta2FTSUNBaGt2TkRzL1NQRlFteGtZUzJ4WVd2YXRsNFE9IiwidCI6ImEifQ/manifest.json';
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const TMDB_BACKDROP_BASE = 'https://image.tmdb.org/t/p/original';
 
-let roomId = null;
-let socket = null;
-let username = '';
-let roomData = null;
-let isHost = false;
-let guestSources = [];
-let guestSelectedSourceIndex = null;
-let userRating = null;
-let allRatings = [];
-let allReactions = [];
-let currentUsers = [];
+let socket;
+let currentRoom = null;
+let currentUsername = '';
+let myRating = 0;
 
-// ==================== INICIALIZAR ====================
-window.addEventListener('load', async function() {
-  console.log('🚀 Inicializando sala...');
-  
-  const pathParts = window.location.pathname.split('/');
-  roomId = pathParts[pathParts.length - 1];
-  
-  if (!roomId || roomId === 'sala') {
-    alert('ID de sala no válido');
-    window.location.href = '/';
+// ==================== FUNCIONES AUXILIARES ====================
+
+// ⭐ FUNCIÓN CENTRALIZADA PARA DETECTAR MKV
+function checkAndHideProjectorIfMKV(sourceUrl) {
+  if (!sourceUrl) {
+    console.log('⚠️ No hay sourceUrl disponible');
     return;
   }
   
-  console.log('📋 Room ID:', roomId);
+  const urlLower = sourceUrl.toLowerCase();
+  const isMKV = urlLower.includes('.mkv');
+  const btnStartProjection = document.getElementById('btnStartProjection');
   
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔍 VERIFICANDO FORMATO DE VIDEO');
+  console.log('📎 URL:', sourceUrl);
+  console.log('🎬 ¿Contiene .mkv?', isMKV);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
+  if (isMKV) {
+    console.log('🚫 FORMATO MKV DETECTADO');
+    console.log('🚫 OCULTANDO BOTÓN PROYECTAR');
+    btnStartProjection.style.display = 'none';
+    btnStartProjection.disabled = true;
+  } else {
+    console.log('✅ Formato compatible');
+    console.log('✅ MOSTRANDO BOTÓN PROYECTAR');
+    btnStartProjection.style.display = 'block';
+    btnStartProjection.disabled = false;
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ==================== INICIALIZACIÓN ====================
+
+window.addEventListener('DOMContentLoaded', () => {
+  initSocketConnection();
+  loadRoomData();
+  setupEventListeners();
+});
+
+function getRoomIdFromUrl() {
+  const path = window.location.pathname;
+  return path.split('/sala/')[1];
+}
+
+function initSocketConnection() {
+  socket = io();
+  
+  socket.on('connect', () => {
+    console.log('✅ Socket conectado:', socket.id);
+  });
+  
+  socket.on('user-joined', (data) => {
+    console.log('👤 Usuario se unió:', data.user.username);
+    updateUsersList(data.users);
+  });
+  
+  socket.on('user-left', (data) => {
+    console.log('👋 Usuario salió:', data.username);
+    updateUsersList(data.users);
+  });
+  
+  socket.on('chat-message', (data) => {
+    addChatMessage(data.username, data.message, data.created_at);
+  });
+  
+  socket.on('chat-history', (data) => {
+    displayChatHistory(data.messages);
+  });
+  
+  socket.on('rating-added', (data) => {
+    console.log('⭐ Nueva calificación:', data);
+    loadRatings();
+  });
+  
+  socket.on('ratings-history', (data) => {
+    displayRatingsHistory(data.ratings, data.average);
+  });
+  
+  socket.on('reaction-added', (data) => {
+    console.log('💬 Nueva reacción:', data);
+    loadReactions();
+  });
+  
+  socket.on('reactions-history', (data) => {
+    displayReactionsHistory(data.reactions);
+  });
+  
+  socket.on('content-changed', (data) => {
+    console.log('🔄 Contenido cambiado por el anfitrión');
+    alert('El anfitrión ha cambiado el contenido de la sala. Recargando...');
+    window.location.reload();
+  });
+  
+  socket.on('error', (data) => {
+    console.error('❌ Error del servidor:', data.message);
+    alert(data.message);
+  });
+}
+
+// ==================== CARGAR DATOS DE LA SALA ====================
+
+async function loadRoomData() {
   try {
-    await loadRoomData();
-    console.log('✅ Datos de sala cargados:', roomData);
-  } catch (error) {
-    console.error('❌ Error cargando sala:', error);
-    alert('Error: Sala no encontrada');
-    window.location.href = '/';
-    return;
-  }
-  
-  isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
-  console.log('👤 ¿Es anfitrión?', isHost);
-  
-  if (isHost) {
-    username = sessionStorage.getItem('projectorroom_host_username_' + roomId);
-    console.log('🎯 Username anfitrión:', username);
+    const roomId = getRoomIdFromUrl();
     
-    if (!username) {
-      console.error('❌ No se encontró username del anfitrión');
-      alert('Error de sesión. Por favor, crea la sala de nuevo.');
+    const res = await fetch(`/api/projectorrooms/${roomId}/full`);
+    const data = await res.json();
+    
+    if (!data.success) {
+      alert('Sala no encontrada');
       window.location.href = '/';
       return;
     }
     
-    console.log('✅ Anfitrión detectado, iniciando sala...');
-    initRoom();
+    currentRoom = data.projectorRoom;
     
-  } else {
-    console.log('👥 Usuario invitado detectado');
+    console.log('📦 Sala cargada:', currentRoom);
     
-    const alreadyConfigured = localStorage.getItem('projectorroom_guest_configured_' + roomId) === 'true';
-    console.log('⚙️ ¿Ya configurado?', alreadyConfigured);
+    // ⭐ VERIFICAR MKV INMEDIATAMENTE
+    checkAndHideProjectorIfMKV(currentRoom.sourceUrl);
     
-    if (alreadyConfigured) {
-      username = localStorage.getItem('projectorroom_username');
-      console.log('👤 Username invitado:', username);
-      
-      if (roomData.useHostSource === false) {
-        console.log('🔍 Anfitrión NO comparte fuente, verificando selección...');
-        const hasSelectedSource = localStorage.getItem('projectorroom_guest_source_' + roomId);
-        
-        if (!hasSelectedSource) {
-          console.log('⚠️ Invitado debe seleccionar fuente');
-          showGuestSourceSelector();
-          return;
-        } else {
-          console.log('✅ Invitado ya tiene fuente:', hasSelectedSource);
-        }
-      } else {
-        console.log('✅ Anfitrión comparte fuente');
-      }
-      
-      initRoom();
-    } else {
-      console.log('📝 Mostrando configuración de invitado...');
-      showGuestConfig();
-    }
-  }
-});
-
-async function loadRoomData() {
-  const res = await fetch(`/api/projectorrooms/${roomId}`);
-  const data = await res.json();
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Sala no encontrada');
-  }
-  
-  roomData = data.projectorRoom;
-}
-
-function showGuestConfig() {
-  console.log('📝 Renderizando configuración de invitado');
-  document.querySelector('.room-container').style.display = 'none';
-  
-  let configHTML = `
-    <div class="guest-config-container">
-      <div class="step-card">
-        <h1>👋 Ey roomie, ¿cómo te llamas?</h1>
-        <input type="text" id="guestUsername" placeholder="Tu nombre..." maxlength="20" autofocus>
-  `;
-  
-  if (roomData.useHostSource === false) {
-    configHTML += `
-      <div style="margin-top: 30px;">
-        <h2 style="font-size: 1.3rem; margin-bottom: 20px; text-align: center;">🎬 ¿Qué proyector quieres usar?</h2>
-        
-        <div class="option-card" onclick="selectGuestProjector('public')">
-          <input type="radio" name="guestProjectorType" value="public" checked>
-          <div class="option-content">
-            <div class="option-title">🌐 Proyector público</div>
-            <div class="option-desc">Se usará el predeterminado ya configurado</div>
-          </div>
-        </div>
-        
-        <div class="option-card" onclick="selectGuestProjector('custom')">
-          <input type="radio" name="guestProjectorType" value="custom">
-          <div class="option-content">
-            <div class="option-title">⚙️ Proyector personalizado</div>
-            <div class="option-desc">Introduce tu manifest.json custom</div>
-          </div>
-        </div>
-        
-        <div id="guestCustomManifestBox" style="display:none; margin-top: 15px;">
-          <input type="url" id="guestCustomManifest" placeholder="https://tu-manifest.json">
-        </div>
-      </div>
-    `;
-  }
-  
-  configHTML += `
-        <button class="btn-primary" onclick="submitGuestConfig()" style="margin-top: 30px; width: 100%;">
-          Accede a la sala de ${escapeHtml(roomData.hostUsername)} →
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.insertAdjacentHTML('beforeend', configHTML);
-}
-
-window.selectGuestProjector = function(type) {
-  document.querySelectorAll('input[name="guestProjectorType"]').forEach(radio => {
-    radio.checked = radio.value === type;
-  });
-  
-  document.querySelectorAll('.guest-config-container .option-card').forEach(card => {
-    card.classList.remove('selected');
-  });
-  event.currentTarget.classList.add('selected');
-  
-  const customBox = document.getElementById('guestCustomManifestBox');
-  if (customBox) {
-    customBox.style.display = type === 'custom' ? 'block' : 'none';
-  }
-};
-
-window.submitGuestConfig = function() {
-  const usernameInput = document.getElementById('guestUsername');
-  username = usernameInput.value.trim();
-  
-  if (!username) {
-    alert('Por favor, escribe tu nombre');
-    return;
-  }
-  
-  console.log('✅ Guardando configuración de invitado:', username);
-  
-  localStorage.setItem('projectorroom_username', username);
-  localStorage.setItem('projectorroom_guest_configured_' + roomId, 'true');
-  
-  if (roomData.useHostSource === false) {
-    const projectorType = document.querySelector('input[name="guestProjectorType"]:checked').value;
+    currentUsername = prompt('¿Cómo te llamas?') || 'Anónimo';
     
-    if (projectorType === 'custom') {
-      const customManifest = document.getElementById('guestCustomManifest').value.trim();
-      if (!customManifest) {
-        alert('Por favor, introduce la URL del manifest.json');
-        return;
-      }
-      localStorage.setItem('projectorroom_guest_manifest_' + roomId, customManifest);
-    }
-    
-    localStorage.setItem('projectorroom_guest_projector_' + roomId, projectorType);
-    
-    console.log('🔍 Invitado debe seleccionar fuente');
-    document.querySelector('.guest-config-container').remove();
-    showGuestSourceSelector();
-  } else {
-    console.log('✅ Invitado usará fuente del anfitrión');
-    document.querySelector('.guest-config-container').remove();
-    document.querySelector('.room-container').style.display = 'block';
-    initRoom();
-  }
-};
-
-async function showGuestSourceSelector() {
-  console.log('🔍 Mostrando selector de fuentes para invitado');
-  document.querySelector('.room-container').style.display = 'none';
-  
-  const movieData = JSON.parse(roomData.manifest);
-  
-  const selectorHTML = `
-    <div class="guest-source-container">
-      <div class="step-card wide">
-        <div class="movie-header">
-          <img src="${movieData.poster || ''}" alt="Poster">
-          <div class="movie-info">
-            <h2>${escapeHtml(movieData.title || 'Película')}</h2>
-            <div class="movie-meta">
-              <span>⭐ ${movieData.rating || 'N/A'}</span>
-              <span>${movieData.year || 'N/A'}</span>
-              <span>${movieData.type === 'movie' ? 'Película' : 'Serie'}</span>
-            </div>
-            <p>${escapeHtml(movieData.overview || 'Sin descripción')}</p>
-          </div>
-        </div>
-        
-        <h3 class="section-title">🔍 Selecciona tu fuente</h3>
-        <p class="section-subtitle">Elige la mejor calidad para tu reproducción</p>
-        
-        <div id="guestSourcesList" class="sources-list">
-          <div class="loading">Cargando fuentes...</div>
-        </div>
-        
-        <button id="btnJoinRoom" class="btn-primary" disabled onclick="joinRoomWithSource()" style="width: 100%;">
-          Unirse a la sala →
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.insertAdjacentHTML('beforeend', selectorHTML);
-  await loadGuestSources(movieData);
-}
-
-async function loadGuestSources(movieData) {
-  console.log('🔍 Cargando fuentes para invitado...');
-  const container = document.getElementById('guestSourcesList');
-  container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
-  
-  const projectorType = localStorage.getItem('projectorroom_guest_projector_' + roomId);
-  const manifestUrl = projectorType === 'custom'
-    ? localStorage.getItem('projectorroom_guest_manifest_' + roomId)
-    : PUBLIC_MANIFEST;
-  
-  console.log('📡 Manifest URL:', manifestUrl);
-  
-  try {
-    const manifest = await fetch(manifestUrl).then(r => r.json());
-    const baseUrl = manifestUrl.replace('/manifest.json', '');
-    const streamType = movieData.type === 'movie' ? 'movie' : 'series';
-    
-    // ⭐ Construir URL con temporada y episodio si es serie
-    let streamUrl = `${baseUrl}/stream/${streamType}/${movieData.imdbId}`;
-    
-    if (movieData.type === 'tv' && movieData.season && movieData.episode) {
-      streamUrl += `:${movieData.season}:${movieData.episode}`;
-    }
-    
-    streamUrl += '.json';
-    
-    console.log('🎬 Stream URL:', streamUrl);
-    
-    const res = await fetch(streamUrl);
-    if (!res.ok) throw new Error('No se encontraron fuentes');
-    
-    const data = await res.json();
-    
-    guestSources = (data.streams || [])
-      .filter(s => s && s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')))
-      .map(s => ({
-        url: s.url,
-        title: s.title || s.name || 'Stream',
-        provider: manifest.name || 'Addon'
-      }));
-    
-    console.log('✅ Fuentes encontradas:', guestSources.length);
-    
-    if (guestSources.length === 0) {
-      container.innerHTML = '<div class="loading">😕 No se encontraron fuentes disponibles</div>';
-      return;
-    }
-    
-    renderGuestSources();
-  } catch (error) {
-    console.error('❌ Error cargando fuentes:', error);
-    container.innerHTML = `<div class="loading">❌ Error: ${error.message}</div>`;
-  }
-}
-
-function renderGuestSources() {
-  const container = document.getElementById('guestSourcesList');
-  container.innerHTML = '';
-  
-  guestSources.forEach((source, index) => {
-    const card = document.createElement('div');
-    card.className = 'source-card';
-    card.onclick = () => selectGuestSource(index);
-    
-    card.innerHTML = `
-      <div class="source-title">${escapeHtml(source.title)}</div>
-      <div class="source-meta">🔌 ${escapeHtml(source.provider)}</div>
-    `;
-    
-    container.appendChild(card);
-  });
-  
-  document.getElementById('btnJoinRoom').disabled = false;
-}
-
-function selectGuestSource(index) {
-  guestSelectedSourceIndex = index;
-  
-  document.querySelectorAll('.source-card').forEach((card, i) => {
-    card.classList.toggle('selected', i === index);
-  });
-}
-
-window.joinRoomWithSource = function() {
-  if (guestSelectedSourceIndex === null) {
-    alert('Por favor, selecciona una fuente');
-    return;
-  }
-  
-  const selectedUrl = guestSources[guestSelectedSourceIndex].url;
-  console.log('✅ Fuente seleccionada:', selectedUrl);
-  
-  localStorage.setItem('projectorroom_guest_source_' + roomId, selectedUrl);
-  
-  document.querySelector('.guest-source-container').remove();
-  document.querySelector('.room-container').style.display = 'block';
-  
-  initRoom();
-};
-
-function initRoom() {
-  console.log('🎬 Inicializando sala principal...');
-  console.log('👤 Usuario:', username);
-  console.log('🎯 Es anfitrión:', isHost);
-  
-  renderRoom();
-  
-  if (isHost) {
-    const btnChangeContent = document.getElementById('btnChangeContent');
-    if (btnChangeContent) {
-      btnChangeContent.style.display = 'inline-block';
-    }
-    console.log('🔄 Botón "Cambiar contenido" habilitado para anfitrión');
-  }
-
-  if (!isHost && roomData.useHostSource === false) {
-    const changeSourceSection = document.getElementById('changeSourceSection');
-    if (changeSourceSection) {
-      changeSourceSection.style.display = 'block';
-    }
-    console.log('🔄 Botón "Cambiar fuente" habilitado para invitado');
-  }
-  
-  connectSocket();
-  setupButtons();
-  loadRatings();
-  loadReactions();
-  
-  console.log('✅ Sala inicializada correctamente');
-}
-
-function renderRoom() {
-  console.log('🎨 Renderizando interfaz de sala...');
-  
-  const movieData = JSON.parse(roomData.manifest);
-  
-  const posterEl = document.getElementById('roomPosterSmall');
-  if (posterEl) posterEl.src = movieData.poster || '';
-  
-  const titleEl = document.getElementById('roomTitle');
-  if (titleEl) {
-    let title = `Proyectando ${movieData.title}`;
-    
-    // ⭐ Añadir info de temporada y episodio si es serie
-    if (movieData.type === 'tv' && movieData.season && movieData.episode) {
-      title += ` - T${movieData.season}E${movieData.episode}`;
-    }
-    
-    title += ` en ${roomData.roomName} de ${roomData.hostUsername}`;
-    titleEl.textContent = title;
-  }
-  
-  const backdropEl = document.getElementById('roomBackdrop');
-  if (backdropEl) {
-    backdropEl.src = movieData.backdrop || movieData.poster || '';
-  }
-  
-  const yearEl = document.getElementById('movieYear');
-  const typeEl = document.getElementById('movieType');
-  const ratingEl = document.getElementById('movieRating');
-  const overviewEl = document.getElementById('movieOverview');
-  
-  if (yearEl) yearEl.textContent = `📅 ${movieData.year || 'N/A'}`;
-  if (typeEl) typeEl.textContent = `🎬 ${movieData.type === 'movie' ? 'Película' : 'Serie'}`;
-  if (ratingEl) ratingEl.textContent = `⭐ ${movieData.rating || 'N/A'}`;
-  if (overviewEl) overviewEl.textContent = movieData.overview || 'Sin descripción disponible';
-  
-  console.log('✅ Interfaz renderizada');
-}
-
-function connectSocket() {
-  console.log('🔌 Conectando a Socket.IO...');
-  
-  socket = io();
-  
-  socket.on('connect', () => {
-    console.log('✅ Socket conectado');
-    socket.emit('join-room', { roomId, username });
-  });
-  
-  socket.on('user-joined', data => {
-    console.log('👥 Usuario unido:', data.user.username);
-    updateUsersList(data.users);
-    addChatMessage('Sistema', `${data.user.username} se unió a la sala`, true);
-  });
-  
-  socket.on('user-left', data => {
-    console.log('👋 Usuario salió:', data.username);
-    updateUsersList(data.users);
-    addChatMessage('Sistema', `${data.username} salió de la sala`, true);
-  });
-  
-  socket.on('chat-message', data => {
-    addChatMessage(data.username, data.message, false);
-  });
-  
-  socket.on('chat-history', data => {
-    console.log('📜 Cargando historial de chat:', data.messages.length, 'mensajes');
-    data.messages.forEach(msg => {
-      addChatMessage(msg.username, msg.message, false);
+    socket.emit('join-room', {
+      roomId: roomId,
+      username: currentUsername
     });
-  });
-  
-  socket.on('rating-added', data => {
-    console.log('⭐ Rating añadido:', data);
-    allRatings.push(data);
-    if (document.getElementById('modalCalifications').style.display === 'flex') {
-      renderAllRatings();
-    }
-  });
-  
-  socket.on('ratings-history', data => {
-    console.log('📜 Cargando historial de calificaciones:', data.ratings.length, 'ratings');
-    allRatings = data.ratings || [];
-    console.log('📊 Promedio de calificaciones:', data.average);
-  });
-  
-  socket.on('reaction-added', data => {
-    console.log('💬 Reacción añadida:', data);
-    allReactions.push(data);
-    if (document.getElementById('modalReactions').style.display === 'flex') {
-      renderAllReactions();
-    }
-  });
-  
-  socket.on('reactions-history', data => {
-    console.log('📜 Cargando historial de reacciones:', data.reactions.length, 'reacciones');
-    allReactions = data.reactions || [];
-  });
-
-  socket.on('content-changed', data => {
-    console.log('🔄 Contenido cambiado por anfitrión');
     
-    if (!isHost) {
-      alert('🔄 El anfitrión cambió el contenido\n\nRecargando nueva película/serie...');
-      window.location.reload();
+    displayRoomInfo(data.projectorRoom, data.mediaInfo);
+    
+    // ⭐ VERIFICAR MKV DE NUEVO DESPUÉS DE displayRoomInfo
+    setTimeout(() => {
+      checkAndHideProjectorIfMKV(currentRoom.sourceUrl);
+    }, 100);
+    
+    const isHost = currentUsername === currentRoom.hostUsername;
+    
+    if (isHost) {
+      document.getElementById('btnChangeContent').style.display = 'block';
     }
-  });
+    
+    const isGuest = !isHost && !currentRoom.useHostSource;
+    
+    if (isGuest) {
+      document.getElementById('changeSourceSection').style.display = 'block';
+    }
+    
+  } catch (error) {
+    console.error('❌ Error cargando sala:', error);
+    alert('Error al cargar la sala');
+  }
+}
+
+function displayRoomInfo(room, mediaInfo) {
+  document.getElementById('roomTitle').textContent = room.roomName;
+  
+  if (mediaInfo) {
+    const posterSmall = document.getElementById('roomPosterSmall');
+    posterSmall.src = mediaInfo.poster_path 
+      ? `${TMDB_IMAGE_BASE}${mediaInfo.poster_path}`
+      : 'https://via.placeholder.com/200x300?text=Sin+Poster';
+    
+    const backdrop = document.getElementById('roomBackdrop');
+    backdrop.src = mediaInfo.backdrop_path
+      ? `${TMDB_BACKDROP_BASE}${mediaInfo.backdrop_path}`
+      : 'https://via.placeholder.com/1280x720?text=Sin+Banner';
+    
+    document.getElementById('movieYear').textContent = mediaInfo.release_date 
+      ? new Date(mediaInfo.release_date).getFullYear() 
+      : '-';
+    
+    document.getElementById('movieType').textContent = mediaInfo.media_type === 'movie' 
+      ? '🎬 Película' 
+      : '📺 Serie';
+    
+    document.getElementById('movieRating').textContent = mediaInfo.vote_average 
+      ? `⭐ ${mediaInfo.vote_average}/10` 
+      : '-';
+    
+    document.getElementById('movieOverview').textContent = mediaInfo.overview || 'Sin descripción disponible';
+  }
+  
+  // ⭐ VERIFICAR MKV AL MOSTRAR INFO
+  checkAndHideProjectorIfMKV(room.sourceUrl);
 }
 
 function updateUsersList(users) {
-  currentUsers = users;
+  const usersNames = users.map(u => u.username).join(', ');
+  document.getElementById('usersNames').textContent = `${users.length} roomie(s): ${usersNames}`;
+}
+
+// ==================== CHAT ====================
+
+function displayChatHistory(messages) {
+  const chatContainer = document.getElementById('chatMessages');
+  chatContainer.innerHTML = '';
   
-  const usersNamesEl = document.getElementById('usersNames');
-  if (usersNamesEl) {
-    if (users.length === 0) {
-      usersNamesEl.textContent = 'No hay usuarios';
-    } else if (users.length === 1) {
-      usersNamesEl.textContent = `1 roomie en la sala: ${users[0].username}`;
-    } else {
-      const names = users.map(u => u.username).join(', ');
-      usersNamesEl.textContent = `${users.length} roomies en la sala: ${names}`;
+  messages.forEach(msg => {
+    addChatMessage(msg.username, msg.message, msg.created_at, false);
+  });
+  
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function addChatMessage(username, message, timestamp, scroll = true) {
+  const chatContainer = document.getElementById('chatMessages');
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message';
+  
+  const isOwnMessage = username === currentUsername;
+  if (isOwnMessage) {
+    messageDiv.classList.add('own-message');
+  }
+  
+  const time = new Date(timestamp).toLocaleTimeString('es-ES', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  messageDiv.innerHTML = `
+    <div class="message-header">
+      <strong>${username}</strong>
+      <span class="message-time">${time}</span>
+    </div>
+    <div class="message-content">${escapeHtml(message)}</div>
+  `;
+  
+  chatContainer.appendChild(messageDiv);
+  
+  if (scroll) {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+}
+
+// ==================== CALIFICACIONES ====================
+
+function displayRatingsHistory(ratings, average) {
+  const ratingsContent = document.getElementById('ratingsContent');
+  
+  if (!ratings || ratings.length === 0) {
+    ratingsContent.innerHTML = '<p style="text-align: center; color: #888;">Aún no hay calificaciones</p>';
+    return;
+  }
+  
+  const avgRating = average?.average_rating || 0;
+  const totalRatings = average?.total_ratings || ratings.length;
+  
+  let html = `
+    <div class="average-rating">
+      <div class="avg-number">${avgRating}</div>
+      <div class="avg-stars">${'⭐'.repeat(Math.round(avgRating))}</div>
+      <div class="avg-count">${totalRatings} calificacion(es)</div>
+    </div>
+    <div class="ratings-list-items">
+  `;
+  
+  ratings.forEach(rating => {
+    const isOwnRating = rating.username === currentUsername;
+    
+    if (isOwnRating) {
+      myRating = rating.rating;
+      updateStarsDisplay(myRating);
     }
+    
+    html += `
+      <div class="rating-item ${isOwnRating ? 'own-rating' : ''}">
+        <span class="rating-username">${rating.username}</span>
+        <span class="rating-value">${'⭐'.repeat(rating.rating)} (${rating.rating}/10)</span>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  ratingsContent.innerHTML = html;
+}
+
+async function loadRatings() {
+  try {
+    const roomId = getRoomIdFromUrl();
+    const res = await fetch(`/api/projectorrooms/${roomId}/ratings`);
+    const data = await res.json();
+    
+    if (data.success) {
+      displayRatingsHistory(data.ratings, data.average);
+    }
+  } catch (error) {
+    console.error('Error cargando calificaciones:', error);
   }
 }
 
-function addChatMessage(username, message, isSystem) {
-  const container = document.getElementById('chatMessages');
-  if (!container) return;
+// ==================== REACCIONES ====================
+
+function displayReactionsHistory(reactions) {
+  const reactionsContent = document.getElementById('reactionsContent');
   
-  const messageEl = document.createElement('div');
-  messageEl.className = isSystem ? 'chat-message chat-system' : 'chat-message';
-  
-  if (isSystem) {
-    messageEl.textContent = message;
-  } else {
-    messageEl.innerHTML = `<span class="chat-username">${escapeHtml(username)}:</span> ${escapeHtml(message)}`;
+  if (!reactions || reactions.length === 0) {
+    reactionsContent.innerHTML = '<p style="text-align: center; color: #888;">Aún no hay reacciones</p>';
+    return;
   }
   
-  container.appendChild(messageEl);
-  container.scrollTop = container.scrollHeight;
+  let html = '<div class="reactions-list">';
+  
+  reactions.forEach(reaction => {
+    const isOwnReaction = reaction.username === currentUsername;
+    
+    html += `
+      <div class="reaction-item ${isOwnReaction ? 'own-reaction' : ''}">
+        <div class="reaction-header">
+          <span class="reaction-username">${reaction.username}</span>
+          <span class="reaction-time">⏱️ ${reaction.time}</span>
+        </div>
+        <div class="reaction-message">${escapeHtml(reaction.message)}</div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  reactionsContent.innerHTML = html;
 }
 
-function sendChatMessage() {
-  const input = document.getElementById('chatInput');
-  if (!input) return;
-  
-  const message = input.value.trim();
-  
-  if (message && socket && roomId) {
-    socket.emit('chat-message', { roomId, message });
-    input.value = '';
+async function loadReactions() {
+  try {
+    const roomId = getRoomIdFromUrl();
+    const res = await fetch(`/api/projectorrooms/${roomId}/reactions`);
+    const data = await res.json();
+    
+    if (data.success) {
+      displayReactionsHistory(data.reactions);
+    }
+  } catch (error) {
+    console.error('Error cargando reacciones:', error);
   }
 }
 
 // ==================== REPRODUCCIÓN ====================
 
 function startProjection() {
-    let sourceUrl;
-
-    if (roomData.sourceUrl) {
-        sourceUrl = roomData.sourceUrl;
-        console.log('🎥 Usando fuente del anfitrión:', sourceUrl);
-    } else if (isHost) {
-        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-        console.log('Anfitrión usando fuente local:', sourceUrl);
-    } else {
-        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-        console.log('Invitado usando fuente personal:', sourceUrl);
-    }
-
-    if (!sourceUrl) {
-        alert('❌ No se encontró fuente de reproducción');
-        return;
-    }
-
-    console.log('▶️ Reproduciendo embebido:', sourceUrl);
-
-    const backdropImg = document.getElementById('roomBackdrop');
-    const videoContainer = document.getElementById('videoContainer');
-    const videoEl = document.getElementById('roomVideoPlayer');
-
-    if (!videoContainer || !videoEl) {
-        alert('❌ No se encontró el contenedor de vídeo');
-        return;
-    }
-
-    if (backdropImg) backdropImg.style.display = 'none';
-    videoContainer.style.display = 'block';
-
-    const isMKV = sourceUrl.toLowerCase().includes('.mkv');
-    const isM3U8 = sourceUrl.includes('.m3u8');
-
-    videoEl.onerror = (e) => {
-        console.error('❌ Error vídeo:', e);
-        const msg = isMKV 
-            ? '❌ MKV no soportado en navegador.\n\nUsa el botón "📺 Usar pantalla externa"'
-            : '❌ No se puede reproducir.\n\nVerifica CORS y formato.';
-        alert(msg);
-        if (backdropImg) backdropImg.style.display = 'block';
-        videoContainer.style.display = 'none';
-    };
-
-    if (isM3U8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(sourceUrl);
-        hls.attachMedia(videoEl);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoEl.play().catch(err => console.warn('Autoplay bloqueado:', err));
-            console.log('✅ HLS cargado');
-        });
-    } else {
-        videoEl.src = sourceUrl;
-        videoEl.load();
-        videoEl.play().catch(err => console.warn('Autoplay bloqueado:', err));
-        console.log('✅ Reproducción directa');
-    }
-
-    setupAirPlay(videoEl);
-    setupChromecast(sourceUrl);
-
-    videoEl.addEventListener('enterpictureinpicture', () => console.log('📱 PiP ON'));
-    videoEl.addEventListener('leavepictureinpicture', () => console.log('📱 PiP OFF'));
-}
-
-function openExternalPlayer() {
-    let sourceUrl;
-
-    if (roomData.sourceUrl) {
-        sourceUrl = roomData.sourceUrl;
-    } else if (isHost) {
-        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-    } else {
-        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-    }
-
-    if (!sourceUrl) {
-        alert('❌ No se encontró fuente de reproducción');
-        return;
-    }
-
-    console.log('📺 Abriendo en pantalla externa:', sourceUrl);
-
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isAndroid = /Android/i.test(navigator.userAgent);
-
-    if (isIOS) {
-        const infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(sourceUrl)}`;
-        window.location.href = infuseUrl;
-        
-        setTimeout(() => {
-            if (confirm('¿Infuse no se abrió?\n\n✅ OK → Copiar URL\n❌ Cancelar')) {
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(sourceUrl).then(() => {
-                        alert('✅ URL copiada. Pégala en Infuse manualmente.');
-                    });
-                } else {
-                    prompt('Copia esta URL en Infuse:', sourceUrl);
-                }
-            }
-        }, 1500);
-        
-    } else if (isAndroid) {
-        const intent = `intent:${sourceUrl}#Intent;type=video/*;action=android.intent.action.VIEW;end`;
-        window.location.href = intent;
-        
-        setTimeout(() => {
-            const opened = window.open(sourceUrl, '_blank');
-            if (!opened) {
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(sourceUrl).then(() => {
-                        alert('✅ URL copiada. Ábrela en VLC/MX Player.');
-                    });
-                } else {
-                    prompt('Copia esta URL en tu reproductor:', sourceUrl);
-                }
-            }
-        }, 1000);
-        
-    } else {
-        const opened = window.open(sourceUrl, '_blank');
-        
-        if (!opened || opened.closed) {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(sourceUrl).then(() => {
-                    alert('✅ URL copiada al portapapeles\n\nPégala en VLC/tu reproductor favorito');
-                });
-            } else {
-                prompt('Copia esta URL en VLC:', sourceUrl);
-            }
-        }
-    }
-}
-
-function setupAirPlay(videoEl) {
-    const btnAirPlay = document.getElementById('btnAirPlayControl');
-    
-    if (!btnAirPlay) return;
-
-    if (videoEl.webkitShowPlaybackTargetPicker) {
-        videoEl.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
-            if (e.availability === 'available') {
-                btnAirPlay.style.display = 'block';
-                console.log('✅ AirPlay disponible');
-            }
-        });
-
-        btnAirPlay.onclick = () => {
-            videoEl.webkitShowPlaybackTargetPicker();
-        };
-    } else {
-        console.log('⚠️ AirPlay no soportado (solo Safari)');
-    }
-}
-
-function setupChromecast(sourceUrl) {
-    const btnChromecast = document.getElementById('btnChromecastControl');
-    
-    if (!btnChromecast) return;
-
-    window['__onGCastApiAvailable'] = function(isAvailable) {
-        if (!isAvailable) {
-            console.log('⚠️ Chromecast SDK no disponible');
-            return;
-        }
-
-        console.log('✅ Chromecast SDK cargado');
-
-        const castContext = cast.framework.CastContext.getInstance();
-        castContext.setOptions({
-            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-        });
-
-        btnChromecast.style.display = 'block';
-
-        btnChromecast.onclick = () => {
-            const session = castContext.getCurrentSession();
-            
-            if (session) {
-                const mediaInfo = new chrome.cast.media.MediaInfo(sourceUrl, 'video/mp4');
-                const request = new chrome.cast.media.LoadRequest(mediaInfo);
-                
-                session.loadMedia(request).then(
-                    () => console.log('✅ Enviado a Chromecast'),
-                    (err) => console.error('❌ Error Chromecast:', err)
-                );
-            } else {
-                castContext.requestSession().then(
-                    () => {
-                        const newSession = castContext.getCurrentSession();
-                        const mediaInfo = new chrome.cast.media.MediaInfo(sourceUrl, 'video/mp4');
-                        const request = new chrome.cast.media.LoadRequest(mediaInfo);
-                        
-                        newSession.loadMedia(request).then(
-                            () => console.log('✅ Enviado a Chromecast'),
-                            (err) => console.error('❌ Error Chromecast:', err)
-                        );
-                    },
-                    (err) => console.log('❌ No se seleccionó dispositivo:', err)
-                );
-            }
-        };
-    };
-}
-
-function copyInvite() {
-  const roomUrl = `${window.location.origin}/sala/${roomId}`;
-  
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(roomUrl).then(() => {
-      alert('✅ Enlace copiado al portapapeles\n\n' + roomUrl);
-    }).catch(() => {
-      prompt('Copia este enlace:', roomUrl);
-    });
-  } else {
-    prompt('Copia este enlace:', roomUrl);
-  }
-}
-
-function changeSource() {
-  if (isHost) {
-    alert('Como anfitrión, usa "Cambiar contenido" para actualizar la sala');
+  if (!currentRoom || !currentRoom.sourceUrl) {
+    alert('No hay fuente disponible para reproducir');
     return;
   }
   
-  console.log('🔄 Reiniciando selección de fuente...');
-  localStorage.removeItem('projectorroom_guest_source_' + roomId);
-  window.location.reload();
-}
-
-async function changeContent() {
-    if (!isHost) {
-        alert('Solo el anfitrión puede cambiar el contenido');
-        return;
-    }
-
-    const confirm1 = confirm(
-        '🔄 ¿Cambiar el contenido de la sala?\n\n' +
-        '✅ La sala permanecerá activa\n' +
-        '✅ Chat e invitados se mantendrán\n' +
-        '❌ Calificaciones y reacciones se resetearán\n\n' +
-        '¿Continuar?'
-    );
+  const videoContainer = document.getElementById('videoContainer');
+  const backdrop = document.getElementById('roomBackdrop');
+  const video = document.getElementById('roomVideoPlayer');
+  
+  backdrop.style.display = 'none';
+  videoContainer.style.display = 'block';
+  
+  if (Hls.isSupported()) {
+    const hls = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 90
+    });
     
-    if (!confirm1) return;
-
-    console.log('🔄 Anfitrión cambiando contenido de la sala...');
-
-    try {
-        const res = await fetch(`/api/projectorrooms/${roomId}/reset-content`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await res.json();
-        
-        if (!data.success) {
-            throw new Error(data.message || 'Error reseteando contenido');
-        }
-
-        console.log('✅ Contenido reseteado');
-
-        sessionStorage.setItem('projectorroom_changing_content', roomId);
-        sessionStorage.setItem('projectorroom_change_room_name', roomData.roomName);
-        sessionStorage.setItem('projectorroom_change_use_host_source', roomData.useHostSource);
-        sessionStorage.setItem('projectorroom_projector_type_' + roomId, roomData.projectorType || 'public');
-        sessionStorage.setItem('projectorroom_custom_manifest_' + roomId, roomData.customManifest || '');
-        sessionStorage.setItem('projectorroom_host_username_' + roomId, roomData.hostUsername);
-
-        console.log('💾 Configuración guardada');
-
-        if (socket) {
-            socket.emit('content-changed', { roomId });
-        }
-
-        console.log('🔀 Redirigiendo...');
-        window.location.href = '/';
-
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('Error cambiando contenido. Intenta de nuevo.');
-    }
-}
-
-function openCalificationsModal() {
-  const modal = document.getElementById('modalCalifications');
-  setupRatingStars();
-  renderAllRatings();
-  modal.style.display = 'flex';
-}
-
-function setupRatingStars() {
-  const stars = document.querySelectorAll('.star');
-  let selectedRating = userRating || 0;
-  
-  stars.forEach((s, i) => {
-    if (i < selectedRating) {
-      s.classList.add('selected');
-    } else {
-      s.classList.remove('selected');
-    }
-  });
-  
-  stars.forEach(star => {
-    star.onclick = function() {
-      selectedRating = parseInt(this.dataset.value);
-      
-      stars.forEach((s, i) => {
-        if (i < selectedRating) {
-          s.classList.add('selected');
-        } else {
-          s.classList.remove('selected');
-        }
+    hls.loadSource(currentRoom.sourceUrl);
+    hls.attachMedia(video);
+    
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      console.log('✅ HLS manifest cargado');
+      video.play().catch(err => {
+        console.error('❌ Error al reproducir:', err);
+        alert('No se puede reproducir. Verifica CORS y formato.');
       });
-    };
-  });
+    });
+    
+    hls.on(Hls.Events.ERROR, (event, data) => {
+      console.error('❌ Error HLS:', data);
+      if (data.fatal) {
+        alert('Error fatal al cargar el video');
+      }
+    });
+    
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = currentRoom.sourceUrl;
+    video.addEventListener('loadedmetadata', () => {
+      video.play();
+    });
+    
+  } else {
+    alert('Tu navegador no soporta HLS');
+  }
   
-  document.getElementById('btnSubmitRating').onclick = function() {
-    if (selectedRating === 0) {
-      alert('Selecciona una calificación');
+  setupCastButtons();
+}
+
+function setupCastButtons() {
+  const video = document.getElementById('roomVideoPlayer');
+  const btnAirPlay = document.getElementById('btnAirPlayControl');
+  const btnChromecast = document.getElementById('btnChromecastControl');
+  
+  if (window.WebKitPlaybackTargetAvailabilityEvent) {
+    btnAirPlay.style.display = 'block';
+    
+    video.addEventListener('webkitplaybacktargetavailabilitychanged', (event) => {
+      if (event.availability === 'available') {
+        btnAirPlay.style.display = 'block';
+      }
+    });
+    
+    btnAirPlay.addEventListener('click', () => {
+      video.webkitShowPlaybackTargetPicker();
+    });
+  }
+  
+  if (window.chrome && chrome.cast && chrome.cast.isAvailable) {
+    btnChromecast.style.display = 'block';
+    
+    btnChromecast.addEventListener('click', () => {
+      const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+      
+      if (castSession) {
+        const mediaInfo = new chrome.cast.media.MediaInfo(currentRoom.sourceUrl, 'video/mp4');
+        const request = new chrome.cast.media.LoadRequest(mediaInfo);
+        
+        castSession.loadMedia(request).then(
+          () => console.log('✅ Chromecast iniciado'),
+          (error) => console.error('❌ Error Chromecast:', error)
+        );
+      } else {
+        alert('No hay dispositivo Chromecast disponible');
+      }
+    });
+  }
+}
+
+// ==================== EVENT LISTENERS ====================
+
+function setupEventListeners() {
+  // Botón: Proyectar
+  const btnStartProjection = document.getElementById('btnStartProjection');
+  btnStartProjection.addEventListener('click', startProjection);
+  
+  // ⭐ Botón: Usar pantalla externa (VLC en iOS, selector en Android)
+  const btnExternalPlayer = document.getElementById('btnExternalPlayer');
+  
+  btnExternalPlayer.addEventListener('click', () => {
+    if (!currentRoom || !currentRoom.sourceUrl) {
+      alert('No hay fuente disponible');
       return;
     }
     
-    userRating = selectedRating;
+    const streamUrl = currentRoom.sourceUrl;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
     
-    if (socket && roomId) {
-      socket.emit('add-rating', { roomId, username, rating: selectedRating });
+    if (isIOS) {
+      // iOS: Abrir en VLC
+      const vlcUrl = `vlc://${streamUrl.replace(/^https?:\/\//, '')}`;
+      console.log('🎬 Abriendo en VLC (iOS):', vlcUrl);
+      window.location.href = vlcUrl;
+      
+    } else if (isAndroid) {
+      // Android: Abrir selector nativo de reproductor
+      const intent = `intent://${streamUrl.replace(/^https?:\/\//, '')}#Intent;action=android.intent.action.VIEW;type=video/*;end`;
+      console.log('🎬 Abriendo selector de reproductor (Android):', intent);
+      window.location.href = intent;
+      
+    } else {
+      // Escritorio: Abrir directamente el stream
+      window.open(streamUrl, '_blank');
     }
+  });
+  
+  // Botón: Invitar roomie
+  const btnCopyInvite = document.getElementById('btnCopyInvite');
+  btnCopyInvite.addEventListener('click', () => {
+    const inviteUrl = window.location.href;
     
-    alert(`✅ Has calificado con ${selectedRating}/10 estrellas`);
-  };
+    if (navigator.share) {
+      navigator.share({
+        title: `Únete a ${currentRoom.roomName}`,
+        text: '¡Ven a ver esta peli conmigo!',
+        url: inviteUrl
+      }).catch(err => console.log('Error compartiendo:', err));
+    } else {
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        alert('✅ Enlace copiado al portapapeles');
+      });
+    }
+  });
+  
+  // Botón: Cambiar contenido (solo anfitrión)
+  const btnChangeContent = document.getElementById('btnChangeContent');
+  btnChangeContent.addEventListener('click', () => {
+    const roomId = getRoomIdFromUrl();
+    window.location.href = `/?changeContent=${roomId}`;
+  });
+  
+  // Botón: Cambiar fuente (solo invitados)
+  const btnChangeSource = document.getElementById('btnChangeSource');
+  btnChangeSource.addEventListener('click', () => {
+    const roomId = getRoomIdFromUrl();
+    window.location.href = `/?changeSource=${roomId}`;
+  });
+  
+  // Chat: Enviar mensaje
+  const btnSendChat = document.getElementById('btnSendChat');
+  const chatInput = document.getElementById('chatInput');
+  
+  btnSendChat.addEventListener('click', sendChatMessage);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendChatMessage();
+    }
+  });
+  
+  // Calificaciones
+  const btnCalifications = document.getElementById('btnCalifications');
+  const modalCalifications = document.getElementById('modalCalifications');
+  const btnCloseCalifications = document.getElementById('btnCloseCalifications');
+  
+  btnCalifications.addEventListener('click', () => {
+    modalCalifications.style.display = 'flex';
+    loadRatings();
+  });
+  
+  btnCloseCalifications.addEventListener('click', () => {
+    modalCalifications.style.display = 'none';
+  });
+  
+  // Estrellas de calificación
+  const stars = document.querySelectorAll('#ratingStars .star');
+  
+  stars.forEach(star => {
+    star.addEventListener('click', () => {
+      const value = parseInt(star.dataset.value);
+      myRating = value;
+      updateStarsDisplay(value);
+    });
+  });
+  
+  const btnSubmitRating = document.getElementById('btnSubmitRating');
+  btnSubmitRating.addEventListener('click', submitRating);
+  
+  // Reacciones
+  const btnReactions = document.getElementById('btnReactions');
+  const modalReactions = document.getElementById('modalReactions');
+  const btnCloseReactions = document.getElementById('btnCloseReactions');
+  
+  btnReactions.addEventListener('click', () => {
+    modalReactions.style.display = 'flex';
+    loadReactions();
+  });
+  
+  btnCloseReactions.addEventListener('click', () => {
+    modalReactions.style.display = 'none';
+  });
+  
+  const btnSubmitReaction = document.getElementById('btnSubmitReaction');
+  btnSubmitReaction.addEventListener('click', submitReaction);
 }
 
-function renderAllRatings() {
-  const container = document.getElementById('ratingsContent');
-  container.innerHTML = '';
+function sendChatMessage() {
+  const chatInput = document.getElementById('chatInput');
+  const message = chatInput.value.trim();
   
-  if (allRatings.length === 0) {
-    container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Aún no hay calificaciones de otros roomies</p>';
-    return;
-  }
+  if (!message) return;
   
-  allRatings.forEach(rating => {
-    const ratingEl = document.createElement('div');
-    ratingEl.className = 'rating-item';
-    ratingEl.innerHTML = `
-      <strong>${escapeHtml(rating.username)}:</strong> ${'★'.repeat(rating.rating)}${'☆'.repeat(10 - rating.rating)} (${rating.rating}/10)
-    `;
-    container.appendChild(ratingEl);
+  const roomId = getRoomIdFromUrl();
+  
+  socket.emit('chat-message', {
+    roomId,
+    message
+  });
+  
+  chatInput.value = '';
+}
+
+function updateStarsDisplay(rating) {
+  const stars = document.querySelectorAll('#ratingStars .star');
+  
+  stars.forEach(star => {
+    const value = parseInt(star.dataset.value);
+    
+    if (value <= rating) {
+      star.classList.add('active');
+    } else {
+      star.classList.remove('active');
+    }
   });
 }
 
-function closeCalificationsModal() {
-  document.getElementById('modalCalifications').style.display = 'none';
-}
-
-function openReactionsModal() {
-  renderAllReactions();
-  document.getElementById('modalReactions').style.display = 'flex';
+function submitRating() {
+  if (myRating === 0) {
+    alert('Selecciona una calificación primero');
+    return;
+  }
+  
+  const roomId = getRoomIdFromUrl();
+  
+  socket.emit('add-rating', {
+    roomId,
+    username: currentUsername,
+    rating: myRating
+  });
+  
+  alert('✅ Calificación guardada');
 }
 
 function submitReaction() {
-  const minute = document.getElementById('reactionMinute').value.trim();
+  const minute = document.getElementById('reactionMinute').value;
   const message = document.getElementById('reactionMessage').value.trim();
   
   if (!minute || !message) {
@@ -905,106 +628,17 @@ function submitReaction() {
     return;
   }
   
-  const minuteNum = parseInt(minute);
-  if (isNaN(minuteNum) || minuteNum < 0) {
-    alert('Introduce un minuto válido');
-    return;
-  }
+  const roomId = getRoomIdFromUrl();
   
-  const time = `${minuteNum}:00`;
-  
-  if (socket && roomId) {
-    socket.emit('add-reaction', { roomId, username, time, message });
-  }
+  socket.emit('add-reaction', {
+    roomId,
+    username: currentUsername,
+    time: parseInt(minute),
+    message
+  });
   
   document.getElementById('reactionMinute').value = '';
   document.getElementById('reactionMessage').value = '';
   
-  alert('✅ Reacción enviada');
-}
-
-function renderAllReactions() {
-  const container = document.getElementById('reactionsContent');
-  container.innerHTML = '';
-  
-  if (allReactions.length === 0) {
-    container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Aún no hay reacciones</p>';
-    return;
-  }
-  
-  allReactions.sort((a, b) => {
-    const parseTime = (time) => {
-      const parts = time.split(':').map(Number);
-      return parts.length === 2 ? parts[0] * 60 + parts[1] : 0;
-    };
-    return parseTime(a.time) - parseTime(b.time);
-  });
-  
-  allReactions.forEach(reaction => {
-    const reactionEl = document.createElement('div');
-    reactionEl.className = 'reaction-item';
-    reactionEl.innerHTML = `
-      <div class="reaction-time">⏱️ ${escapeHtml(reaction.time)}</div>
-      <div class="reaction-user">${escapeHtml(reaction.username)}</div>
-      <div class="reaction-message">${escapeHtml(reaction.message)}</div>
-    `;
-    container.appendChild(reactionEl);
-  });
-}
-
-function closeReactionsModal() {
-  document.getElementById('modalReactions').style.display = 'none';
-}
-
-function loadRatings() {
-  allRatings = [];
-}
-
-function loadReactions() {
-  allReactions = [];
-}
-
-function setupButtons() {
-  const btnStartProjection = document.getElementById('btnStartProjection');
-  const btnExternalPlayer = document.getElementById('btnExternalPlayer');
-  const btnCopyInvite = document.getElementById('btnCopyInvite');
-  const btnChangeSource = document.getElementById('btnChangeSource');
-  const btnChangeContent = document.getElementById('btnChangeContent');
-  const btnCalifications = document.getElementById('btnCalifications');
-  const btnReactions = document.getElementById('btnReactions');
-  const btnSendChat = document.getElementById('btnSendChat');
-  const btnSubmitReaction = document.getElementById('btnSubmitReaction');
-  const btnCloseCalifications = document.getElementById('btnCloseCalifications');
-  const btnCloseReactions = document.getElementById('btnCloseReactions');
-  const chatInput = document.getElementById('chatInput');
-  
-  if (btnStartProjection) btnStartProjection.onclick = startProjection;
-  if (btnExternalPlayer) btnExternalPlayer.onclick = openExternalPlayer;
-  if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
-  if (btnChangeSource) btnChangeSource.onclick = changeSource;
-  if (btnChangeContent) btnChangeContent.onclick = changeContent;
-  if (btnCalifications) btnCalifications.onclick = openCalificationsModal;
-  if (btnReactions) btnReactions.onclick = openReactionsModal;
-  if (btnSendChat) btnSendChat.onclick = sendChatMessage;
-  if (btnSubmitReaction) btnSubmitReaction.onclick = submitReaction;
-  if (btnCloseCalifications) btnCloseCalifications.onclick = closeCalificationsModal;
-  if (btnCloseReactions) btnCloseReactions.onclick = closeReactionsModal;
-  
-  if (chatInput) {
-    chatInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') sendChatMessage();
-    });
-  }
-  
-  window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-      event.target.style.display = 'none';
-    }
-  };
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  alert('✅ Reacción guardada');
 }
