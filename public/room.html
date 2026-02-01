@@ -2,12 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sala de Proyección - ProjectorRoom</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sala de Proyección</title>
   <link rel="stylesheet" href="/css/room.css">
-  
   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/silvermine-videojs-chromecast.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/videojs-chromecast.css" rel="stylesheet">
 </head>
 <body>
   <div class="room-container">
@@ -17,21 +16,23 @@
           <img id="roomPosterSmall" src="" alt="Poster">
         </div>
         <div class="room-title-info">
-          <h1 id="roomTitle">Cargando sala...</h1>
+          <h1 id="roomTitle">Cargando...</h1>
           <div class="room-users-list">
             <span class="users-icon">👥</span>
-            <span id="usersNames">...</span>
+            <span id="usersNames">Cargando...</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="movie-section">
-      <div id="mediaContainer" class="room-backdrop" style="position: relative; background: #000; overflow: hidden; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; border-radius: 12px;">
-        <img id="roomBackdrop" src="" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1;">
+      <div class="room-backdrop" id="backdropContainer" style="position: relative; background: #000; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+        <img id="roomBackdrop" src="" alt="Banner" style="width: 100%; height: 100%; object-fit: cover;">
         
-        <div id="videoContainer" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10;">
-          <video id="mainVideo" class="video-js vjs-big-play-centered" playsinline webkit-playsinline preload="auto" style="width: 100%; height: 100%;"></video>
+        <div id="playerWrapper" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0;">
+            <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto" width="auto" height="auto" x-webkit-airplay="allow">
+                <p class="vjs-no-js">Para ver este video, habilita JavaScript.</p>
+            </video>
         </div>
       </div>
       
@@ -46,77 +47,94 @@
     </div>
 
     <div class="room-actions">
-      <button id="btnStartProjection" class="btn-primary-large">▶️ Proyectar aquí</button>
-      <button id="btnCopyInvite" class="btn-outline-large">📋 Copiar invitación</button>
-    </div>
-    
-    <button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">🎬 Cambiar película</button>
-
-    <div class="interaction-buttons">
-      <button id="btnCalifications" class="btn-interaction">⭐ Calificaciones</button>
-      <button id="btnReactions" class="btn-interaction">💬 Reacciones</button>
+      <button id="btnStartProjection" class="btn-primary">▶️ Proyectar</button>
+      <button id="btnCopyInvite" class="btn-outline">📋 Invitar</button>
+      <button id="btnChangeSource" class="btn-outline">🔗 Cambiar Fuente</button>
+      <button id="btnCalifications" class="btn-outline">⭐ Notas</button>
+      <button id="btnReactions" class="btn-outline">💬 Reacciones</button>
     </div>
 
     <div class="chat-section">
-      <h3>💬 Chat de Roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input">
+      <div class="chat-input-container">
         <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
         <button id="btnSendChat" class="btn-send">Enviar</button>
       </div>
     </div>
   </div>
 
+  <div id="modalSource" class="modal">
+    <div class="modal-content">
+      <h2>🔗 Cambiar fuente de video</h2>
+      <p>Selecciona una de las fuentes disponibles de Stremio:</p>
+      <div id="sourcesList" class="sources-list">
+        <div class="loading-sources">Buscando fuentes...</div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCloseSource" class="btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2>⭐ Calificaciones</h2>
-        <span id="btnCloseCalifications" class="close-modal">&times;</span>
+      <h2>⭐ Calificaciones</h2>
+      <div class="user-rating-section">
+        <h3>Tu nota</h3>
+        <div class="rating-stars">
+          <span class="star" data-value="1">★</span>
+          <span class="star" data-value="2">★</span>
+          <span class="star" data-value="3">★</span>
+          <span class="star" data-value="4">★</span>
+          <span class="star" data-value="5">★</span>
+          <span class="star" data-value="6">★</span>
+          <span class="star" data-value="7">★</span>
+          <span class="star" data-value="8">★</span>
+          <span class="star" data-value="9">★</span>
+          <span class="star" data-value="10">★</span>
+        </div>
       </div>
-      <div class="modal-body">
-        <div class="your-rating-section">
-          <h3>Tu calificación</h3>
-          <div class="rating-stars" id="ratingStars">
-            <span class="star" data-value="1">★</span><span class="star" data-value="2">★</span><span class="star" data-value="3">★</span>
-            <span class="star" data-value="4">★</span><span class="star" data-value="5">★</span><span class="star" data-value="6">★</span>
-            <span class="star" data-value="7">★</span><span class="star" data-value="8">★</span><span class="star" data-value="9">★</span><span class="star" data-value="10">★</span>
-          </div>
-          <button id="btnSubmitRating" class="btn-primary">Guardar calificación</button>
-        </div>
-        <div class="roomies-ratings-section">
-          <h3>Calificaciones de los roomies</h3>
-          <div id="ratingsContent" class="ratings-list"></div>
-        </div>
+      <div class="roomies-ratings-section">
+        <h3>Calificaciones de los roomies</h3>
+        <div id="ratingsContent" class="ratings-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCloseCalifications" class="btn-secondary">Cerrar</button>
       </div>
     </div>
   </div>
 
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
-      <div class="modal-header">
-        <h2>💬 Reacciones</h2>
-        <span id="btnCloseReactions" class="close-modal">&times;</span>
-      </div>
-      <div class="modal-body">
-        <div class="new-reaction-section">
-          <h3>Agregar reacción</h3>
-          <div class="reaction-form">
-            <input type="number" id="reactionMinute" placeholder="Minuto">
-            <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
-            <button id="btnSubmitReaction" class="btn-primary">Enviar</button>
+      <h2>💬 Reacciones</h2>
+      <div class="new-reaction-section">
+        <h3>Agregar nueva reacción</h3>
+        <div class="reaction-form">
+          <div class="form-group">
+            <label>⏱️ Minuto</label>
+            <input type="number" id="reactionMinute" placeholder="Ej: 45" min="0">
           </div>
+          <div class="form-group">
+            <label>💬 Reacción</label>
+            <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
+          </div>
+          <button id="btnSubmitReaction" class="btn-primary">Enviar reacción</button>
         </div>
-        <div class="roomies-reactions-section">
-          <h3>Muro de reacciones</h3>
-          <div id="reactionsContent" class="reactions-content"></div>
-        </div>
+      </div>
+      <div class="roomies-reactions-section">
+        <h3>Reacciones de los roomies</h3>
+        <div id="reactionsContent" class="reactions-content"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCloseReactions" class="btn-secondary">Cerrar</button>
       </div>
     </div>
   </div>
 
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/silvermine-videojs-chromecast.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/videojs-chromecast.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/videojs-airplay@1.1.0/dist/videojs-airplay.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
 </body>
