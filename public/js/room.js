@@ -500,6 +500,8 @@ function sendChatMessage() {
   }
 }
 
+// ==================== REPRODUCCIÓN NATIVA DEL SO ====================
+
 function startProjection() {
   let sourceUrl;
   
@@ -516,8 +518,10 @@ function startProjection() {
     return;
   }
   
-  console.log('▶️ Abriendo VLC con:', sourceUrl);
-  window.location.href = `vlc://${sourceUrl}`;
+  console.log('▶️ Abriendo reproductor con:', sourceUrl);
+  
+  // Abrir URL directamente - el SO muestra selector de apps
+  window.location.href = sourceUrl;
 }
 
 function copyInvite() {
