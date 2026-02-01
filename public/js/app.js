@@ -20,7 +20,7 @@ let roomConfig = {
   shareMode: 'host'
 };
 
-// ⭐ CORREGIDO: Verificar si estamos cambiando contenido al cargar
+// ⭐ Verificar si estamos cambiando contenido al cargar
 window.addEventListener('load', function() {
   changingRoomId = sessionStorage.getItem('projectorroom_changing_content');
   
@@ -44,7 +44,6 @@ window.addEventListener('load', function() {
   }
 });
 
-// ⭐ CORREGIDO: goToStep() - Saltar pasos si es cambio de contenido
 function goToStep(step) {
   console.log('📍 goToStep:', step, '| Modo cambio:', isChangingContent);
   
@@ -209,7 +208,6 @@ async function searchMovies(query) {
   }
 }
 
-// ⭐ CORREGIDO: NO cargar fuentes automáticamente para series
 async function selectMovie(movie) {
   selectedMovie = movie;
   console.log('🎬 Película seleccionada:', movie);
@@ -232,17 +230,17 @@ async function selectMovie(movie) {
     renderMovieInfo();
     
     if (selectedMovie.media_type === 'tv') {
-      // ⭐ Si es serie, cargar temporadas pero NO fuentes todavía
       await loadSeasons();
       
-      // Mostrar mensaje inicial en fuentes
       const container = document.getElementById('sourcesList');
       if (container) {
         container.innerHTML = '<div class="loading">📺 Primero selecciona temporada y episodio</div>';
       }
       
+      const btnCreateRoom = document.getElementById('btnCreateRoom');
+      if (btnCreateRoom) btnCreateRoom.disabled = true;
+      
     } else {
-      // ⭐ Si es película, ocultar selector y cargar fuentes
       const episodeSelector = document.getElementById('episodeSelector');
       if (episodeSelector) episodeSelector.style.display = 'none';
       
@@ -306,6 +304,26 @@ async function loadSeasons() {
     
     seasonSelect.onchange = function() {
       selectedSeason = this.value;
+      selectedEpisode = null;
+      
+      const episodeSelectorContainer = document.getElementById('episodeSelectorContainer');
+      if (episodeSelectorContainer) {
+        episodeSelectorContainer.style.display = 'none';
+      }
+      
+      const episodeSelect = document.getElementById('episodeSelect');
+      if (episodeSelect) {
+        episodeSelect.innerHTML = '<option value="">Selecciona un episodio...</option>';
+      }
+      
+      const container = document.getElementById('sourcesList');
+      if (container) {
+        container.innerHTML = '<div class="loading">📺 Ahora selecciona un episodio</div>';
+      }
+      
+      const btnCreateRoom = document.getElementById('btnCreateRoom');
+      if (btnCreateRoom) btnCreateRoom.disabled = true;
+      
       if (selectedSeason) {
         loadEpisodes(selectedSeason);
       }
@@ -316,7 +334,6 @@ async function loadSeasons() {
   }
 }
 
-// ⭐ CORREGIDO: Dispara búsqueda al seleccionar episodio
 async function loadEpisodes(seasonNumber) {
   console.log('📺 Cargando episodios de temporada', seasonNumber);
   
@@ -342,12 +359,10 @@ async function loadEpisodes(seasonNumber) {
       episodeSelect.appendChild(option);
     });
     
-    // ⭐ Listener que dispara búsqueda de fuentes
     episodeSelect.onchange = function() {
       selectedEpisode = this.value;
       console.log('✅ Episodio seleccionado:', selectedSeason, 'x', selectedEpisode);
       
-      // ⭐ AHORA SÍ buscar fuentes
       if (selectedEpisode) {
         loadSources();
       }
@@ -358,7 +373,6 @@ async function loadEpisodes(seasonNumber) {
   }
 }
 
-// ⭐ CORREGIDO: Solo busca si hay episodio (series) o directamente (películas)
 async function loadSources() {
   const container = document.getElementById('sourcesList');
   
@@ -367,16 +381,14 @@ async function loadSources() {
     return;
   }
   
-  // ⭐ VALIDAR: Si es serie, necesita temporada y episodio
   if (selectedMovie.media_type === 'tv') {
     if (!selectedSeason || !selectedEpisode) {
       container.innerHTML = '<div class="loading">📺 Primero selecciona temporada y episodio</div>';
       
-      // Deshabilitar botón "Crear sala"
       const btnCreateRoom = document.getElementById('btnCreateRoom');
       if (btnCreateRoom) btnCreateRoom.disabled = true;
       
-      return; // ⭐ NO continuar hasta que se seleccione
+      return;
     }
   }
   
@@ -393,7 +405,6 @@ async function loadSources() {
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = selectedMovie.media_type === 'movie' ? 'movie' : 'series';
     
-    // ⭐ Construir URL con temporada y episodio si es serie
     let streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdb_id}`;
     
     if (selectedMovie.media_type === 'tv' && selectedSeason && selectedEpisode) {
@@ -592,9 +603,6 @@ async function createRoom() {
     
   } catch (error) {
     console.error('❌ Error completo:', error);
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
     alert('Error: ' + error.message);
   }
 }
