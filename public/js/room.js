@@ -500,7 +500,7 @@ function sendChatMessage() {
   }
 }
 
-// ==================== REPRODUCCIÓN NATIVA DEL SO ====================
+// ==================== REPRODUCCIÓN EN PICTURE-IN-PICTURE ====================
 
 function startProjection() {
   let sourceUrl;
@@ -518,10 +518,160 @@ function startProjection() {
     return;
   }
   
-  console.log('▶️ Abriendo reproductor con:', sourceUrl);
+  console.log('▶️ Abriendo en Picture-in-Picture:', sourceUrl);
   
-  // Abrir en nueva pestaña - mantiene el chat activo
-  window.open(sourceUrl, '_blank');
+  // Intentar abrir en PIP
+  openInPictureInPicture(sourceUrl);
+}
+
+async function openInPictureInPicture(videoUrl) {
+  // Verificar soporte de PIP
+  if (!document.pictureInPictureEnabled) {
+    console.log('⚠️ PIP no soportado, abriendo en nueva pestaña');
+    window.open(videoUrl, '_blank');
+    return;
+  }
+  
+  // Crear elemento de video temporal oculto
+  const videoElement = document.createElement('video');
+  videoElement.src = videoUrl;
+  videoElement.controls = true;
+  videoElement.crossOrigin = 'anonymous';
+  videoElement.style.position = 'fixed';
+  videoElement.style.bottom = '-1000px'; // Oculto fuera de la pantalla
+  videoElement.style.width = '640px';
+  videoElement.style.height = '360px';
+  
+  // Agregar al DOM
+  document.body.appendChild(videoElement);
+  
+  try {
+    // Esperar a que el video esté listo
+    await videoElement.play();
+    
+    // Entrar en modo PIP
+    if (videoElement !== document.pictureInPictureElement) {
+      await videoElement.requestPictureInPicture();
+      console.log('✅ Video en modo PIP');
+      
+      // Evento cuando sale del PIP
+      videoElement.addEventListener('leavepictureinpicture', () => {
+        console.log('❌ Salió del modo PIP');
+        videoElement.pause();
+        document.body.removeChild(videoElement);
+      });
+      
+      // Evento cuando termina el video
+      videoElement.addEventListener('ended', () => {
+        console.log('✅ Video terminado');
+        if (document.pictureInPictureElement) {
+          document.exitPictureInPicture();
+        }
+        document.body.removeChild(videoElement);
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error activando PIP:', error);
+    
+    // Si PIP falla, mostrar opciones al usuario
+    showPlaybackOptions(videoUrl, videoElement);
+  }
+}
+
+function showPlaybackOptions(videoUrl, videoElement) {
+  // Limpiar video element si existe
+  if (videoElement && videoElement.parentNode) {
+    document.body.removeChild(videoElement);
+  }
+  
+  const options = confirm(
+    '🎬 Elige cómo reproducir:\n\n' +
+    '✅ OK → Abrir en nueva pestaña (puedes usar apps externas)\n' +
+    '❌ Cancelar → Reproducir aquí en pantalla'
+  );
+  
+  if (options) {
+    // Abrir en nueva pestaña - activa selector del SO
+    window.open(videoUrl, '_blank');
+  } else {
+    // Reproducir en la misma página (inline)
+    playInline(videoUrl);
+  }
+}
+
+function playInline(videoUrl) {
+  // Crear modal con reproductor
+  const modal = document.createElement('div');
+  modal.id = 'videoModal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+  
+  const videoContainer = document.createElement('div');
+  videoContainer.style.cssText = `
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+  `;
+  
+  const video = document.createElement('video');
+  video.src = videoUrl;
+  video.controls = true;
+  video.autoplay = true;
+  video.style.cssText = `
+    width: 100%;
+    height: auto;
+    display: block;
+  `;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '✕ Cerrar';
+  closeBtn.style.cssText = `
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border: 2px solid #fff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    z-index: 10001;
+  `;
+  
+  closeBtn.onclick = () => {
+    video.pause();
+    document.body.removeChild(modal);
+  };
+  
+  videoContainer.appendChild(video);
+  videoContainer.appendChild(closeBtn);
+  modal.appendChild(videoContainer);
+  document.body.appendChild(modal);
+  
+  // Cerrar con ESC
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') {
+      video.pause();
+      document.body.removeChild(modal);
+      document.removeEventListener('keydown', escHandler);
+    }
+  });
 }
 
 function copyInvite() {
