@@ -1,37 +1,53 @@
 const TMDB_API_KEY = '0352d89c612c3b5238db30c8bfee18e2';
-let roomId = null;
-let socket = null;
-let username = '';
-let roomData = null;
-let isHost = false;
-let player = null;
-let allRatings = [];
-let allReactions = [];
+let roomId = null, socket = null, username = '', roomData = null, isHost = false;
+let player = null, userRating = null, allRatings = [], allReactions = [];
 
-// ==================== INICIALIZACIÓN ====================
-window.addEventListener('load', async function() {
+window.addEventListener('load', async () => {
   const pathParts = window.location.pathname.split('/');
   roomId = pathParts[pathParts.length - 1];
   
   try {
     const res = await fetch(`/api/projectorrooms/${roomId}`);
     const data = await res.json();
+    if (!data.success) throw new Error();
     roomData = data.projectorRoom;
-  } catch (e) { window.location.href = '/'; return; }
+    
+    isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
+    username = isHost ? sessionStorage.getItem('projectorroom_host_username_' + roomId) : localStorage.getItem('projectorroom_username');
 
-  isHost = sessionStorage.getItem('projectorroom_is_host_' + roomId) === 'true';
-  username = isHost ? sessionStorage.getItem('projectorroom_host_username_' + roomId) : localStorage.getItem('projectorroom_username');
-
-  if (!username) { showGuestConfig(); } else { initRoom(); }
+    if (!username) {
+      showGuestConfig();
+    } else {
+      initRoom();
+    }
+  } catch (e) {
+    window.location.href = '/';
+  }
 });
 
-// ==================== REPRODUCCIÓN INCRUSTADA + CHROMECAST ====================
+function initRoom() {
+  renderRoomInfo();
+  connectSocket();
+  setupEventListeners();
+}
+
+function renderRoomInfo() {
+  const movie = JSON.parse(roomData.manifest);
+  document.getElementById('roomTitle').textContent = movie.title || 'Sin título';
+  document.getElementById('roomPosterSmall').src = movie.poster || '';
+  document.getElementById('roomBackdrop').src = movie.backdrop || movie.poster || '';
+  document.getElementById('movieYear').textContent = movie.year ? `📅 ${movie.year}` : '';
+  document.getElementById('movieType').textContent = movie.type === 'movie' ? '🎬 Película' : '📺 Serie';
+  document.getElementById('movieRating').textContent = movie.rating ? `⭐ ${movie.rating}` : '';
+  document.getElementById('movieOverview').textContent = movie.overview || '';
+}
+
 async function startProjection() {
   let sourceUrl = (isHost || roomData.useHostSource) 
     ? roomData.sourceUrl 
     : localStorage.getItem('projectorroom_guest_source_' + roomId);
 
-  if (!sourceUrl) return;
+  if (!sourceUrl) return alert("No hay fuente disponible");
 
   document.getElementById('roomBackdrop').style.display = 'none';
   document.getElementById('videoContainer').style.display = 'block';
@@ -40,22 +56,10 @@ async function startProjection() {
     player = videojs('mainVideo', {
       fluid: true,
       controls: true,
-      controlBar: {
-        fullscreenToggle: true, // Permitimos el botón, pero no lo activamos nosotros
-        pictureInPictureToggle: true
-      },
-      techOrder: ['chromecast', 'html5'],
-      plugins: {
-        chromecast: {
-          addButtonToControlBar: true,
-          requestSessionStrategy: 'instant'
-        }
-      }
-    });
-
-    // Forzar que el modo "FullWindow" sea falso al inicio
-    player.on('ready', () => {
-      player.fill(true); // Ocupar todo el hueco del contenedor
+      autoplay: false,
+      preload: 'auto',
+      controlBar: { fullscreenToggle: true },
+      plugins: { chromecast: { addButtonToControlBar: true } }
     });
   }
 
@@ -64,65 +68,72 @@ async function startProjection() {
     type: sourceUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
   });
 
-  player.play().catch(() => {
-    console.log("Reproducción bloqueada, esperando acción del usuario.");
-  });
-}
-
-// ==================== LÓGICA DE SALA ====================
-function initRoom() {
-  const movie = JSON.parse(roomData.manifest);
-  document.getElementById('roomTitle').textContent = movie.title;
-  document.getElementById('roomBackdrop').src = movie.backdrop || movie.poster;
-  document.getElementById('roomPosterSmall').src = movie.poster;
-  
-  connectSocket();
-  setupButtons();
+  player.play().catch(() => console.log("Clic manual requerido"));
 }
 
 function connectSocket() {
   socket = io();
-  socket.on('connect', () => socket.emit('join-room', { roomId, username }));
-  socket.on('user-joined', d => updateUsersList(d.users));
-  socket.on('chat-message', d => addChatMessage(d.username, d.message));
+  socket.emit('join-room', { roomId, username });
+
+  socket.on('user-joined', d => {
+    document.getElementById('usersNames').textContent = d.users.map(u => u.username).join(', ');
+  });
+
+  socket.on('chat-message', d => {
+    const cont = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-message';
+    div.innerHTML = `<strong>${d.username}:</strong> ${d.message}`;
+    cont.appendChild(div);
+    cont.scrollTop = cont.scrollHeight;
+  });
+
   socket.on('rating-added', d => { allRatings.push(d); renderRatings(); });
+  socket.on('reaction-added', d => { allReactions.push(d); renderReactions(); });
 }
 
-function setupButtons() {
+function setupEventListeners() {
   document.getElementById('btnStartProjection').onclick = startProjection;
-  document.getElementById('btnSendChat').onclick = sendChatMessage;
-  document.getElementById('btnCopyInvite').onclick = () => {
-    navigator.clipboard.writeText(window.location.href);
-    alert('Enlace copiado');
+  document.getElementById('btnSendChat').onclick = () => {
+    const inp = document.getElementById('chatInput');
+    if (inp.value.trim()) {
+      socket.emit('chat-message', { roomId, message: inp.value });
+      inp.value = '';
+    }
   };
-  
+
+  // Estrellas
+  document.querySelectorAll('.star').forEach(s => {
+    s.onclick = function() {
+      userRating = this.dataset.value;
+      document.querySelectorAll('.star').forEach(st => st.classList.toggle('selected', st.dataset.value <= userRating));
+    };
+  });
+
+  document.getElementById('btnSubmitRating').onclick = () => {
+    if (userRating) socket.emit('add-rating', { roomId, username, rating: userRating });
+  };
+
+  document.getElementById('btnSubmitReaction').onclick = () => {
+    const m = document.getElementById('reactionMinute').value;
+    const msg = document.getElementById('reactionMessage').value;
+    if (m && msg) socket.emit('add-reaction', { roomId, username, time: m+':00', message: msg });
+  };
+
   // Modales
-  document.getElementById('btnCalifications').onclick = () => document.getElementById('modalCalifications').style.display='flex';
-  document.getElementById('btnCloseCalifications').onclick = () => document.getElementById('modalCalifications').style.display='none';
-  // ... resto de eventos ...
-}
-
-function addChatMessage(user, msg) {
-  const cont = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.innerHTML = `<strong>${user}:</strong> ${msg}`;
-  cont.appendChild(div);
-  cont.scrollTop = cont.scrollHeight;
-}
-
-function sendChatMessage() {
-  const input = document.getElementById('chatInput');
-  if (input.value.trim()) {
-    socket.emit('chat-message', { roomId, message: input.value });
-    input.value = '';
-  }
+  document.getElementById('btnCalifications').onclick = () => document.getElementById('modalCalifications').style.display = 'flex';
+  document.getElementById('btnReactions').onclick = () => document.getElementById('modalReactions').style.display = 'flex';
+  document.getElementById('btnCloseCalifications').onclick = () => document.getElementById('modalCalifications').style.display = 'none';
+  document.getElementById('btnCloseReactions').onclick = () => document.getElementById('modalReactions').style.display = 'none';
 }
 
 function showGuestConfig() {
-  // Lógica de login de invitado (simplificada)
-  const name = prompt("¿Cómo te llamas?");
+  const name = prompt("¿Tu nombre?");
   if (name) {
     localStorage.setItem('projectorroom_username', name);
     location.reload();
   }
 }
+
+function renderRatings() { document.getElementById('ratingsContent').innerHTML = allRatings.map(r => `<div>${r.username}: ${r.rating}/10</div>`).join(''); }
+function renderReactions() { document.getElementById('reactionsContent').innerHTML = allReactions.map(r => `<div>[${r.time}] ${r.username}: ${r.message}</div>`).join(''); }
