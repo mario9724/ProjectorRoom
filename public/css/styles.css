@@ -726,87 +726,81 @@ input[type="url"]:focus {
   background: #1a1a1a;
   color: white;
 }
+
 /* ==================== SELECTOR DE EPISODIOS ==================== */
 
 .episode-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  margin-top: 15px;
+
+/* ==================== SELECTOR DE EPISODIOS (DROPDOWNS) ==================== */
+
+.selector-label {
+  display: block;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.episode-btn {
+.episode-select {
+  width: 100%;
   background: #000000;
   border: 2px solid #2a2a2a;
   border-radius: 8px;
-  padding: 16px 12px;
+  padding: 14px 16px;
   color: #ffffff;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-align: center;
-  min-height: 70px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 20px;
+  padding-right: 45px;
 }
 
-.episode-btn:hover {
+.episode-select:hover {
   border-color: #ffffff;
+  background-color: #1a1a1a;
+}
+
+.episode-select:focus {
+  outline: none;
+  border-color: #ffffff;
+  background-color: #1a1a1a;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.episode-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #0a0a0a;
+}
+
+.episode-select option {
   background: #1a1a1a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 12px;
+  font-size: 0.95rem;
 }
 
-.episode-btn.selected {
-  border-color: #ffffff;
-  background: #ffffff;
-  color: #000000;
-  font-weight: 600;
-}
-
-.episode-btn .episode-number {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.episode-btn .episode-title {
-  font-size: 0.75rem;
-  color: #999;
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  max-width: 100%;
-}
-
-.episode-btn.selected .episode-title {
-  color: #000000;
+.episode-select option:hover {
+  background: #2a2a2a;
 }
 
 /* Ajustes para móvil */
 @media (max-width: 768px) {
-  .episode-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 10px;
+  .episode-select {
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    padding-right: 40px;
   }
   
-  .episode-btn {
-    padding: 12px 8px;
-    min-height: 60px;
+  .selector-label {
     font-size: 0.85rem;
-  }
-  
-  .episode-btn .episode-number {
-    font-size: 1rem;
-  }
-  
-  .episode-btn .episode-title {
-    font-size: 0.7rem;
   }
 }
