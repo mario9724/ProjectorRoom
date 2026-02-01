@@ -17,17 +17,17 @@
           <img id="roomPosterSmall" src="" alt="Poster">
         </div>
         <div class="room-title-info">
-          <h1 id="roomTitle">Cargando...</h1>
+          <h1 id="roomTitle">Cargando sala...</h1>
           <div class="room-users-list">
             <span class="users-icon">👥</span>
-            <span id="usersNames">Cargando...</span>
+            <span id="usersNames">...</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="movie-section">
-      <div id="mediaContainer" class="room-backdrop" style="position: relative; background: #000; overflow: hidden; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;">
+      <div id="mediaContainer" class="room-backdrop" style="position: relative; background: #000; overflow: hidden; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; border-radius: 12px;">
         <img id="roomBackdrop" src="" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1;">
         
         <div id="videoContainer" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10;">
@@ -47,7 +47,7 @@
 
     <div class="room-actions">
       <button id="btnStartProjection" class="btn-primary-large">▶️ Proyectar aquí</button>
-      <button id="btnCopyInvite" class="btn-outline-large">📋 Invitar Roomie</button>
+      <button id="btnCopyInvite" class="btn-outline-large">📋 Copiar invitación</button>
     </div>
     
     <button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">🎬 Cambiar película</button>
@@ -69,26 +69,48 @@
 
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
-      <h2>⭐ Calificaciones</h2>
-      <div class="rating-stars" id="ratingStars">
-        <span class="star" data-value="1">★</span><span class="star" data-value="2">★</span><span class="star" data-value="3">★</span>
-        <span class="star" data-value="4">★</span><span class="star" data-value="5">★</span><span class="star" data-value="6">★</span>
-        <span class="star" data-value="7">★</span><span class="star" data-value="8">★</span><span class="star" data-value="9">★</span><span class="star" data-value="10">★</span>
+      <div class="modal-header">
+        <h2>⭐ Calificaciones</h2>
+        <span id="btnCloseCalifications" class="close-modal">&times;</span>
       </div>
-      <button id="btnSubmitRating" class="btn-primary" style="margin-top:10px">Guardar</button>
-      <div id="ratingsContent" class="ratings-list"></div>
-      <button id="btnCloseCalifications" class="btn-secondary">Cerrar</button>
+      <div class="modal-body">
+        <div class="your-rating-section">
+          <h3>Tu calificación</h3>
+          <div class="rating-stars" id="ratingStars">
+            <span class="star" data-value="1">★</span><span class="star" data-value="2">★</span><span class="star" data-value="3">★</span>
+            <span class="star" data-value="4">★</span><span class="star" data-value="5">★</span><span class="star" data-value="6">★</span>
+            <span class="star" data-value="7">★</span><span class="star" data-value="8">★</span><span class="star" data-value="9">★</span><span class="star" data-value="10">★</span>
+          </div>
+          <button id="btnSubmitRating" class="btn-primary">Guardar calificación</button>
+        </div>
+        <div class="roomies-ratings-section">
+          <h3>Calificaciones de los roomies</h3>
+          <div id="ratingsContent" class="ratings-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
-      <h2>💬 Reacciones</h2>
-      <input type="number" id="reactionMinute" placeholder="Minuto">
-      <textarea id="reactionMessage" placeholder="Tu reacción..."></textarea>
-      <button id="btnSubmitReaction" class="btn-primary">Enviar</button>
-      <div id="reactionsContent" class="reactions-content"></div>
-      <button id="btnCloseReactions" class="btn-secondary">Cerrar</button>
+      <div class="modal-header">
+        <h2>💬 Reacciones</h2>
+        <span id="btnCloseReactions" class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="new-reaction-section">
+          <h3>Agregar reacción</h3>
+          <div class="reaction-form">
+            <input type="number" id="reactionMinute" placeholder="Minuto">
+            <textarea id="reactionMessage" placeholder="Escribe tu reacción..." maxlength="200"></textarea>
+            <button id="btnSubmitReaction" class="btn-primary">Enviar</button>
+          </div>
+        </div>
+        <div class="roomies-reactions-section">
+          <h3>Muro de reacciones</h3>
+          <div id="reactionsContent" class="reactions-content"></div>
+        </div>
+      </div>
     </div>
   </div>
 
