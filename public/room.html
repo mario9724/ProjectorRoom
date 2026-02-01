@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala de Proyección</title>
   <link rel="stylesheet" href="/css/room.css">
+  
+  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-silvermine-videojs-chromecast/1.3.1/videojs-chromecast.min.js"></script>
 </head>
 <body>
+  <video id="hiddenVideo" class="video-js" style="display:none;"></video>
+
   <div class="room-container">
-    <!-- HEADER CON TÍTULO -->
     <div class="room-header">
       <div class="room-title-section">
         <div class="room-poster-small">
@@ -24,7 +29,6 @@
       </div>
     </div>
 
-    <!-- BACKDROP/BANNER + INFORMACIÓN -->
     <div class="movie-section">
       <div class="room-backdrop">
         <img id="roomBackdrop" src="" alt="Banner">
@@ -40,7 +44,6 @@
       </div>
     </div>
 
-    <!-- BOTONES DE ACCIÓN -->
     <div class="room-actions">
       <button id="btnStartProjection" class="btn-primary-large">
         ▶️ Proyectar
@@ -49,19 +52,17 @@
         👥 Invitar a un roomie
       </button>
     </div>
-<!-- ⭐ BETA-1.6: Botón cambiar película (solo anfitrión) -->
-<button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">
-  🎬 Cambiar película
-</button>
+    
+    <button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">
+      🎬 Cambiar película
+    </button>
 
-    <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
     <div id="changeSourceSection" style="display: none;">
       <button id="btnChangeSource" class="btn-change-source">
         🔄 Cambiar fuente de reproducción
       </button>
     </div>
 
-    <!-- BOTONES DE CALIFICACIONES Y REACCIONES -->
     <div class="interaction-buttons">
       <button id="btnCalifications" class="btn-interaction">
         ⭐ Calificaciones
@@ -71,7 +72,6 @@
       </button>
     </div>
 
-    <!-- CHAT -->
     <div class="chat-section">
       <h3>💬 Esto dicen los roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
@@ -82,12 +82,10 @@
     </div>
   </div>
 
-  <!-- MODAL CALIFICACIONES -->
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
       <h2>⭐ Calificaciones</h2>
       
-      <!-- TU CALIFICACIÓN (SIEMPRE EDITABLE) -->
       <div class="your-rating-section">
         <h3>Tu calificación</h3>
         <div class="rating-stars" id="ratingStars">
@@ -105,7 +103,6 @@
         <button id="btnSubmitRating" class="btn-primary" style="margin-top: 15px;">Guardar calificación</button>
       </div>
 
-      <!-- CALIFICACIONES DE LOS ROOMIES -->
       <div class="roomies-ratings-section">
         <h3>Calificaciones de los roomies</h3>
         <div id="ratingsContent" class="ratings-list"></div>
@@ -117,12 +114,10 @@
     </div>
   </div>
 
-  <!-- MODAL REACCIONES -->
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
       <h2>💬 Reacciones</h2>
       
-      <!-- NUEVA REACCIÓN -->
       <div class="new-reaction-section">
         <h3>Agregar nueva reacción</h3>
         <div class="reaction-form">
@@ -138,7 +133,6 @@
         </div>
       </div>
 
-      <!-- REACCIONES DE LOS ROOMIES -->
       <div class="roomies-reactions-section">
         <h3>Reacciones de los roomies</h3>
         <div id="reactionsContent" class="reactions-content"></div>
@@ -153,3 +147,4 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
 </body>
+</html>
