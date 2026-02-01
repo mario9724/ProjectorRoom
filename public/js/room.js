@@ -343,12 +343,31 @@ function initRoom() {
   
   renderRoom();
   
+  // Mostrar botón "Cambiar fuente" si invitado sin fuente compartida
   if (!isHost && roomData.useHostSource === false) {
     const changeSourceSection = document.getElementById('changeSourceSection');
     if (changeSourceSection) {
       changeSourceSection.style.display = 'block';
     }
     console.log('🔄 Botón "Cambiar fuente" habilitado');
+  }
+
+  // ⭐ Mostrar botón "Cambiar contenido" a invitados
+  if (!isHost) {
+    const btnChangeContent = document.getElementById('btnChangeContent');
+    if (btnChangeContent) {
+      btnChangeContent.style.display = 'inline-block';
+    }
+    console.log('🔄 Botón "Cambiar contenido" habilitado para invitado');
+  }
+
+  // ⭐ Mostrar botón "Cambiar película" a anfitriones
+  if (isHost) {
+    const btnChangeMovie = document.getElementById('btnChangeMovie');
+    if (btnChangeMovie) {
+      btnChangeMovie.style.display = 'inline-block';
+    }
+    console.log('🎬 Botón "Cambiar película" habilitado para anfitrión');
   }
   
   connectSocket();
@@ -449,6 +468,23 @@ function connectSocket() {
   socket.on('reactions-history', data => {
     console.log('📜 Cargando historial de reacciones:', data.reactions.length, 'reacciones');
     allReactions = data.reactions || [];
+  });
+
+  // ⭐ Escuchar cambio de contenido por otro invitado
+  socket.on('content-changed', data => {
+    console.log('🔄 Contenido cambiado por:', data.username);
+    
+    if (data.username !== username && !isHost) {
+      const shouldReselect = confirm(
+        `🔄 ${data.username} cambió el contenido de la sala\n\n` +
+        '¿Quieres seleccionar una nueva fuente para el nuevo contenido?'
+      );
+      
+      if (shouldReselect) {
+        localStorage.removeItem('projectorroom_guest_source_' + roomId);
+        window.location.reload();
+      }
+    }
   });
 }
 
@@ -593,19 +629,59 @@ function openExternalPlayer() {
 
     console.log('📺 Abriendo en pantalla externa:', sourceUrl);
 
-    // Abrir URL en nueva pestaña (VLC/Infuse/apps externas detectan automáticamente)
-    const opened = window.open(sourceUrl, '_blank');
-    
-    if (opened) {
-        alert('✅ Abriendo en VLC/Infuse...\n\nSi no se abre automáticamente:\n1. Copia la URL\n2. Abre VLC/Infuse manualmente\n3. Pega la URL');
+    // Detectar plataforma
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    if (isIOS) {
+        // iOS: Abrir en Infuse directamente
+        const infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(sourceUrl)}`;
+        window.location.href = infuseUrl;
+        
+        // Fallback si Infuse no está instalado (después de 1.5s)
+        setTimeout(() => {
+            if (confirm('¿Infuse no se abrió?\n\n✅ OK → Copiar URL\n❌ Cancelar')) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(sourceUrl).then(() => {
+                        alert('✅ URL copiada. Pégala en Infuse manualmente.');
+                    });
+                } else {
+                    prompt('Copia esta URL en Infuse:', sourceUrl);
+                }
+            }
+        }, 1500);
+        
+    } else if (isAndroid) {
+        // Android: Abrir selector de apps
+        const intent = `intent:${sourceUrl}#Intent;type=video/*;action=android.intent.action.VIEW;end`;
+        window.location.href = intent;
+        
+        // Fallback
+        setTimeout(() => {
+            const opened = window.open(sourceUrl, '_blank');
+            if (!opened) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(sourceUrl).then(() => {
+                        alert('✅ URL copiada. Ábrela en VLC/MX Player.');
+                    });
+                } else {
+                    prompt('Copia esta URL en tu reproductor:', sourceUrl);
+                }
+            }
+        }, 1000);
+        
     } else {
-        // Fallback: copiar al portapapeles
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(sourceUrl).then(() => {
-                alert('✅ URL copiada al portapapeles\n\nPégala en VLC/Infuse/tu reproductor favorito');
-            });
-        } else {
-            prompt('Copia esta URL en VLC/Infuse:', sourceUrl);
+        // Desktop: Abrir en nueva pestaña (VLC detecta automáticamente)
+        const opened = window.open(sourceUrl, '_blank');
+        
+        if (!opened || opened.closed) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(sourceUrl).then(() => {
+                    alert('✅ URL copiada al portapapeles\n\nPégala en VLC/tu reproductor favorito');
+                });
+            } else {
+                prompt('Copia esta URL en VLC:', sourceUrl);
+            }
         }
     }
 }
@@ -722,6 +798,39 @@ function changeMovie() {
   if (confirm('¿Quieres cambiar la película? Esto cerrará la sala actual y creará una nueva.')) {
     window.location.href = '/';
   }
+}
+
+function changeContent() {
+    if (isHost) {
+        alert('Como anfitrión, usa "Cambiar película" para crear una nueva sala');
+        return;
+    }
+
+    console.log('🔄 Invitado cambiando contenido...');
+
+    // Si el anfitrión NO comparte fuente, advertir que los demás invitados deberán reelegir
+    if (roomData.useHostSource === false) {
+        const confirm1 = confirm(
+            '⚠️ Cambiar contenido afectará a todos los invitados\n\n' +
+            'Los demás invitados recibirán un popup para seleccionar nueva fuente.\n\n' +
+            '¿Continuar?'
+        );
+        
+        if (!confirm1) return;
+    }
+
+    // Limpiar localStorage del invitado (mantiene manifest seleccionado)
+    localStorage.removeItem('projectorroom_guest_source_' + roomId);
+    localStorage.removeItem('projectorroom_guest_configured_' + roomId);
+
+    // Emitir evento Socket.IO para notificar a otros invitados
+    if (socket && roomData.useHostSource === false) {
+        socket.emit('content-changed', { roomId, username });
+    }
+
+    // Redirigir a búsqueda (mantiene manifest)
+    alert('🔍 Redirigiendo a búsqueda de nueva película/serie...\n\nTu proyector configurado se mantendrá.');
+    window.location.href = '/';
 }
 
 function openCalificationsModal() {
@@ -875,6 +984,7 @@ function setupButtons() {
   const btnCopyInvite = document.getElementById('btnCopyInvite');
   const btnChangeSource = document.getElementById('btnChangeSource');
   const btnChangeMovie = document.getElementById('btnChangeMovie');
+  const btnChangeContent = document.getElementById('btnChangeContent');
   const btnCalifications = document.getElementById('btnCalifications');
   const btnReactions = document.getElementById('btnReactions');
   const btnSendChat = document.getElementById('btnSendChat');
@@ -888,6 +998,7 @@ function setupButtons() {
   if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
   if (btnChangeSource) btnChangeSource.onclick = changeSource;
   if (btnChangeMovie) btnChangeMovie.onclick = changeMovie;
+  if (btnChangeContent) btnChangeContent.onclick = changeContent;
   if (btnCalifications) btnCalifications.onclick = openCalificationsModal;
   if (btnReactions) btnReactions.onclick = openReactionsModal;
   if (btnSendChat) btnSendChat.onclick = sendChatMessage;
