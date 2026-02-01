@@ -1,15 +1,12 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
+<html lang="es"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala de Proyección</title>
   <link rel="stylesheet" href="/css/room.css">
-  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/videojs-chromecast.css" rel="stylesheet">
 </head>
 <body>
   <div class="room-container">
+    <!-- HEADER CON TÍTULO -->
     <div class="room-header">
       <div class="room-title-section">
         <div class="room-poster-small">
@@ -25,14 +22,10 @@
       </div>
     </div>
 
+    <!-- BACKDROP/BANNER + INFORMACIÓN -->
     <div class="movie-section">
-      <div class="room-backdrop" style="position: relative; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-        <img id="roomBackdrop" src="" alt="Banner" style="width: 100%; height: 100%; object-fit: cover;">
-        
-        <div id="playerWrapper" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-          <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto" width="auto" height="auto" style="width: 100%; height: 100%;">
-          </video>
-        </div>
+      <div class="room-backdrop">
+        <img id="roomBackdrop" src="" alt="Banner">
       </div>
       
       <div class="room-info">
@@ -45,42 +38,57 @@
       </div>
     </div>
 
+    <!-- BOTONES DE ACCIÓN -->
     <div class="room-actions">
-      <button id="btnStartProjection" class="btn-primary">▶️ Proyectar</button>
-      <button id="btnCopyInvite" class="btn-outline">📋 Invitar</button>
-      <button id="btnChangeSource" class="btn-outline">🔗 Cambiar Fuente</button>
-      <button id="btnCalifications" class="btn-outline">⭐ Notas</button>
-      <button id="btnReactions" class="btn-outline">💬 Reacciones</button>
+      <button id="btnStartProjection" class="btn-primary-large">
+        ▶️ Proyectar
+      </button>
+      <button id="btnCopyInvite" class="btn-outline-large">
+        👥 Invitar a un roomie
+      </button>
+    </div>
+<!-- ⭐ BETA-1.6: Botón cambiar película (solo anfitrión) -->
+<button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">
+  🎬 Cambiar película
+</button>
+
+    <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
+    <div id="changeSourceSection" style="display: none;">
+      <button id="btnChangeSource" class="btn-change-source">
+        🔄 Cambiar fuente de reproducción
+      </button>
     </div>
 
+    <!-- BOTONES DE CALIFICACIONES Y REACCIONES -->
+    <div class="interaction-buttons">
+      <button id="btnCalifications" class="btn-interaction">
+        ⭐ Calificaciones
+      </button>
+      <button id="btnReactions" class="btn-interaction">
+        💬 Reacciones
+      </button>
+    </div>
+
+    <!-- CHAT -->
     <div class="chat-section">
+      <h3>💬 Esto dicen los roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input-container">
+      <div class="chat-input">
         <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
         <button id="btnSendChat" class="btn-send">Enviar</button>
       </div>
     </div>
   </div>
 
-  <div id="modalSource" class="modal">
-    <div class="modal-content">
-      <h2>🔗 Cambiar fuente de video</h2>
-      <p>Selecciona una de las fuentes disponibles de Stremio:</p>
-      <div id="sourcesList" class="sources-list">
-        <div class="loading-sources">Buscando fuentes...</div>
-      </div>
-      <div class="modal-actions">
-        <button id="btnCloseSource" class="btn-secondary">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- MODAL CALIFICACIONES -->
   <div id="modalCalifications" class="modal">
     <div class="modal-content">
       <h2>⭐ Calificaciones</h2>
-      <div class="user-rating-section">
-        <h3>Tu nota</h3>
-        <div class="rating-stars">
+      
+      <!-- TU CALIFICACIÓN (SIEMPRE EDITABLE) -->
+      <div class="your-rating-section">
+        <h3>Tu calificación</h3>
+        <div class="rating-stars" id="ratingStars">
           <span class="star" data-value="1">★</span>
           <span class="star" data-value="2">★</span>
           <span class="star" data-value="3">★</span>
@@ -92,20 +100,27 @@
           <span class="star" data-value="9">★</span>
           <span class="star" data-value="10">★</span>
         </div>
+        <button id="btnSubmitRating" class="btn-primary" style="margin-top: 15px;">Guardar calificación</button>
       </div>
+
+      <!-- CALIFICACIONES DE LOS ROOMIES -->
       <div class="roomies-ratings-section">
         <h3>Calificaciones de los roomies</h3>
         <div id="ratingsContent" class="ratings-list"></div>
       </div>
+
       <div class="modal-actions">
         <button id="btnCloseCalifications" class="btn-secondary">Cerrar</button>
       </div>
     </div>
   </div>
 
+  <!-- MODAL REACCIONES -->
   <div id="modalReactions" class="modal">
     <div class="modal-content wide">
       <h2>💬 Reacciones</h2>
+      
+      <!-- NUEVA REACCIÓN -->
       <div class="new-reaction-section">
         <h3>Agregar nueva reacción</h3>
         <div class="reaction-form">
@@ -120,20 +135,20 @@
           <button id="btnSubmitReaction" class="btn-primary">Enviar reacción</button>
         </div>
       </div>
+
+      <!-- REACCIONES DE LOS ROOMIES -->
       <div class="roomies-reactions-section">
         <h3>Reacciones de los roomies</h3>
         <div id="reactionsContent" class="reactions-content"></div>
       </div>
+
       <div class="modal-actions">
         <button id="btnCloseReactions" class="btn-secondary">Cerrar</button>
       </div>
     </div>
   </div>
 
-  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/videojs-chromecast.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
-</body>
-</html>
+
+</body></html>
