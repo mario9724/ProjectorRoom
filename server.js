@@ -78,7 +78,6 @@ app.post('/api/projectorrooms/create', async (req, res) => {
       return res.json({ success: false, message: 'Datos incompletos' });
     }
     
-    // sourceUrl puede ser vacío si no comparte fuente
     if (useHostSource && !sourceUrl) {
       console.error('❌ Se seleccionó compartir fuente pero no hay sourceUrl');
       return res.json({ success: false, message: 'Fuente requerida cuando se comparte' });
@@ -100,21 +99,17 @@ app.post('/api/projectorrooms/create', async (req, res) => {
     
     console.log('💾 Guardando en DB:', roomData);
     
-    // Crear sala en DB
     const room = await db.createRoom(roomData);
     
     console.log('✅ Sala guardada en DB');
     
-    // Guardar información de la película/serie si está disponible
     if (mediaInfo) {
       await db.saveMediaInfo(roomId, mediaInfo);
       
-      // Guardar cast si está disponible
       if (cast && Array.isArray(cast)) {
         await db.saveMediaCast(roomId, cast);
       }
       
-      // Guardar crew si está disponible
       if (crew && Array.isArray(crew)) {
         await db.saveMediaCrew(roomId, crew);
       }
@@ -161,7 +156,7 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
   }
 });
 
-// ⭐ CORREGIDO: Actualizar contenido sin tocar updated_at
+// ⭐ CORREGIDO: Actualizar contenido de sala
 app.put('/api/projectorrooms/:roomId/update-content', async (req, res) => {
   const { roomId } = req.params;
   const { manifest, sourceUrl } = req.body;
@@ -171,20 +166,16 @@ app.put('/api/projectorrooms/:roomId/update-content', async (req, res) => {
   console.log('🎬 SourceUrl:', sourceUrl);
   
   try {
-    // ⭐ SOLO actualizar manifest y sourceUrl (sin updated_at)
-    const result = await db.run(
-      `UPDATE projector_rooms 
-       SET manifest = ?, source_url = ? 
-       WHERE id = ?`,
-      [manifest, sourceUrl || null, roomId]
-    );
+    const room = await db.getRoomById(roomId);
     
-    if (result.changes === 0) {
+    if (!room) {
       return res.status(404).json({ 
         success: false, 
         message: 'Sala no encontrada' 
       });
     }
+    
+    await db.updateRoomContent(roomId, manifest, sourceUrl || null);
     
     console.log('✅ Contenido actualizado correctamente');
     
@@ -202,21 +193,19 @@ app.put('/api/projectorrooms/:roomId/update-content', async (req, res) => {
   }
 });
 
-// ⭐ RESET CONTENIDO (calificaciones y reacciones)
+// ⭐ Reset contenido (calificaciones y reacciones)
 app.post('/api/projectorrooms/:id/reset-content', async (req, res) => {
   try {
     const roomId = req.params.id;
     
     console.log('🔄 Reseteando contenido de sala:', roomId);
     
-    // Verificar que la sala existe
     const room = await db.getRoomById(roomId);
     
     if (!room) {
       return res.json({ success: false, message: 'Sala no encontrada' });
     }
     
-    // Resetear calificaciones y reacciones
     await db.resetRoomContent(roomId);
     
     console.log('✅ Contenido reseteado correctamente');
@@ -235,7 +224,7 @@ app.post('/api/projectorrooms/:id/reset-content', async (req, res) => {
   }
 });
 
-// Obtener información completa de la sala (con media info, cast, crew)
+// Obtener información completa de la sala
 app.get('/api/projectorrooms/:id/full', async (req, res) => {
   try {
     const roomId = req.params.id;
@@ -270,7 +259,7 @@ app.get('/api/projectorrooms/:id/full', async (req, res) => {
   }
 });
 
-// Obtener mensajes de chat de una sala
+// Obtener mensajes de chat
 app.get('/api/projectorrooms/:id/messages', async (req, res) => {
   try {
     const roomId = req.params.id;
@@ -292,7 +281,7 @@ app.get('/api/projectorrooms/:id/messages', async (req, res) => {
   }
 });
 
-// Obtener calificaciones de una sala
+// Obtener calificaciones
 app.get('/api/projectorrooms/:id/ratings', async (req, res) => {
   try {
     const roomId = req.params.id;
@@ -317,7 +306,7 @@ app.get('/api/projectorrooms/:id/ratings', async (req, res) => {
   }
 });
 
-// Obtener reacciones de una sala
+// Obtener reacciones
 app.get('/api/projectorrooms/:id/reactions', async (req, res) => {
   try {
     const roomId = req.params.id;
@@ -337,7 +326,7 @@ app.get('/api/projectorrooms/:id/reactions', async (req, res) => {
   }
 });
 
-// Obtener estadísticas de una sala
+// Obtener estadísticas
 app.get('/api/projectorrooms/:id/stats', async (req, res) => {
   try {
     const roomId = req.params.id;
@@ -372,47 +361,34 @@ app.get('/sala/:id', (req, res) => {
 io.on('connection', (socket) => {
   console.log('🔌 Usuario conectado:', socket.id);
   
-  // UNIRSE A SALA
   socket.on('join-room', async ({ roomId, username }) => {
     try {
       console.log(`👤 ${username} se unió a sala ${roomId}`);
       
       socket.join(roomId);
       
-      // Guardar usuario en DB
       await db.addUserToRoom(roomId, socket.id, username);
       
-      // Obtener usuarios activos
       const activeUsers = await db.getActiveUsersInRoom(roomId);
       
-      // Guardar datos en socket
       socket.roomId = roomId;
       socket.username = username;
       
-      // Obtener mensajes históricos del chat
       const chatHistory = await db.getChatMessages(roomId, 50);
-      
-      // Enviar historial de chat al usuario que se unió
       socket.emit('chat-history', { messages: chatHistory });
       
-      // Obtener calificaciones existentes
       const [ratings, avgRating] = await Promise.all([
         db.getRatings(roomId),
         db.getAverageRating(roomId)
       ]);
       
-      // Formatear y enviar calificaciones al usuario que se unió
       const formattedRatings = ratings.map(formatRatingForClient);
       socket.emit('ratings-history', { ratings: formattedRatings, average: avgRating });
       
-      // Obtener reacciones existentes
       const reactions = await db.getReactions(roomId);
-      
-      // Formatear y enviar reacciones al usuario que se unió
       const formattedReactions = reactions.map(formatReactionForClient);
       socket.emit('reactions-history', { reactions: formattedReactions });
       
-      // Notificar a todos en la sala
       io.to(roomId).emit('user-joined', {
         user: { id: socket.id, username },
         users: activeUsers
@@ -424,15 +400,12 @@ io.on('connection', (socket) => {
     }
   });
   
-  // MENSAJE DE CHAT
   socket.on('chat-message', async ({ roomId, message }) => {
     try {
       console.log(`💬 [${roomId}] ${socket.username}: ${message}`);
       
-      // Guardar mensaje en DB
       const savedMessage = await db.saveChatMessage(roomId, socket.username, message);
       
-      // Emitir a todos en la sala
       io.to(roomId).emit('chat-message', {
         username: socket.username,
         message: message,
@@ -445,18 +418,14 @@ io.on('connection', (socket) => {
     }
   });
   
-  // CALIFICACIÓN
   socket.on('add-rating', async ({ roomId, username, rating }) => {
     try {
       console.log(`⭐ [${roomId}] ${username} calificó con ${rating}/10`);
       
-      // Guardar calificación en DB
       await db.saveRating(roomId, username, rating);
       
-      // Obtener promedio actualizado
       const avgRating = await db.getAverageRating(roomId);
       
-      // Emitir a todos en la sala
       io.to(roomId).emit('rating-added', {
         username,
         rating,
@@ -469,12 +438,10 @@ io.on('connection', (socket) => {
     }
   });
   
-  // REACCIÓN
   socket.on('add-reaction', async ({ roomId, username, time, message }) => {
     try {
       console.log(`💬 [${roomId}] ${username} reaccionó en ${time}: ${message}`);
       
-      // Convertir tiempo de formato "MM:SS" a solo minutos si es necesario
       let timeMinutes = time;
       if (typeof time === 'string' && time.includes(':')) {
         const [mins] = time.split(':');
@@ -483,10 +450,8 @@ io.on('connection', (socket) => {
         timeMinutes = parseInt(time);
       }
       
-      // Guardar reacción en DB
       const savedReaction = await db.saveReaction(roomId, username, timeMinutes, message);
       
-      // Emitir a todos en la sala con formato correcto
       io.to(roomId).emit('reaction-added', formatReactionForClient({
         username,
         time_minutes: timeMinutes,
@@ -500,12 +465,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ⭐ CAMBIO DE CONTENIDO (notificar a todos los usuarios)
   socket.on('content-changed', async ({ roomId }) => {
     try {
       console.log(`🔄 [${roomId}] Anfitrión cambió el contenido`);
       
-      // Emitir a todos en la sala (menos al que lo emitió)
       socket.to(roomId).emit('content-changed', {
         message: 'El anfitrión cambió el contenido de la sala'
       });
@@ -515,7 +478,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // DESCONEXIÓN
   socket.on('disconnect', async () => {
     try {
       console.log('🔴 Usuario desconectado:', socket.id);
@@ -524,13 +486,10 @@ io.on('connection', (socket) => {
       const username = socket.username;
       
       if (roomId) {
-        // Marcar usuario como desconectado en DB
         await db.removeUserFromRoom(socket.id);
         
-        // Obtener usuarios activos restantes
         const activeUsers = await db.getActiveUsersInRoom(roomId);
         
-        // Notificar a los demás
         io.to(roomId).emit('user-left', {
           username: username,
           users: activeUsers
@@ -551,7 +510,6 @@ server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
 
-// Manejo de errores no capturados
 process.on('unhandledRejection', (err) => {
   console.error('Error no manejado:', err);
 });
