@@ -536,28 +536,29 @@ function startProjection() {
         return;
     }
 
-    // Ocultar imagen y mostrar vídeo
-    if (backdropImg) {
-        backdropImg.style.display = 'none';
-    }
+        // Ocultar imagen y mostrar vídeo
+    if (backdropImg) backdropImg.style.display = 'none';
     videoContainer.style.display = 'block';
 
-    // Asignar la URL m3u (o lo que venga) al reproductor
-    // Si la URL es HLS (.m3u8) y el navegador no la soporta nativamente,
-    // aquí podrías integrar hls.js o similar, pero no tocamos nada más por ahora.
-    videoEl.src = sourceUrl;
-    videoEl.load();
-    videoEl.play().catch(err => {
-        console.warn('Error al iniciar reproducción:', err);
-    });
+    // Soporte HLS + directo
+    if (sourceUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(sourceUrl);
+        hls.attachMedia(videoEl);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            videoEl.play().catch(err => console.warn('Error play HLS:', err));
+        });
+        console.log('✅ HLS cargado');
+    } else {
+        videoEl.src = sourceUrl;
+        videoEl.load();
+        videoEl.play().catch(err => console.warn('Error play directo:', err));
+    }
 
-    // Picture-in-Picture nativo (cuando el navegador lo soporte)
-    videoEl.addEventListener('enterpictureinpicture', () => {
-        console.log('Entró en PiP');
-    });
-    videoEl.addEventListener('leavepictureinpicture', () => {
-        console.log('Salió de PiP');
-    });
+    // PiP nativo
+    videoEl.addEventListener('enterpictureinpicture', () => console.log('PiP ON'));
+    videoEl.addEventListener('leavepictureinpicture', () => console.log('PiP OFF'));
+
 
     // Exponer helpers para que puedas enganchar PiP / Cast desde botones futuros
     window.enterPiP = async () => {
