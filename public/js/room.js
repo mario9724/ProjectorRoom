@@ -16,7 +16,7 @@ window.addEventListener('load', async () => {
         username = isHost ? sessionStorage.getItem('projectorroom_host_username_' + roomId) : localStorage.getItem('projectorroom_username');
 
         if (!username) {
-            showGuestConfig();
+            showGuestLogin();
         } else {
             initRoom();
         }
@@ -33,7 +33,16 @@ function initRoom() {
 
 function renderRoomInfo() {
     const movie = JSON.parse(roomData.manifest);
-    document.getElementById('roomTitle').textContent = movie.title || 'Cargando...';
+    
+    // Título dinámico solicitado
+    let contentName = movie.title || 'Contenido';
+    if (movie.type === 'series' && movie.season && movie.episode) {
+        contentName += ` (Temporada ${movie.season} x Episodio ${movie.episode})`;
+    }
+    const hostName = roomData.hostUsername || 'Anfitrión';
+    const dynamicTitle = `Proyectando ${contentName} en ${roomData.name} de ${hostName}`;
+    
+    document.getElementById('roomTitle').textContent = dynamicTitle;
     document.getElementById('roomPosterSmall').src = movie.poster || '';
     document.getElementById('roomBackdrop').src = movie.backdrop || movie.poster || '';
     document.getElementById('movieYear').textContent = movie.year ? `📅 ${movie.year}` : '';
@@ -47,7 +56,7 @@ async function startProjection() {
         ? roomData.sourceUrl 
         : localStorage.getItem('projectorroom_guest_source_' + roomId);
 
-    if (!sourceUrl) return alert("No hay fuente disponible.");
+    if (!sourceUrl) return alert("Fuente no disponible.");
 
     document.getElementById('roomBackdrop').style.display = 'none';
     document.getElementById('videoContainer').style.display = 'block';
@@ -57,13 +66,8 @@ async function startProjection() {
             fluid: true,
             controls: true,
             techOrder: ['chromecast', 'html5'],
-            plugins: {
-                chromecast: { addButtonToControlBar: true }
-            },
-            controlBar: {
-                fullscreenToggle: true,
-                pictureInPictureToggle: true
-            }
+            plugins: { chromecast: { addButtonToControlBar: true } },
+            controlBar: { fullscreenToggle: true }
         });
     }
 
@@ -72,9 +76,7 @@ async function startProjection() {
         type: sourceUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
     });
 
-    player.ready(() => {
-        player.play().catch(() => console.log("Reproducción incrustada lista."));
-    });
+    player.ready(() => player.play());
 }
 
 function connectSocket() {
@@ -103,14 +105,16 @@ function setupEventListeners() {
     document.getElementById('btnSendChat').onclick = sendChatMessage;
     document.getElementById('btnCopyInvite').onclick = () => {
         navigator.clipboard.writeText(window.location.href);
-        alert('Enlace de invitación copiado');
+        alert('Enlace copiado');
     };
 
-    // Estrellas de calificación
+    // Estrellas
     document.querySelectorAll('.star').forEach(s => {
         s.onclick = function() {
             userRating = this.dataset.value;
-            document.querySelectorAll('.star').forEach(st => st.classList.toggle('selected', st.dataset.value <= userRating));
+            document.querySelectorAll('.star').forEach(st => {
+                st.classList.toggle('selected', parseInt(st.dataset.value) <= parseInt(userRating));
+            });
         };
     });
 
@@ -121,10 +125,13 @@ function setupEventListeners() {
     document.getElementById('btnSubmitReaction').onclick = () => {
         const m = document.getElementById('reactionMinute').value;
         const msg = document.getElementById('reactionMessage').value;
-        if (m && msg) socket.emit('add-reaction', { roomId, username, time: m + ':00', message: msg });
+        if (m && msg) {
+            socket.emit('add-reaction', { roomId, username, time: m + ':00', message: msg });
+            document.getElementById('reactionMessage').value = '';
+        }
     };
 
-    // Modales
+    // Modales (display: flex para centrar)
     document.getElementById('btnCalifications').onclick = () => document.getElementById('modalCalifications').style.display = 'flex';
     document.getElementById('btnReactions').onclick = () => document.getElementById('modalReactions').style.display = 'flex';
     document.getElementById('btnCloseCalifications').onclick = () => document.getElementById('modalCalifications').style.display = 'none';
@@ -139,13 +146,11 @@ function sendChatMessage() {
     }
 }
 
-function showGuestConfig() {
-    const name = prompt("¡Hola! Ingresa tu nombre para unirte a la sala:");
+function showGuestLogin() {
+    const name = prompt("Nombre:");
     if (name) {
         localStorage.setItem('projectorroom_username', name);
         location.reload();
-    } else {
-        window.location.href = '/';
     }
 }
 
