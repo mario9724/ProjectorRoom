@@ -500,21 +500,19 @@ function sendChatMessage() {
   }
 }
 
-// ==================== REPRODUCCIÓN EN PICTURE-IN-PICTURE ====================
+// ==================== REPRODUCCIÓN ====================
 
 function startProjection() {
     let sourceUrl;
 
-    // 🔧 FALBACK CORRECTO: invitado SIEMPRE usa fuente host si está disponible
+    // 🔧 FALLBACK CORRECTO
     if (roomData.sourceUrl) {
-        sourceUrl = roomData.sourceUrl;  // Fuente del anfitrión (prioridad máxima)
+        sourceUrl = roomData.sourceUrl;
         console.log('🎥 Usando fuente del anfitrión:', sourceUrl);
     } else if (isHost) {
-        // Anfitrión sin fuente host configurada (raro)
         sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
         console.log('Anfitrión usando fuente local:', sourceUrl);
     } else {
-        // Invitado sin fuente host disponible
         sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
         console.log('Invitado usando fuente personal:', sourceUrl);
     }
@@ -539,12 +537,11 @@ function startProjection() {
     if (backdropImg) backdropImg.style.display = 'none';
     videoContainer.style.display = 'block';
 
-    // Error handler (IMPORTANTE)
+    // Error handler
     videoEl.onerror = (e) => {
         console.error('❌ Error vídeo:', e);
-        const msg = 'No se puede reproducir.\n\nVerifica:\n1) CORS en servidor HLS\n2) Formato MP4/HLS válido\n3) URL accesible';
-        alert(msg);
-        backdropImg.style.display = 'block';
+        alert('No se puede reproducir.\n\nVerifica CORS y formato');
+        if (backdropImg) backdropImg.style.display = 'block';
         videoContainer.style.display = 'none';
     };
 
@@ -567,211 +564,6 @@ function startProjection() {
     // PiP nativo
     videoEl.addEventListener('enterpictureinpicture', () => console.log('📱 PiP ON'));
     videoEl.addEventListener('leavepictureinpicture', () => console.log('📱 PiP OFF'));
-}
-
-
-        // Ocultar imagen y mostrar vídeo
-    if (backdropImg) backdropImg.style.display = 'none';
-    videoContainer.style.display = 'block';
-
-    // Soporte HLS + directo
-    if (sourceUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(sourceUrl);
-        hls.attachMedia(videoEl);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoEl.play().catch(err => console.warn('Error play HLS:', err));
-        });
-        console.log('✅ HLS cargado');
-    } else {
-        videoEl.src = sourceUrl;
-        videoEl.load();
-        videoEl.play().catch(err => console.warn('Error play directo:', err));
-    }
-
-    // PiP nativo
-    videoEl.addEventListener('enterpictureinpicture', () => console.log('PiP ON'));
-    videoEl.addEventListener('leavepictureinpicture', () => console.log('PiP OFF'));
-
-
-    // Exponer helpers para que puedas enganchar PiP / Cast desde botones futuros
-    window.enterPiP = async () => {
-        if ('pictureInPictureEnabled' in document) {
-            try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else {
-                    await videoEl.requestPictureInPicture();
-                }
-            } catch (e) {
-                console.error('Error PiP:', e);
-            }
-        } else {
-            alert('Picture-in-Picture no soportado en este navegador');
-        }
-    };
-
-    // Placeholders para Chromecast / AirPlay: necesitan integración extra
-    // (botones con cast.framework / AirPlay JS), pero no modificamos nada más.
-    window.castToChromecast = () => {
-        alert('Chromecast requiere integrar el sender SDK de Google en otro cambio.');
-    };
-
-    window.castToAirPlay = () => {
-        // En Safari, el propio control nativo muestra el icono de AirPlay.
-        alert('AirPlay se gestiona desde los controles del reproductor en Safari.');
-    };
-}
-
-
-async function openInPictureInPicture(videoUrl) {
-  // Verificar soporte de PIP
-  if (!document.pictureInPictureEnabled) {
-    console.log('⚠️ PIP no soportado, abriendo en nueva pestaña');
-    window.open(videoUrl, '_blank');
-    return;
-  }
-  
-  // Crear elemento de video temporal oculto
-  const videoElement = document.createElement('video');
-  videoElement.src = videoUrl;
-  videoElement.controls = true;
-  videoElement.crossOrigin = 'anonymous';
-  videoElement.style.position = 'fixed';
-  videoElement.style.bottom = '-1000px'; // Oculto fuera de la pantalla
-  videoElement.style.width = '640px';
-  videoElement.style.height = '360px';
-  
-  // Agregar al DOM
-  document.body.appendChild(videoElement);
-  
-  try {
-    // Esperar a que el video esté listo
-    await videoElement.play();
-    
-    // Entrar en modo PIP
-    if (videoElement !== document.pictureInPictureElement) {
-      await videoElement.requestPictureInPicture();
-      console.log('✅ Video en modo PIP');
-      
-      // Evento cuando sale del PIP
-      videoElement.addEventListener('leavepictureinpicture', () => {
-        console.log('❌ Salió del modo PIP');
-        videoElement.pause();
-        document.body.removeChild(videoElement);
-      });
-      
-      // Evento cuando termina el video
-      videoElement.addEventListener('ended', () => {
-        console.log('✅ Video terminado');
-        if (document.pictureInPictureElement) {
-          document.exitPictureInPicture();
-        }
-        document.body.removeChild(videoElement);
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error activando PIP:', error);
-    
-    // Si PIP falla, mostrar opciones al usuario
-    showPlaybackOptions(videoUrl, videoElement);
-  }
-}
-
-function showPlaybackOptions(videoUrl, videoElement) {
-  // Limpiar video element si existe
-  if (videoElement && videoElement.parentNode) {
-    document.body.removeChild(videoElement);
-  }
-  
-  const options = confirm(
-    '🎬 Elige cómo reproducir:\n\n' +
-    '✅ OK → Abrir en nueva pestaña (puedes usar apps externas)\n' +
-    '❌ Cancelar → Reproducir aquí en pantalla'
-  );
-  
-  if (options) {
-    // Abrir en nueva pestaña - activa selector del SO
-    window.open(videoUrl, '_blank');
-  } else {
-    // Reproducir en la misma página (inline)
-    playInline(videoUrl);
-  }
-}
-
-function playInline(videoUrl) {
-  // Crear modal con reproductor
-  const modal = document.createElement('div');
-  modal.id = 'videoModal';
-  modal.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.95);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  `;
-  
-  const videoContainer = document.createElement('div');
-  videoContainer.style.cssText = `
-    position: relative;
-    width: 100%;
-    max-width: 1200px;
-    background: #000;
-    border-radius: 8px;
-    overflow: hidden;
-  `;
-  
-  const video = document.createElement('video');
-  video.src = videoUrl;
-  video.controls = true;
-  video.autoplay = true;
-  video.style.cssText = `
-    width: 100%;
-    height: auto;
-    display: block;
-  `;
-  
-  const closeBtn = document.createElement('button');
-  closeBtn.innerHTML = '✕ Cerrar';
-  closeBtn.style.cssText = `
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    border: 2px solid #fff;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    z-index: 10001;
-  `;
-  
-  closeBtn.onclick = () => {
-    video.pause();
-    document.body.removeChild(modal);
-  };
-  
-  videoContainer.appendChild(video);
-  videoContainer.appendChild(closeBtn);
-  modal.appendChild(videoContainer);
-  document.body.appendChild(modal);
-  
-  // Cerrar con ESC
-  document.addEventListener('keydown', function escHandler(e) {
-    if (e.key === 'Escape') {
-      video.pause();
-      document.body.removeChild(modal);
-      document.removeEventListener('keydown', escHandler);
-    }
-  });
 }
 
 function copyInvite() {
@@ -797,6 +589,17 @@ function changeSource() {
   console.log('🔄 Reiniciando selección de fuente...');
   localStorage.removeItem('projectorroom_guest_source_' + roomId);
   window.location.reload();
+}
+
+function changeMovie() {
+  if (!isHost) {
+    alert('Solo el anfitrión puede cambiar la película');
+    return;
+  }
+  
+  if (confirm('¿Quieres cambiar la película? Esto cerrará la sala actual y creará una nueva.')) {
+    window.location.href = '/';
+  }
 }
 
 function openCalificationsModal() {
@@ -948,6 +751,7 @@ function setupButtons() {
   const btnStartProjection = document.getElementById('btnStartProjection');
   const btnCopyInvite = document.getElementById('btnCopyInvite');
   const btnChangeSource = document.getElementById('btnChangeSource');
+  const btnChangeMovie = document.getElementById('btnChangeMovie');
   const btnCalifications = document.getElementById('btnCalifications');
   const btnReactions = document.getElementById('btnReactions');
   const btnSendChat = document.getElementById('btnSendChat');
@@ -959,6 +763,7 @@ function setupButtons() {
   if (btnStartProjection) btnStartProjection.onclick = startProjection;
   if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
   if (btnChangeSource) btnChangeSource.onclick = changeSource;
+  if (btnChangeMovie) btnChangeMovie.onclick = changeMovie;
   if (btnCalifications) btnCalifications.onclick = openCalificationsModal;
   if (btnReactions) btnReactions.onclick = openReactionsModal;
   if (btnSendChat) btnSendChat.onclick = sendChatMessage;
