@@ -219,14 +219,14 @@ function renderSelectedMovie() {
 // CARGAR TEMPORADAS DESDE TMDB
 async function loadSeasons() {
   try {
-    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}?api_key=${TMDB_API_KEY}`;
+    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}?api_key=${TMDB_API_KEY}&language=es-ES`;
     const res = await fetch(url);
     const data = await res.json();
     
     // Filtrar temporadas válidas (excluir especiales si season_number es 0)
     selectedMovie.seasons = data.seasons.filter(s => s.season_number > 0);
     
-    // Mostrar selector de episodios y renderizar temporadas
+    // Mostrar selector de episodios
     document.getElementById('episodeSelector').style.display = 'block';
     renderSeasons();
     
@@ -240,22 +240,29 @@ async function loadSeasons() {
   }
 }
 
-// RENDERIZAR BOTONES DE TEMPORADAS
+// RENDERIZAR SELECTOR DE TEMPORADAS
 function renderSeasons() {
-  const container = document.getElementById('seasonButtons');
-  container.innerHTML = '';
+  const select = document.getElementById('seasonSelect');
+  select.innerHTML = '<option value="">Selecciona una temporada...</option>';
   
   selectedMovie.seasons.forEach(season => {
-    const btn = document.createElement('button');
-    btn.className = 'episode-btn';
-    btn.innerHTML = `
-      <div class="episode-number">T${season.season_number}</div>
-      <div class="episode-title">${season.episode_count} episodios</div>
-    `;
-    
-    btn.onclick = () => selectSeason(season.season_number);
-    container.appendChild(btn);
+    const option = document.createElement('option');
+    option.value = season.season_number;
+    option.textContent = `Temporada ${season.season_number} (${season.episode_count} episodios)`;
+    select.appendChild(option);
   });
+  
+  // Event listener para cuando se selecciona una temporada
+  select.onchange = (e) => {
+    const seasonNumber = parseInt(e.target.value);
+    if (seasonNumber) {
+      selectSeason(seasonNumber);
+    } else {
+      // Si deselecciona, ocultar episodios
+      document.getElementById('episodeSelectorContainer').style.display = 'none';
+      document.getElementById('episodeSelect').innerHTML = '<option value="">Selecciona un episodio...</option>';
+    }
+  };
 }
 
 // SELECCIONAR TEMPORADA Y CARGAR EPISODIOS
@@ -263,19 +270,14 @@ async function selectSeason(seasonNumber) {
   selectedMovie.selectedSeason = seasonNumber;
   selectedMovie.selectedEpisode = null;
   
-  // Marcar temporada seleccionada visualmente
-  document.querySelectorAll('#seasonButtons .episode-btn').forEach((btn, index) => {
-    btn.classList.toggle('selected', selectedMovie.seasons[index].season_number === seasonNumber);
-  });
-  
   // Cargar episodios de esta temporada
   await loadEpisodes(seasonNumber);
 }
 
-// CARGAR EPISODIOS DE UNA TEMPORADA
+// CARGAR EPISODIOS DE UNA TEMPORADA (EN ESPAÑOL)
 async function loadEpisodes(seasonNumber) {
   try {
-    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNumber}?api_key=${TMDB_API_KEY}`;
+    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=es-ES`;
     const res = await fetch(url);
     const data = await res.json();
     
@@ -291,32 +293,35 @@ async function loadEpisodes(seasonNumber) {
   }
 }
 
-// RENDERIZAR BOTONES DE EPISODIOS
+// RENDERIZAR SELECTOR DE EPISODIOS
 function renderEpisodes() {
-  const container = document.getElementById('episodeButtons');
-  container.innerHTML = '';
+  const select = document.getElementById('episodeSelect');
+  select.innerHTML = '<option value="">Selecciona un episodio...</option>';
   
   selectedMovie.episodes.forEach(episode => {
-    const btn = document.createElement('button');
-    btn.className = 'episode-btn';
-    btn.innerHTML = `
-      <div class="episode-number">E${episode.episode_number}</div>
-      <div class="episode-title">${episode.name || 'Sin título'}</div>
-    `;
-    
-    btn.onclick = () => selectEpisode(episode.episode_number);
-    container.appendChild(btn);
+    const option = document.createElement('option');
+    option.value = episode.episode_number;
+    // Formato: "1. Nombre del Episodio"
+    option.textContent = `${episode.episode_number}. ${episode.name || 'Sin título'}`;
+    select.appendChild(option);
   });
+  
+  // Event listener para cuando se selecciona un episodio
+  select.onchange = (e) => {
+    const episodeNumber = parseInt(e.target.value);
+    if (episodeNumber) {
+      selectEpisode(episodeNumber);
+    } else {
+      // Si deselecciona, ocultar fuentes
+      document.getElementById('sourcesList').innerHTML = '<div class="loading">👆 Selecciona un episodio</div>';
+      document.getElementById('btnCreateRoom').disabled = true;
+    }
+  };
 }
 
 // SELECCIONAR EPISODIO Y CARGAR FUENTES
 function selectEpisode(episodeNumber) {
   selectedMovie.selectedEpisode = episodeNumber;
-  
-  // Marcar episodio seleccionado visualmente
-  document.querySelectorAll('#episodeButtons .episode-btn').forEach((btn, index) => {
-    btn.classList.toggle('selected', selectedMovie.episodes[index].episode_number === episodeNumber);
-  });
   
   // Ahora sí, cargar las fuentes para este episodio específico
   loadSources();
