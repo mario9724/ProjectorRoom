@@ -2,16 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sala de Proyección - ProjectorRoom</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sala de Proyección</title>
   <link rel="stylesheet" href="/css/room.css">
-  
   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-
-  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <link href="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/silvermine-videojs-chromecast.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/silvermine-videojs-chromecast.min.js"></script>
 </head>
 <body>
   <div class="room-container">
@@ -31,8 +26,7 @@
     </div>
 
     <div class="movie-section">
-      <div id="mediaContainer" class="room-backdrop" style="position: relative; overflow: hidden; background: #000; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 300px; z-index: 5;">
-        
+      <div id="mediaContainer" class="room-backdrop" style="position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16/9;">
         <img id="roomBackdrop" src="" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1;">
         
         <div id="videoContainer" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10;">
@@ -52,7 +46,7 @@
 
     <div class="room-actions">
       <button id="btnStartProjection" class="btn-primary-large">▶️ Proyectar aquí</button>
-      <button id="btnCopyInvite" class="btn-outline-large">📋 Copiar invitación</button>
+      <button id="btnCopyInvite" class="btn-outline-large">📋 Invitar</button>
     </div>
 
     <div class="interaction-buttons">
@@ -61,18 +55,40 @@
     </div>
 
     <div class="chat-section">
-      <h3>💬 Chat de Roomies</h3>
       <div id="chatMessages" class="chat-messages"></div>
       <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="200">
+        <input type="text" id="chatInput" placeholder="Escribe..." maxlength="200">
         <button id="btnSendChat" class="btn-send">Enviar</button>
       </div>
     </div>
   </div>
 
-  <div id="modalCalifications" class="modal"><div class="modal-content"><h2>⭐ Calificaciones</h2><div id="ratingsContent"></div><button id="btnCloseCalifications" class="btn-secondary">Cerrar</button></div></div>
-  <div id="modalReactions" class="modal"><div class="modal-content"><h2>💬 Reacciones</h2><div id="reactionsContent"></div><button id="btnCloseReactions" class="btn-secondary">Cerrar</button></div></div>
+  <div id="modalCalifications" class="modal">
+    <div class="modal-content">
+      <h2>⭐ Calificaciones</h2>
+      <div class="rating-stars" id="ratingStars">
+        <span class="star" data-value="1">★</span><span class="star" data-value="2">★</span><span class="star" data-value="3">★</span><span class="star" data-value="4">★</span><span class="star" data-value="5">★</span><span class="star" data-value="6">★</span><span class="star" data-value="7">★</span><span class="star" data-value="8">★</span><span class="star" data-value="9">★</span><span class="star" data-value="10">★</span>
+      </div>
+      <button id="btnSubmitRating" class="btn-primary">Guardar</button>
+      <div id="ratingsContent" class="ratings-list"></div>
+      <button id="btnCloseCalifications" class="btn-secondary">Cerrar</button>
+    </div>
+  </div>
 
+  <div id="modalReactions" class="modal">
+    <div class="modal-content wide">
+      <h2>💬 Reacciones</h2>
+      <input type="number" id="reactionMinute" placeholder="Minuto">
+      <textarea id="reactionMessage" placeholder="Tu reacción..."></textarea>
+      <button id="btnSubmitReaction" class="btn-primary">Enviar</button>
+      <div id="reactionsContent" class="reactions-content"></div>
+      <button id="btnCloseReactions" class="btn-secondary">Cerrar</button>
+    </div>
+  </div>
+
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/silvermine-videojs-chromecast.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
 </body>
