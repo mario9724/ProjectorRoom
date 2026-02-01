@@ -145,6 +145,92 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
   }
 });
 
+// ⭐ ACTUALIZAR CONTENIDO DE SALA (manifest + sourceUrl)
+app.put('/api/projectorrooms/:id/update-content', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const { manifest, sourceUrl, mediaInfo, cast, crew } = req.body;
+    
+    console.log('🔄 Actualizando contenido de sala:', roomId);
+    
+    // Validar datos
+    if (!manifest) {
+      return res.json({ success: false, message: 'Manifest requerido' });
+    }
+    
+    // Actualizar sala
+    const room = await db.updateRoomContent(roomId, manifest, sourceUrl || null);
+    
+    if (!room) {
+      return res.json({ success: false, message: 'Sala no encontrada' });
+    }
+    
+    // Actualizar información de la película/serie si está disponible
+    if (mediaInfo) {
+      await db.updateMediaInfo(roomId, mediaInfo);
+      
+      // Actualizar cast si está disponible
+      if (cast && Array.isArray(cast)) {
+        await db.deleteMediaCast(roomId);
+        await db.saveMediaCast(roomId, cast);
+      }
+      
+      // Actualizar crew si está disponible
+      if (crew && Array.isArray(crew)) {
+        await db.deleteMediaCrew(roomId);
+        await db.saveMediaCrew(roomId, crew);
+      }
+    }
+    
+    console.log('✅ Contenido actualizado correctamente');
+    
+    res.json({ 
+      success: true, 
+      projectorRoom: formatRoomForClient(room)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error actualizando contenido:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error en el servidor' 
+    });
+  }
+});
+
+// ⭐ RESET CONTENIDO (calificaciones y reacciones)
+app.post('/api/projectorrooms/:id/reset-content', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    
+    console.log('🔄 Reseteando contenido de sala:', roomId);
+    
+    // Verificar que la sala existe
+    const room = await db.getRoomById(roomId);
+    
+    if (!room) {
+      return res.json({ success: false, message: 'Sala no encontrada' });
+    }
+    
+    // Resetear calificaciones y reacciones
+    await db.resetRoomContent(roomId);
+    
+    console.log('✅ Contenido reseteado correctamente');
+    
+    res.json({ 
+      success: true, 
+      message: 'Contenido reseteado correctamente' 
+    });
+    
+  } catch (error) {
+    console.error('❌ Error reseteando contenido:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error en el servidor' 
+    });
+  }
+});
+
 // Obtener información completa de la sala (con media info, cast, crew)
 app.get('/api/projectorrooms/:id/full', async (req, res) => {
   try {
@@ -407,6 +493,21 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error guardando reacción:', error);
       socket.emit('error', { message: 'Error al guardar reacción' });
+    }
+  });
+
+  // ⭐ CAMBIO DE CONTENIDO (notificar a todos los usuarios)
+  socket.on('content-changed', async ({ roomId }) => {
+    try {
+      console.log(`🔄 [${roomId}] Anfitrión cambió el contenido`);
+      
+      // Emitir a todos en la sala (menos al que lo emitió)
+      socket.to(roomId).emit('content-changed', {
+        message: 'El anfitrión cambió el contenido de la sala'
+      });
+      
+    } catch (error) {
+      console.error('Error notificando cambio de contenido:', error);
     }
   });
   
