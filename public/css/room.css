@@ -83,11 +83,18 @@ body {
 }
 
 .room-backdrop {
-  width: 100%;
-  height: 450px;
-  overflow: hidden;
-  position: relative;
+    position: relative; /* importante para posicionar el vídeo encima */
+    /* deja aquí el resto de propiedades que ya tengas */
 }
+
+.video-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
 
 .room-backdrop::after {
   content: '';
