@@ -520,8 +520,8 @@ function startProjection() {
   
   console.log('▶️ Abriendo reproductor con:', sourceUrl);
   
-  // Abrir URL directamente - el SO muestra selector de apps
-  window.location.href = sourceUrl;
+  // Abrir en nueva pestaña - mantiene el chat activo
+  window.open(sourceUrl, '_blank');
 }
 
 function copyInvite() {
