@@ -1,9 +1,11 @@
-<html lang="es"><head>
+<!DOCTYPE html>
+<html lang="es">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sala de Proyección</title>
   <link rel="stylesheet" href="/css/room.css">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 </head>
 <body>
   <div class="room-container">
@@ -25,12 +27,22 @@
 
     <!-- BACKDROP/BANNER + INFORMACIÓN -->
     <div class="movie-section">
-    <div class="room-backdrop">
+      <div class="room-backdrop">
         <img id="roomBackdrop" src="" alt="Banner">
-        <!-- Contenedor del reproductor embebido -->
-        <div id="videoContainer" class="video-container" style="display:none;">
-            <video id="roomVideoPlayer" controls playsinline style="width:100%;height:100%;background:black;"></video>
+        <!-- ⭐ Contenedor de video para reproducción embebida -->
+        <div id="videoContainer" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000;">
+          <video id="roomVideoPlayer" controls playsinline crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: contain;"></video>
         </div>
+      </div>
+      
+      <div class="room-info">
+        <div class="movie-meta">
+          <span id="movieYear"></span>
+          <span id="movieType"></span>
+          <span id="movieRating"></span>
+        </div>
+        <p id="movieOverview"></p>
+      </div>
     </div>
 
     <!-- BOTONES DE ACCIÓN -->
@@ -41,11 +53,11 @@
       <button id="btnCopyInvite" class="btn-outline-large">
         👥 Invitar a un roomie
       </button>
+      <!-- ⭐ BETA-1.6: Botón cambiar película (solo anfitrión) -->
+      <button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">
+        🎬 Cambiar película
+      </button>
     </div>
-<!-- ⭐ BETA-1.6: Botón cambiar película (solo anfitrión) -->
-<button id="btnChangeMovie" class="btn-outline-large guest-hidden" style="display: none;">
-  🎬 Cambiar película
-</button>
 
     <!-- BOTÓN CAMBIAR FUENTE (SOLO INVITADOS) -->
     <div id="changeSourceSection" style="display: none;">
@@ -145,5 +157,5 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
-
-</body></html>
+</body>
+</html>
