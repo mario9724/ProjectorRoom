@@ -9,7 +9,6 @@ let selectedSourceIndex = null;
 let selectedSeason = null;
 let selectedEpisode = null;
 
-// ⭐ Variables para cambio de contenido
 let isChangingContent = false;
 let changingRoomId = null;
 
@@ -29,7 +28,6 @@ window.addEventListener('load', function() {
     console.log('🔄 Modo cambio de contenido - Sala:', changingRoomId);
     isChangingContent = true;
     
-    // ⭐ RECUPERAR TODA la configuración guardada
     roomConfig.username = sessionStorage.getItem('projectorroom_host_username_' + changingRoomId) || '';
     roomConfig.roomName = sessionStorage.getItem('projectorroom_change_room_name') || '';
     roomConfig.shareMode = sessionStorage.getItem('projectorroom_change_use_host_source') === 'true' ? 'host' : 'individual';
@@ -38,12 +36,11 @@ window.addEventListener('load', function() {
     
     console.log('📋 Configuración recuperada:', roomConfig);
     
-    // ⭐ IR DIRECTO AL PASO 5 (sin mostrar pasos 1-4)
     setTimeout(() => {
       goToStep(5);
     }, 100);
     
-    return; // ⭐ IMPORTANTE: NO ejecutar el resto del código
+    return;
   }
 });
 
@@ -51,7 +48,6 @@ window.addEventListener('load', function() {
 function goToStep(step) {
   console.log('📍 goToStep:', step, '| Modo cambio:', isChangingContent);
   
-  // Validaciones (solo si NO estamos cambiando contenido)
   if (!isChangingContent) {
     if (step === 2) {
       const username = document.getElementById('username').value.trim();
@@ -87,19 +83,16 @@ function goToStep(step) {
     }
   }
   
-  // ⭐ SI ES CAMBIO DE CONTENIDO, SIEMPRE ir al paso 5
   if (isChangingContent && step < 5) {
     step = 5;
     console.log('🔄 Forzando paso 5 (cambio de contenido)');
   }
   
-  // ⭐ Ocultar TODOS los pasos
   for (let i = 1; i <= 6; i++) {
     const stepEl = document.getElementById('step' + i);
     if (stepEl) stepEl.classList.remove('active');
   }
   
-  // ⭐ Mostrar SOLO el paso solicitado
   currentStep = step;
   const targetStepEl = document.getElementById('step' + step);
   if (targetStepEl) {
@@ -107,13 +100,11 @@ function goToStep(step) {
     console.log('✅ Paso', step, 'mostrado');
   }
   
-  // ⭐ Inicializar búsqueda SOLO en paso 5
   if (step === 5) {
     setTimeout(initSearch, 100);
   }
 }
 
-// SELECCIÓN DE TIPO DE PROYECTOR
 function selectProjectorType(type) {
   document.querySelectorAll('input[name="projectorType"]').forEach(radio => {
     radio.checked = radio.value === type;
@@ -130,7 +121,6 @@ function selectProjectorType(type) {
   }
 }
 
-// SELECCIÓN DE MODO COMPARTIR
 function selectShareMode(mode) {
   document.querySelectorAll('input[name="shareMode"]').forEach(radio => {
     radio.checked = radio.value === mode;
@@ -142,7 +132,6 @@ function selectShareMode(mode) {
   event.currentTarget.classList.add('selected');
 }
 
-// INICIALIZAR BÚSQUEDA
 function initSearch() {
   const input = document.getElementById('searchInput');
   if (!input) {
@@ -152,7 +141,6 @@ function initSearch() {
   
   console.log('🔍 Inicializando búsqueda...');
   
-  // Limpiar listener anterior
   const newInput = input.cloneNode(true);
   input.parentNode.replaceChild(newInput, input);
   
@@ -171,7 +159,6 @@ function initSearch() {
   newInput.focus();
 }
 
-// BUSCAR PELÍCULAS/SERIES
 async function searchMovies(query) {
   const resultsContainer = document.getElementById('searchResults');
   if (!resultsContainer) return;
@@ -222,12 +209,11 @@ async function searchMovies(query) {
   }
 }
 
-// SELECCIONAR PELÍCULA
+// ⭐ CORREGIDO: NO cargar fuentes automáticamente para series
 async function selectMovie(movie) {
   selectedMovie = movie;
   console.log('🎬 Película seleccionada:', movie);
   
-  // Obtener IMDb ID
   try {
     const detailsUrl = `https://api.themoviedb.org/3/${movie.media_type}/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`;
     const res = await fetch(detailsUrl);
@@ -242,31 +228,33 @@ async function selectMovie(movie) {
     
     console.log('✅ IMDb ID:', selectedMovie.imdb_id);
     
-    // Ir al paso 6 (fuentes)
     goToStep(6);
-    
-    // Mostrar info de la película
     renderMovieInfo();
     
-    // Si es serie, cargar temporadas
     if (selectedMovie.media_type === 'tv') {
+      // ⭐ Si es serie, cargar temporadas pero NO fuentes todavía
       await loadSeasons();
+      
+      // Mostrar mensaje inicial en fuentes
+      const container = document.getElementById('sourcesList');
+      if (container) {
+        container.innerHTML = '<div class="loading">📺 Primero selecciona temporada y episodio</div>';
+      }
+      
     } else {
-      // Si es película, ocultar selector de episodios
+      // ⭐ Si es película, ocultar selector y cargar fuentes
       const episodeSelector = document.getElementById('episodeSelector');
       if (episodeSelector) episodeSelector.style.display = 'none';
+      
+      await loadSources();
     }
-    
-    // Cargar fuentes
-    await loadSources();
     
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
-    alert('Error obteniendo información de la película. Intenta de nuevo.');
+    alert('Error obteniendo información. Intenta de nuevo.');
   }
 }
 
-// RENDERIZAR INFO DE PELÍCULA
 function renderMovieInfo() {
   const title = selectedMovie.title || selectedMovie.name;
   const year = selectedMovie.release_date || selectedMovie.first_air_date;
@@ -289,7 +277,6 @@ function renderMovieInfo() {
   if (overviewEl) overviewEl.textContent = selectedMovie.overview || 'Sin descripción disponible';
 }
 
-// ⭐ CARGAR TEMPORADAS (SOLO SERIES)
 async function loadSeasons() {
   console.log('📺 Cargando temporadas...');
   
@@ -317,7 +304,6 @@ async function loadSeasons() {
       }
     });
     
-    // Listener para cuando seleccione temporada
     seasonSelect.onchange = function() {
       selectedSeason = this.value;
       if (selectedSeason) {
@@ -330,7 +316,7 @@ async function loadSeasons() {
   }
 }
 
-// ⭐ CARGAR EPISODIOS
+// ⭐ CORREGIDO: Dispara búsqueda al seleccionar episodio
 async function loadEpisodes(seasonNumber) {
   console.log('📺 Cargando episodios de temporada', seasonNumber);
   
@@ -356,12 +342,12 @@ async function loadEpisodes(seasonNumber) {
       episodeSelect.appendChild(option);
     });
     
-    // Listener para cuando seleccione episodio
+    // ⭐ Listener que dispara búsqueda de fuentes
     episodeSelect.onchange = function() {
       selectedEpisode = this.value;
       console.log('✅ Episodio seleccionado:', selectedSeason, 'x', selectedEpisode);
       
-      // Recargar fuentes con el episodio seleccionado
+      // ⭐ AHORA SÍ buscar fuentes
       if (selectedEpisode) {
         loadSources();
       }
@@ -372,13 +358,26 @@ async function loadEpisodes(seasonNumber) {
   }
 }
 
-// CARGAR FUENTES
+// ⭐ CORREGIDO: Solo busca si hay episodio (series) o directamente (películas)
 async function loadSources() {
   const container = document.getElementById('sourcesList');
   
   if (!container) {
     console.error('❌ No se encontró #sourcesList');
     return;
+  }
+  
+  // ⭐ VALIDAR: Si es serie, necesita temporada y episodio
+  if (selectedMovie.media_type === 'tv') {
+    if (!selectedSeason || !selectedEpisode) {
+      container.innerHTML = '<div class="loading">📺 Primero selecciona temporada y episodio</div>';
+      
+      // Deshabilitar botón "Crear sala"
+      const btnCreateRoom = document.getElementById('btnCreateRoom');
+      if (btnCreateRoom) btnCreateRoom.disabled = true;
+      
+      return; // ⭐ NO continuar hasta que se seleccione
+    }
   }
   
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
@@ -433,7 +432,6 @@ async function loadSources() {
   }
 }
 
-// RENDERIZAR FUENTES
 function renderSources() {
   const container = document.getElementById('sourcesList');
   
@@ -463,7 +461,6 @@ function renderSources() {
   }
 }
 
-// SELECCIONAR FUENTE
 function selectSource(index) {
   selectedSourceIndex = index;
   
@@ -472,14 +469,12 @@ function selectSource(index) {
   });
 }
 
-// ⭐ CREAR O ACTUALIZAR SALA
 async function createRoom() {
   if (selectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
     return;
   }
   
-  // ⭐ Si es serie, validar que se seleccionó episodio
   if (selectedMovie.media_type === 'tv' && (!selectedSeason || !selectedEpisode)) {
     alert('Por favor, selecciona una temporada y episodio');
     return;
@@ -507,7 +502,6 @@ async function createRoom() {
   
   try {
     if (isChangingContent && changingRoomId) {
-      // ⭐ ACTUALIZAR SALA EXISTENTE
       console.log('🔄 Actualizando sala:', changingRoomId);
       
       const updateRes = await fetch(`/api/projectorrooms/${changingRoomId}/update-content`, {
@@ -536,12 +530,10 @@ async function createRoom() {
       
       console.log('✅ Sala actualizada correctamente');
       
-      // Limpiar sessionStorage
       sessionStorage.removeItem('projectorroom_changing_content');
       sessionStorage.removeItem('projectorroom_change_room_name');
       sessionStorage.removeItem('projectorroom_change_use_host_source');
       
-      // Si no comparte fuente, guardar la seleccionada localmente
       if (roomConfig.shareMode !== 'host') {
         localStorage.setItem('projectorroom_guest_source_' + changingRoomId, selectedSource.url);
       }
@@ -550,7 +542,6 @@ async function createRoom() {
       window.location.href = `/sala/${changingRoomId}`;
       
     } else {
-      // ⭐ CREAR NUEVA SALA
       console.log('🆕 Creando nueva sala...');
       
       const requestBody = {
@@ -589,11 +580,9 @@ async function createRoom() {
       const roomId = data.projectorRoom.id;
       console.log('✅ Sala creada:', roomId);
       
-      // Guardar sesión del anfitrión
       sessionStorage.setItem('projectorroom_is_host_' + roomId, 'true');
       sessionStorage.setItem('projectorroom_host_username_' + roomId, roomConfig.username);
       
-      // Si no comparte fuente, guardar la seleccionada localmente
       if (roomConfig.shareMode !== 'host') {
         localStorage.setItem('projectorroom_guest_source_' + roomId, selectedSource.url);
       }
@@ -610,7 +599,6 @@ async function createRoom() {
   }
 }
 
-// ESCAPE HTML
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
