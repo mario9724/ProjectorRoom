@@ -30,7 +30,7 @@ window.addEventListener('load', function() {
     // Recuperar configuración guardada
     roomConfig.username = sessionStorage.getItem('projectorroom_host_username_' + changingRoomId) || '';
     roomConfig.roomName = sessionStorage.getItem('projectorroom_change_room_name') || '';
-    roomConfig.shareMode = sessionStorage.getItem('projectorroom_change_use_host_source') === 'true' ? 'host' : 'guest';
+    roomConfig.shareMode = sessionStorage.getItem('projectorroom_change_use_host_source') === 'true' ? 'host' : 'individual';
     roomConfig.projectorType = sessionStorage.getItem('projectorroom_projector_type_' + changingRoomId) || 'public';
     roomConfig.customManifest = sessionStorage.getItem('projectorroom_custom_manifest_' + changingRoomId) || '';
     
@@ -83,13 +83,15 @@ function goToStep(step) {
   }
   
   // Ocultar paso actual
-  if (!isChangingContent) {
-    document.getElementById('step' + currentStep).classList.remove('active');
+  if (!isChangingContent || currentStep !== 1) {
+    const currentStepEl = document.getElementById('step' + currentStep);
+    if (currentStepEl) currentStepEl.classList.remove('active');
   }
   
   // Mostrar nuevo paso
   currentStep = step;
-  document.getElementById('step' + step).classList.add('active');
+  const newStepEl = document.getElementById('step' + step);
+  if (newStepEl) newStepEl.classList.add('active');
   
   // Inicializar búsqueda en paso 5
   if (step === 5) {
@@ -109,7 +111,9 @@ function selectProjectorType(type) {
   event.currentTarget.classList.add('selected');
   
   const customBox = document.getElementById('customManifestBox');
-  customBox.style.display = type === 'custom' ? 'block' : 'none';
+  if (customBox) {
+    customBox.style.display = type === 'custom' ? 'block' : 'none';
+  }
 }
 
 // SELECCIÓN DE MODO COMPARTIR
@@ -129,7 +133,11 @@ function initSearch() {
   const input = document.getElementById('searchInput');
   if (!input) return;
   
-  input.addEventListener('input', function() {
+  // Limpiar listener anterior
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  
+  newInput.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     const query = this.value.trim();
     
@@ -140,11 +148,15 @@ function initSearch() {
     
     searchTimeout = setTimeout(() => searchMovies(query), 500);
   });
+  
+  newInput.focus();
 }
 
 // BUSCAR PELÍCULAS/SERIES
 async function searchMovies(query) {
   const resultsContainer = document.getElementById('searchResults');
+  if (!resultsContainer) return;
+  
   resultsContainer.innerHTML = '<div class="loading">Buscando...</div>';
   
   try {
@@ -175,9 +187,9 @@ async function searchMovies(query) {
       const type = item.media_type === 'movie' ? 'Película' : 'Serie';
       
       card.innerHTML = `
-        <img src="https://image.tmdb.org/t/p/w200${item.poster_path}" alt="${title}">
+        <img src="https://image.tmdb.org/t/p/w200${item.poster_path}" alt="${escapeHtml(title)}">
         <div class="movie-info">
-          <div class="movie-title">${title}</div>
+          <div class="movie-title">${escapeHtml(title)}</div>
           <div class="movie-meta">${yearText} · ${type}</div>
         </div>
       `;
@@ -211,9 +223,8 @@ async function selectMovie(movie) {
     
     console.log('✅ IMDb ID:', selectedMovie.imdb_id);
     
-    // Ocultar búsqueda y mostrar fuentes
-    document.getElementById('searchStep').style.display = 'none';
-    document.getElementById('sourcesStep').style.display = 'block';
+    // Ir al paso 6 (fuentes)
+    goToStep(6);
     
     // Mostrar info de la película
     renderMovieInfo();
@@ -223,40 +234,42 @@ async function selectMovie(movie) {
     
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
-    alert('Error obteniendo información de la película');
+    alert('Error obteniendo información de la película. Intenta de nuevo.');
   }
 }
 
 // RENDERIZAR INFO DE PELÍCULA
 function renderMovieInfo() {
-  const container = document.getElementById('selectedMovieInfo');
-  if (!container) return;
-  
   const title = selectedMovie.title || selectedMovie.name;
   const year = selectedMovie.release_date || selectedMovie.first_air_date;
   const yearText = year ? year.split('-')[0] : 'N/A';
   const type = selectedMovie.media_type === 'movie' ? 'Película' : 'Serie';
   const rating = selectedMovie.vote_average ? selectedMovie.vote_average.toFixed(1) : 'N/A';
   
-  container.innerHTML = `
-    <div class="movie-header">
-      <img src="https://image.tmdb.org/t/p/w200${selectedMovie.poster_path}" alt="${title}">
-      <div class="movie-details">
-        <h2>${title}</h2>
-        <div class="movie-meta">
-          <span>⭐ ${rating}</span>
-          <span>${yearText}</span>
-          <span>${type}</span>
-        </div>
-        <p>${selectedMovie.overview || 'Sin descripción disponible'}</p>
-      </div>
-    </div>
-  `;
+  const posterEl = document.getElementById('selectedPoster');
+  const titleEl = document.getElementById('selectedTitle');
+  const ratingEl = document.getElementById('selectedRating');
+  const yearEl = document.getElementById('selectedYear');
+  const typeEl = document.getElementById('selectedType');
+  const overviewEl = document.getElementById('selectedOverview');
+  
+  if (posterEl) posterEl.src = `https://image.tmdb.org/t/p/w200${selectedMovie.poster_path}`;
+  if (titleEl) titleEl.textContent = title;
+  if (ratingEl) ratingEl.textContent = `⭐ ${rating}`;
+  if (yearEl) yearEl.textContent = yearText;
+  if (typeEl) typeEl.textContent = type;
+  if (overviewEl) overviewEl.textContent = selectedMovie.overview || 'Sin descripción disponible';
 }
 
 // CARGAR FUENTES
 async function loadSources() {
   const container = document.getElementById('sourcesList');
+  
+  if (!container) {
+    console.error('❌ No se encontró #sourcesList');
+    return;
+  }
+  
   container.innerHTML = '<div class="loading">🔍 Buscando fuentes...</div>';
   
   const manifestUrl = roomConfig.projectorType === 'custom' 
@@ -304,6 +317,12 @@ async function loadSources() {
 // RENDERIZAR FUENTES
 function renderSources() {
   const container = document.getElementById('sourcesList');
+  
+  if (!container) {
+    console.error('❌ No se encontró #sourcesList');
+    return;
+  }
+  
   container.innerHTML = '';
   
   sources.forEach((source, index) => {
@@ -319,7 +338,10 @@ function renderSources() {
     container.appendChild(card);
   });
   
-  document.getElementById('btnCreateRoom').disabled = false;
+  const btnCreateRoom = document.getElementById('btnCreateRoom');
+  if (btnCreateRoom) {
+    btnCreateRoom.disabled = false;
+  }
 }
 
 // SELECCIONAR FUENTE
@@ -434,15 +456,6 @@ async function createRoom() {
     console.error('❌ Error:', error);
     alert('Error: ' + error.message);
   }
-}
-
-// VOLVER A BÚSQUEDA
-function backToSearch() {
-  document.getElementById('searchStep').style.display = 'block';
-  document.getElementById('sourcesStep').style.display = 'none';
-  selectedMovie = null;
-  sources = [];
-  selectedSourceIndex = null;
 }
 
 // ESCAPE HTML
