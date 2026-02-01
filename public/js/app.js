@@ -6,6 +6,8 @@ let searchTimeout = null;
 let selectedMovie = null;
 let sources = [];
 let selectedSourceIndex = null;
+let selectedSeason = null;
+let selectedEpisode = null;
 
 // ⭐ Variables para cambio de contenido
 let isChangingContent = false;
@@ -19,36 +21,35 @@ let roomConfig = {
   shareMode: 'host'
 };
 
-// ⭐ Verificar si estamos cambiando contenido al cargar
+// ⭐ CORREGIDO: Verificar si estamos cambiando contenido al cargar
 window.addEventListener('load', function() {
   changingRoomId = sessionStorage.getItem('projectorroom_changing_content');
   
   if (changingRoomId) {
-    console.log('🔄 Modo: Cambiar contenido de sala', changingRoomId);
+    console.log('🔄 Modo cambio de contenido - Sala:', changingRoomId);
     isChangingContent = true;
     
-    // Recuperar configuración guardada
+    // ⭐ RECUPERAR TODA la configuración guardada
     roomConfig.username = sessionStorage.getItem('projectorroom_host_username_' + changingRoomId) || '';
     roomConfig.roomName = sessionStorage.getItem('projectorroom_change_room_name') || '';
     roomConfig.shareMode = sessionStorage.getItem('projectorroom_change_use_host_source') === 'true' ? 'host' : 'individual';
     roomConfig.projectorType = sessionStorage.getItem('projectorroom_projector_type_' + changingRoomId) || 'public';
     roomConfig.customManifest = sessionStorage.getItem('projectorroom_custom_manifest_' + changingRoomId) || '';
     
-    console.log('📋 Config recuperada:', roomConfig);
+    console.log('📋 Configuración recuperada:', roomConfig);
     
-    // Ir directamente a búsqueda (paso 5)
-    goToStep(5);
+    // ⭐ IR DIRECTO AL PASO 5 (sin mostrar pasos 1-4)
+    setTimeout(() => {
+      goToStep(5);
+    }, 100);
+    
+    return; // ⭐ IMPORTANTE: NO ejecutar el resto del código
   }
 });
 
-// NAVEGACIÓN ENTRE PASOS
+// ⭐ CORREGIDO: goToStep() - Saltar pasos si es cambio de contenido
 function goToStep(step) {
-  console.log('📍 Navegando al paso', step);
-  
-  // ⭐ Si estamos cambiando contenido, saltar directamente a búsqueda
-  if (isChangingContent && step < 5) {
-    step = 5;
-  }
+  console.log('📍 goToStep:', step, '| Modo cambio:', isChangingContent);
   
   // Validaciones (solo si NO estamos cambiando contenido)
   if (!isChangingContent) {
@@ -86,18 +87,27 @@ function goToStep(step) {
     }
   }
   
-  // Ocultar paso actual
-  if (!isChangingContent || currentStep !== 1) {
-    const currentStepEl = document.getElementById('step' + currentStep);
-    if (currentStepEl) currentStepEl.classList.remove('active');
+  // ⭐ SI ES CAMBIO DE CONTENIDO, SIEMPRE ir al paso 5
+  if (isChangingContent && step < 5) {
+    step = 5;
+    console.log('🔄 Forzando paso 5 (cambio de contenido)');
   }
   
-  // Mostrar nuevo paso
-  currentStep = step;
-  const newStepEl = document.getElementById('step' + step);
-  if (newStepEl) newStepEl.classList.add('active');
+  // ⭐ Ocultar TODOS los pasos
+  for (let i = 1; i <= 6; i++) {
+    const stepEl = document.getElementById('step' + i);
+    if (stepEl) stepEl.classList.remove('active');
+  }
   
-  // Inicializar búsqueda en paso 5
+  // ⭐ Mostrar SOLO el paso solicitado
+  currentStep = step;
+  const targetStepEl = document.getElementById('step' + step);
+  if (targetStepEl) {
+    targetStepEl.classList.add('active');
+    console.log('✅ Paso', step, 'mostrado');
+  }
+  
+  // ⭐ Inicializar búsqueda SOLO en paso 5
   if (step === 5) {
     setTimeout(initSearch, 100);
   }
@@ -238,6 +248,15 @@ async function selectMovie(movie) {
     // Mostrar info de la película
     renderMovieInfo();
     
+    // Si es serie, cargar temporadas
+    if (selectedMovie.media_type === 'tv') {
+      await loadSeasons();
+    } else {
+      // Si es película, ocultar selector de episodios
+      const episodeSelector = document.getElementById('episodeSelector');
+      if (episodeSelector) episodeSelector.style.display = 'none';
+    }
+    
     // Cargar fuentes
     await loadSources();
     
@@ -270,6 +289,89 @@ function renderMovieInfo() {
   if (overviewEl) overviewEl.textContent = selectedMovie.overview || 'Sin descripción disponible';
 }
 
+// ⭐ CARGAR TEMPORADAS (SOLO SERIES)
+async function loadSeasons() {
+  console.log('📺 Cargando temporadas...');
+  
+  const episodeSelector = document.getElementById('episodeSelector');
+  const seasonSelect = document.getElementById('seasonSelect');
+  
+  if (!episodeSelector || !seasonSelect) return;
+  
+  episodeSelector.style.display = 'block';
+  
+  try {
+    const res = await fetch(
+      `https://api.themoviedb.org/3/tv/${selectedMovie.id}?api_key=${TMDB_API_KEY}&language=es-ES`
+    );
+    const data = await res.json();
+    
+    seasonSelect.innerHTML = '<option value="">Selecciona una temporada...</option>';
+    
+    data.seasons.forEach(season => {
+      if (season.season_number > 0) {
+        const option = document.createElement('option');
+        option.value = season.season_number;
+        option.textContent = `Temporada ${season.season_number}`;
+        seasonSelect.appendChild(option);
+      }
+    });
+    
+    // Listener para cuando seleccione temporada
+    seasonSelect.onchange = function() {
+      selectedSeason = this.value;
+      if (selectedSeason) {
+        loadEpisodes(selectedSeason);
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error cargando temporadas:', error);
+  }
+}
+
+// ⭐ CARGAR EPISODIOS
+async function loadEpisodes(seasonNumber) {
+  console.log('📺 Cargando episodios de temporada', seasonNumber);
+  
+  const episodeSelectorContainer = document.getElementById('episodeSelectorContainer');
+  const episodeSelect = document.getElementById('episodeSelect');
+  
+  if (!episodeSelectorContainer || !episodeSelect) return;
+  
+  episodeSelectorContainer.style.display = 'block';
+  
+  try {
+    const res = await fetch(
+      `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=es-ES`
+    );
+    const data = await res.json();
+    
+    episodeSelect.innerHTML = '<option value="">Selecciona un episodio...</option>';
+    
+    data.episodes.forEach(episode => {
+      const option = document.createElement('option');
+      option.value = episode.episode_number;
+      option.textContent = `Episodio ${episode.episode_number}: ${episode.name}`;
+      episodeSelect.appendChild(option);
+    });
+    
+    // Listener para cuando seleccione episodio
+    episodeSelect.onchange = function() {
+      selectedEpisode = this.value;
+      console.log('✅ Episodio seleccionado:', selectedSeason, 'x', selectedEpisode);
+      
+      // Recargar fuentes con el episodio seleccionado
+      if (selectedEpisode) {
+        loadSources();
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error cargando episodios:', error);
+  }
+}
+
 // CARGAR FUENTES
 async function loadSources() {
   const container = document.getElementById('sourcesList');
@@ -291,7 +393,15 @@ async function loadSources() {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = selectedMovie.media_type === 'movie' ? 'movie' : 'series';
-    const streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdb_id}.json`;
+    
+    // ⭐ Construir URL con temporada y episodio si es serie
+    let streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdb_id}`;
+    
+    if (selectedMovie.media_type === 'tv' && selectedSeason && selectedEpisode) {
+      streamUrl += `:${selectedSeason}:${selectedEpisode}`;
+    }
+    
+    streamUrl += '.json';
     
     console.log('🎬 Stream URL:', streamUrl);
     
@@ -362,10 +472,16 @@ function selectSource(index) {
   });
 }
 
-// ⭐ CREAR O ACTUALIZAR SALA (CON MEJOR ERROR HANDLING)
+// ⭐ CREAR O ACTUALIZAR SALA
 async function createRoom() {
   if (selectedSourceIndex === null) {
     alert('Por favor, selecciona una fuente');
+    return;
+  }
+  
+  // ⭐ Si es serie, validar que se seleccionó episodio
+  if (selectedMovie.media_type === 'tv' && (!selectedSeason || !selectedEpisode)) {
+    alert('Por favor, selecciona una temporada y episodio');
     return;
   }
   
@@ -384,7 +500,9 @@ async function createRoom() {
       : '',
     overview: selectedMovie.overview || '',
     rating: selectedMovie.vote_average || 0,
-    type: selectedMovie.media_type || 'movie'
+    type: selectedMovie.media_type || 'movie',
+    season: selectedSeason || null,
+    episode: selectedEpisode || null
   });
   
   try {
