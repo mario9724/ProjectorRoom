@@ -887,29 +887,3 @@ body {
   background: #1a1a1a;
   color: white;
 }
-/* Añade esto al final de tu archivo room.css */
-
-.room-backdrop {
-    background: #000;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#playerWrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 10;
-}
-
-.video-js {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-/* Evita que el degradado original tape los controles del video */
-.room-backdrop:has(#playerWrapper[style*="display: block"])::after {
-    display: none;
-}
