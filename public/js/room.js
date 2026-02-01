@@ -505,36 +505,70 @@ function sendChatMessage() {
 function startProjection() {
     let sourceUrl;
 
-    if (isHost) {
-        if (roomData.useHostSource) {
-            sourceUrl = roomData.sourceUrl;
-            console.log('Usando fuente del anfitrión,', sourceUrl);
-        } else {
-            // Si el anfitrión no comparte fuente, no debería pasar por aquí,
-            // pero mantenemos el control.
-            sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-            console.log('Usando fuente local del anfitrión,', sourceUrl);
-        }
-    } else {
+    // 🔧 FALBACK CORRECTO: invitado SIEMPRE usa fuente host si está disponible
+    if (roomData.sourceUrl) {
+        sourceUrl = roomData.sourceUrl;  // Fuente del anfitrión (prioridad máxima)
+        console.log('🎥 Usando fuente del anfitrión:', sourceUrl);
+    } else if (isHost) {
+        // Anfitrión sin fuente host configurada (raro)
         sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
-        console.log('Usando fuente del invitado,', sourceUrl);
+        console.log('Anfitrión usando fuente local:', sourceUrl);
+    } else {
+        // Invitado sin fuente host disponible
+        sourceUrl = localStorage.getItem('projectorroom_guest_source_' + roomId);
+        console.log('Invitado usando fuente personal:', sourceUrl);
     }
 
     if (!sourceUrl) {
-        alert('No se encontró la fuente de reproducción');
+        alert('❌ No se encontró fuente de reproducción');
         return;
     }
 
-    console.log('Reproduciendo embebido,', sourceUrl);
+    console.log('▶️ Reproduciendo:', sourceUrl);
 
     const backdropImg = document.getElementById('roomBackdrop');
     const videoContainer = document.getElementById('videoContainer');
     const videoEl = document.getElementById('roomVideoPlayer');
 
     if (!videoContainer || !videoEl) {
-        alert('No se encontró el contenedor de vídeo');
+        alert('❌ No se encontró el contenedor de vídeo');
         return;
     }
+
+    // Ocultar imagen y mostrar vídeo
+    if (backdropImg) backdropImg.style.display = 'none';
+    videoContainer.style.display = 'block';
+
+    // Error handler (IMPORTANTE)
+    videoEl.onerror = (e) => {
+        console.error('❌ Error vídeo:', e);
+        const msg = 'No se puede reproducir.\n\nVerifica:\n1) CORS en servidor HLS\n2) Formato MP4/HLS válido\n3) URL accesible';
+        alert(msg);
+        backdropImg.style.display = 'block';
+        videoContainer.style.display = 'none';
+    };
+
+    // Soporte HLS + directo
+    if (sourceUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(sourceUrl);
+        hls.attachMedia(videoEl);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            videoEl.play().catch(err => console.warn('Autoplay bloqueado:', err));
+            console.log('✅ HLS cargado');
+        });
+    } else {
+        videoEl.src = sourceUrl;
+        videoEl.load();
+        videoEl.play().catch(err => console.warn('Autoplay bloqueado:', err));
+        console.log('✅ Reproducción directa');
+    }
+
+    // PiP nativo
+    videoEl.addEventListener('enterpictureinpicture', () => console.log('📱 PiP ON'));
+    videoEl.addEventListener('leavepictureinpicture', () => console.log('📱 PiP OFF'));
+}
+
 
         // Ocultar imagen y mostrar vídeo
     if (backdropImg) backdropImg.style.display = 'none';
