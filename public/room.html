@@ -26,13 +26,12 @@
     </div>
 
     <div class="movie-section">
-      <div class="room-backdrop" id="backdropContainer" style="position: relative; background: #000; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+      <div class="room-backdrop" style="position: relative; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center;">
         <img id="roomBackdrop" src="" alt="Banner" style="width: 100%; height: 100%; object-fit: cover;">
         
-        <div id="playerWrapper" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0;">
-            <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto" width="auto" height="auto" x-webkit-airplay="allow">
-                <p class="vjs-no-js">Para ver este video, habilita JavaScript.</p>
-            </video>
+        <div id="playerWrapper" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+          <video id="videoPlayer" class="video-js vjs-big-play-centered" controls preload="auto" width="auto" height="auto" style="width: 100%; height: 100%;">
+          </video>
         </div>
       </div>
       
@@ -134,7 +133,6 @@
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/videojs-chromecast.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/videojs-airplay@1.1.0/dist/videojs-airplay.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/room.js"></script>
 </body>
