@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ProjectorRoom</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
   <div class="app-container">
@@ -96,7 +96,6 @@
         
         <div id="searchResults" class="movie-grid"></div>
         
-        <!-- ⭐ BOTÓN VOLVER CONDICIONAL -->
         <button class="btn-secondary" onclick="if (!isChangingContent) goToStep(4)">← Volver</button>
       </div>
     </div>
@@ -117,11 +116,10 @@
           </div>
         </div>
         
-        <!-- ⭐ Selector de temporada y episodio para series -->
+        <!-- Selector de temporada y episodio -->
         <div id="episodeSelector" style="display: none; margin: 25px 0;">
           <h3 class="section-title">📺 Selecciona el episodio</h3>
           
-          <!-- Selector de temporada -->
           <div id="seasonSelectorContainer" style="margin-bottom: 20px;">
             <label for="seasonSelect" style="display: block; margin-bottom: 10px; font-weight: 500;">Temporada</label>
             <select id="seasonSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px;">
@@ -129,7 +127,6 @@
             </select>
           </div>
           
-          <!-- Selector de episodio -->
           <div id="episodeSelectorContainer" style="display: none;">
             <label for="episodeSelect" style="display: block; margin-bottom: 10px; font-weight: 500;">Episodio</label>
             <select id="episodeSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px;">
@@ -154,8 +151,7 @@
     
   </div>
   
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="js/app.js"></script>
-
+  <!-- ✅ Scripts al final, en orden correcto -->
+  <script src="/js/app.js"></script>
 </body>
 </html>
