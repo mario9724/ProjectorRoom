@@ -70,25 +70,40 @@ app.post('/api/projectorrooms/create', async (req, res) => {
   try {
     const { roomName, hostUsername, manifest, sourceUrl, useHostSource, projectorType, customManifest, mediaInfo, cast, crew } = req.body;
     
-    if (!roomName || !hostUsername || !manifest || !sourceUrl) {
+    console.log('📥 Recibiendo petición de crear sala...');
+    console.log('📋 Datos recibidos:', { roomName, hostUsername, sourceUrl: sourceUrl ? 'SÍ' : 'NO', useHostSource });
+    
+    if (!roomName || !hostUsername || !manifest) {
+      console.error('❌ Datos incompletos');
       return res.json({ success: false, message: 'Datos incompletos' });
     }
     
+    // sourceUrl puede ser vacío si no comparte fuente
+    if (useHostSource && !sourceUrl) {
+      console.error('❌ Se seleccionó compartir fuente pero no hay sourceUrl');
+      return res.json({ success: false, message: 'Fuente requerida cuando se comparte' });
+    }
+    
     const roomId = generateId();
+    console.log('🆔 Room ID generado:', roomId);
     
     const roomData = {
       id: roomId,
       roomName,
       hostUsername,
       manifest,
-      sourceUrl,
-      useHostSource,
-      projectorType,
-      customManifest
+      sourceUrl: sourceUrl || '',
+      useHostSource: useHostSource !== false,
+      projectorType: projectorType || 'public',
+      customManifest: customManifest || null
     };
+    
+    console.log('💾 Guardando en DB:', roomData);
     
     // Crear sala en DB
     const room = await db.createRoom(roomData);
+    
+    console.log('✅ Sala guardada en DB');
     
     // Guardar información de la película/serie si está disponible
     if (mediaInfo) {
@@ -113,10 +128,11 @@ app.post('/api/projectorrooms/create', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error creando sala:', error);
+    console.error('❌ Error creando sala:', error);
+    console.error('❌ Stack:', error.stack);
     res.status(500).json({ 
       success: false, 
-      message: 'Error al crear la sala' 
+      message: 'Error al crear la sala: ' + error.message 
     });
   }
 });
@@ -193,7 +209,7 @@ app.put('/api/projectorrooms/:id/update-content', async (req, res) => {
     console.error('❌ Error actualizando contenido:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error en el servidor' 
+      message: 'Error en el servidor: ' + error.message 
     });
   }
 });
@@ -226,7 +242,7 @@ app.post('/api/projectorrooms/:id/reset-content', async (req, res) => {
     console.error('❌ Error reseteando contenido:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error en el servidor' 
+      message: 'Error en el servidor: ' + error.message 
     });
   }
 });
