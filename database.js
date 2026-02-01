@@ -199,7 +199,7 @@ async function deleteRoom(roomId) {
 async function updateRoomContent(roomId, manifest, sourceUrl) {
   const query = `
     UPDATE projector_rooms 
-    SET manifest = $1, source_url = $2, updated_at = CURRENT_TIMESTAMP 
+    SET manifest = $1, source_url = $2
     WHERE id = $3 
     RETURNING *
   `;
@@ -207,6 +207,7 @@ async function updateRoomContent(roomId, manifest, sourceUrl) {
   const result = await pool.query(query, [manifest, sourceUrl, roomId]);
   return result.rows[0];
 }
+
 
 // ⭐ NUEVA: Resetear calificaciones y reacciones
 async function resetRoomContent(roomId) {
