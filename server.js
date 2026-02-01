@@ -161,48 +161,36 @@ app.get('/api/projectorrooms/:id', async (req, res) => {
   }
 });
 
-// ⭐ ACTUALIZAR CONTENIDO DE SALA (manifest + sourceUrl)
-app.put('/api/projectorrooms/:id/update-content', async (req, res) => {
+// ⭐ CORREGIDO: Actualizar contenido sin tocar updated_at
+app.put('/api/projectorrooms/:roomId/update-content', async (req, res) => {
+  const { roomId } = req.params;
+  const { manifest, sourceUrl } = req.body;
+  
+  console.log('🔄 Actualizando contenido de sala:', roomId);
+  console.log('📦 Manifest:', manifest);
+  console.log('🎬 SourceUrl:', sourceUrl);
+  
   try {
-    const roomId = req.params.id;
-    const { manifest, sourceUrl, mediaInfo, cast, crew } = req.body;
+    // ⭐ SOLO actualizar manifest y sourceUrl (sin updated_at)
+    const result = await db.run(
+      `UPDATE projector_rooms 
+       SET manifest = ?, source_url = ? 
+       WHERE id = ?`,
+      [manifest, sourceUrl || null, roomId]
+    );
     
-    console.log('🔄 Actualizando contenido de sala:', roomId);
-    
-    // Validar datos
-    if (!manifest) {
-      return res.json({ success: false, message: 'Manifest requerido' });
-    }
-    
-    // Actualizar sala
-    const room = await db.updateRoomContent(roomId, manifest, sourceUrl || null);
-    
-    if (!room) {
-      return res.json({ success: false, message: 'Sala no encontrada' });
-    }
-    
-    // Actualizar información de la película/serie si está disponible
-    if (mediaInfo) {
-      await db.updateMediaInfo(roomId, mediaInfo);
-      
-      // Actualizar cast si está disponible
-      if (cast && Array.isArray(cast)) {
-        await db.deleteMediaCast(roomId);
-        await db.saveMediaCast(roomId, cast);
-      }
-      
-      // Actualizar crew si está disponible
-      if (crew && Array.isArray(crew)) {
-        await db.deleteMediaCrew(roomId);
-        await db.saveMediaCrew(roomId, crew);
-      }
+    if (result.changes === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Sala no encontrada' 
+      });
     }
     
     console.log('✅ Contenido actualizado correctamente');
     
     res.json({ 
       success: true, 
-      projectorRoom: formatRoomForClient(room)
+      message: 'Contenido actualizado correctamente' 
     });
     
   } catch (error) {
