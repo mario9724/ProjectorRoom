@@ -805,6 +805,50 @@ async function changeContent() {
             throw new Error(data.message || 'Error reseteando contenido');
         }
 
+        console.log('✅ Contenido reseteado');
+
+        // ⭐ GUARDAR configuración ANTES de redirigir
+        sessionStorage.setItem('projectorroom_changing_content', roomId);
+        sessionStorage.setItem('projectorroom_change_room_name', roomData.roomName);
+        sessionStorage.setItem('projectorroom_change_use_host_source', roomData.useHostSource);
+        sessionStorage.setItem('projectorroom_projector_type_' + roomId, roomData.projectorType || 'public');
+        sessionStorage.setItem('projectorroom_custom_manifest_' + roomId, roomData.customManifest || '');
+        sessionStorage.setItem('projectorroom_host_username_' + roomId, roomData.hostUsername);
+
+        console.log('💾 Configuración guardada:', {
+            roomId,
+            roomName: roomData.roomName,
+            useHostSource: roomData.useHostSource,
+            projectorType: roomData.projectorType
+        });
+
+        // Notificar a todos los usuarios via Socket.IO
+        if (socket) {
+            socket.emit('content-changed', { roomId });
+        }
+
+        // Redirigir a búsqueda
+        console.log('🔀 Redirigiendo a búsqueda...');
+        window.location.href = '/';
+
+    } catch (error) {
+        console.error('❌ Error cambiando contenido:', error);
+        alert('Error cambiando contenido. Intenta de nuevo.');
+    }
+}
+
+        // Resetear calificaciones y reacciones en backend
+        const res = await fetch(`/api/projectorrooms/${roomId}/reset-content`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await res.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Error reseteando contenido');
+        }
+
         // Notificar a todos los usuarios via Socket.IO
         if (socket) {
             socket.emit('content-changed', { roomId });
