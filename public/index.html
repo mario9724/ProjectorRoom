@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
+<html lang="es"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ProjectorRoom</title>
@@ -13,7 +11,7 @@
     <div id="step1" class="step active">
       <div class="step-card">
         <h1>👋 Ey roomie, ¿cómo te llamas?</h1>
-        <input type="text" id="username" placeholder="Tu nombre..." maxlength="20" autofocus>
+        <input type="text" id="username" placeholder="Tu nombre..." maxlength="20" autofocus="">
         <button class="btn-primary" onclick="goToStep(2)">Continuar →</button>
       </div>
     </div>
@@ -34,7 +32,7 @@
         <h1>🎬 ¿Qué proyector quieres usar?</h1>
         
         <div class="option-card" onclick="selectProjectorType('public')">
-          <input type="radio" name="projectorType" value="public" checked>
+          <input type="radio" name="projectorType" value="public" checked="">
           <div class="option-content">
             <div class="option-title">🌐 Proyector público</div>
             <div class="option-desc">Se usará el predeterminado ya configurado</div>
@@ -65,7 +63,7 @@
         <p class="step-subtitle">¿Compartirás tu fuente o cada roomie usará la suya?</p>
         
         <div class="option-card" onclick="selectShareMode('host')">
-          <input type="radio" name="shareMode" value="host" checked>
+          <input type="radio" name="shareMode" value="host" checked="">
           <div class="option-content">
             <div class="option-title">📡 Compartir mi proyector</div>
             <div class="option-desc">Tu fuente se usará para todos (compartes tu Debrid)</div>
@@ -146,7 +144,7 @@
         
         <div class="actions">
           <button class="btn-secondary" onclick="goToStep(5)">← Volver</button>
-          <button id="btnCreateRoom" class="btn-primary" disabled onclick="createRoom()">Crear sala →</button>
+          <button id="btnCreateRoom" class="btn-primary" disabled="" onclick="createRoom()">Crear sala →</button>
         </div>
       </div>
     </div>
@@ -192,4 +190,6 @@
   
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/app.js"></script>
-</body>
+
+
+</body></html>
