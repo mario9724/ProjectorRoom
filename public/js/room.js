@@ -95,11 +95,12 @@ async function loadRoomData() {
     
     currentRoom = data.projectorRoom;
     
-    // ⭐ DETECTAR SI ES MKV Y OCULTAR BOTÓN PROYECTAR
-    const isMKV = currentRoom.sourceUrl && (
-      currentRoom.sourceUrl.toLowerCase().includes('.mkv') ||
-      currentRoom.sourceUrl.toLowerCase().includes('mkv')
-    );
+    // ⭐ DETECCIÓN MEJORADA DE MKV
+const isMKV = currentRoom.sourceUrl && 
+  currentRoom.sourceUrl.toLowerCase().includes('.mkv') &&
+  !currentRoom.sourceUrl.toLowerCase().includes('m3u8') &&
+  !currentRoom.sourceUrl.toLowerCase().includes('mp4');
+
     
     const btnStartProjection = document.getElementById('btnStartProjection');
     
