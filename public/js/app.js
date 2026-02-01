@@ -165,7 +165,9 @@ async function selectMovie(movie) {
     poster: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
     rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A',
     year: (movie.release_date || movie.first_air_date || '').substring(0, 4),
-    overview: movie.overview || 'Sin descripción disponible'
+    overview: movie.overview || 'Sin descripción disponible',
+    selectedSeason: null,
+    selectedEpisode: null
   };
   
   // Obtener IMDb ID
@@ -183,7 +185,14 @@ async function selectMovie(movie) {
     
     goToStep(6);
     renderSelectedMovie();
-    loadSources();
+    
+    // Si es serie, cargar temporadas y mostrar selector
+    if (selectedMovie.type === 'series') {
+      await loadSeasons();
+    } else {
+      // Si es película, cargar fuentes directamente
+      loadSources();
+    }
   } catch (error) {
     console.error('Error obteniendo IMDb ID:', error);
     alert('Error obteniendo información');
@@ -198,6 +207,119 @@ function renderSelectedMovie() {
   document.getElementById('selectedYear').textContent = selectedMovie.year;
   document.getElementById('selectedType').textContent = selectedMovie.type === 'movie' ? 'Película' : 'Serie';
   document.getElementById('selectedOverview').textContent = selectedMovie.overview;
+  
+  // Ocultar selector de episodios si es película
+  if (selectedMovie.type === 'movie') {
+    document.getElementById('episodeSelector').style.display = 'none';
+  }
+}
+
+// ==================== SELECTOR DE EPISODIOS ====================
+
+// CARGAR TEMPORADAS DESDE TMDB
+async function loadSeasons() {
+  try {
+    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}?api_key=${TMDB_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    // Filtrar temporadas válidas (excluir especiales si season_number es 0)
+    selectedMovie.seasons = data.seasons.filter(s => s.season_number > 0);
+    
+    // Mostrar selector de episodios y renderizar temporadas
+    document.getElementById('episodeSelector').style.display = 'block';
+    renderSeasons();
+    
+    // Ocultar fuentes hasta que se seleccione episodio
+    document.getElementById('sourcesList').innerHTML = '<div class="loading">👆 Primero selecciona una temporada y episodio</div>';
+    document.getElementById('btnCreateRoom').disabled = true;
+    
+  } catch (error) {
+    console.error('Error cargando temporadas:', error);
+    alert('Error al cargar las temporadas');
+  }
+}
+
+// RENDERIZAR BOTONES DE TEMPORADAS
+function renderSeasons() {
+  const container = document.getElementById('seasonButtons');
+  container.innerHTML = '';
+  
+  selectedMovie.seasons.forEach(season => {
+    const btn = document.createElement('button');
+    btn.className = 'episode-btn';
+    btn.innerHTML = `
+      <div class="episode-number">T${season.season_number}</div>
+      <div class="episode-title">${season.episode_count} episodios</div>
+    `;
+    
+    btn.onclick = () => selectSeason(season.season_number);
+    container.appendChild(btn);
+  });
+}
+
+// SELECCIONAR TEMPORADA Y CARGAR EPISODIOS
+async function selectSeason(seasonNumber) {
+  selectedMovie.selectedSeason = seasonNumber;
+  selectedMovie.selectedEpisode = null;
+  
+  // Marcar temporada seleccionada visualmente
+  document.querySelectorAll('#seasonButtons .episode-btn').forEach((btn, index) => {
+    btn.classList.toggle('selected', selectedMovie.seasons[index].season_number === seasonNumber);
+  });
+  
+  // Cargar episodios de esta temporada
+  await loadEpisodes(seasonNumber);
+}
+
+// CARGAR EPISODIOS DE UNA TEMPORADA
+async function loadEpisodes(seasonNumber) {
+  try {
+    const url = `https://api.themoviedb.org/3/tv/${selectedMovie.id}/season/${seasonNumber}?api_key=${TMDB_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    selectedMovie.episodes = data.episodes;
+    
+    // Mostrar contenedor de episodios y renderizar
+    document.getElementById('episodeSelectorContainer').style.display = 'block';
+    renderEpisodes();
+    
+  } catch (error) {
+    console.error('Error cargando episodios:', error);
+    alert('Error al cargar los episodios');
+  }
+}
+
+// RENDERIZAR BOTONES DE EPISODIOS
+function renderEpisodes() {
+  const container = document.getElementById('episodeButtons');
+  container.innerHTML = '';
+  
+  selectedMovie.episodes.forEach(episode => {
+    const btn = document.createElement('button');
+    btn.className = 'episode-btn';
+    btn.innerHTML = `
+      <div class="episode-number">E${episode.episode_number}</div>
+      <div class="episode-title">${episode.name || 'Sin título'}</div>
+    `;
+    
+    btn.onclick = () => selectEpisode(episode.episode_number);
+    container.appendChild(btn);
+  });
+}
+
+// SELECCIONAR EPISODIO Y CARGAR FUENTES
+function selectEpisode(episodeNumber) {
+  selectedMovie.selectedEpisode = episodeNumber;
+  
+  // Marcar episodio seleccionado visualmente
+  document.querySelectorAll('#episodeButtons .episode-btn').forEach((btn, index) => {
+    btn.classList.toggle('selected', selectedMovie.episodes[index].episode_number === episodeNumber);
+  });
+  
+  // Ahora sí, cargar las fuentes para este episodio específico
+  loadSources();
 }
 
 // CARGAR FUENTES
@@ -213,7 +335,19 @@ async function loadSources() {
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseUrl = manifestUrl.replace('/manifest.json', '');
     const streamType = selectedMovie.type === 'movie' ? 'movie' : 'series';
-    const streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdbId}.json`;
+    
+    // Construir URL según el tipo de contenido
+    let streamUrl;
+    if (selectedMovie.type === 'movie') {
+      streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdbId}.json`;
+    } else {
+      // Para series: incluir temporada y episodio
+      const season = selectedMovie.selectedSeason;
+      const episode = selectedMovie.selectedEpisode;
+      streamUrl = `${baseUrl}/stream/${streamType}/${selectedMovie.imdbId}:${season}:${episode}.json`;
+    }
+    
+    console.log('🔍 Buscando en:', streamUrl);
     
     const res = await fetch(streamUrl);
     if (!res.ok) throw new Error('No se encontraron fuentes');
