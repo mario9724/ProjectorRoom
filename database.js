@@ -24,7 +24,8 @@ async function initDatabase() {
         use_host_source BOOLEAN DEFAULT true,
         projector_type VARCHAR(20) DEFAULT 'public',
         custom_manifest TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
@@ -47,6 +48,7 @@ async function initDatabase() {
         genres JSONB,
         runtime INTEGER, -- en minutos
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(room_id)
       )
     `);
@@ -193,6 +195,44 @@ async function deleteRoom(roomId) {
   await pool.query(query, [roomId]);
 }
 
+// ⭐ NUEVA: Actualizar contenido de sala (manifest + sourceUrl)
+async function updateRoomContent(roomId, manifest, sourceUrl) {
+  const query = `
+    UPDATE projector_rooms 
+    SET manifest = $1, source_url = $2, updated_at = CURRENT_TIMESTAMP 
+    WHERE id = $3 
+    RETURNING *
+  `;
+  
+  const result = await pool.query(query, [manifest, sourceUrl, roomId]);
+  return result.rows[0];
+}
+
+// ⭐ NUEVA: Resetear calificaciones y reacciones
+async function resetRoomContent(roomId) {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Borrar calificaciones
+    await client.query('DELETE FROM ratings WHERE room_id = $1', [roomId]);
+    
+    // Borrar reacciones
+    await client.query('DELETE FROM reactions WHERE room_id = $1', [roomId]);
+    
+    await client.query('COMMIT');
+    console.log(`✅ Contenido reseteado para sala ${roomId}`);
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error reseteando contenido:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // ==================== FUNCIONES DE MEDIA INFO ====================
 
 async function saveMediaInfo(roomId, mediaData) {
@@ -216,7 +256,8 @@ async function saveMediaInfo(roomId, mediaData) {
       popularity = EXCLUDED.popularity,
       original_language = EXCLUDED.original_language,
       genres = EXCLUDED.genres,
-      runtime = EXCLUDED.runtime
+      runtime = EXCLUDED.runtime,
+      updated_at = CURRENT_TIMESTAMP
     RETURNING *
   `;
   
@@ -245,6 +286,11 @@ async function getMediaInfo(roomId) {
   const query = 'SELECT * FROM media_info WHERE room_id = $1';
   const result = await pool.query(query, [roomId]);
   return result.rows[0];
+}
+
+// ⭐ NUEVA: Actualizar media info (usa saveMediaInfo que ya tiene ON CONFLICT)
+async function updateMediaInfo(roomId, mediaData) {
+  return await saveMediaInfo(roomId, mediaData);
 }
 
 // ==================== FUNCIONES DE CAST Y CREW ====================
@@ -309,6 +355,16 @@ async function getMediaCrew(roomId) {
   const query = 'SELECT * FROM media_crew WHERE room_id = $1';
   const result = await pool.query(query, [roomId]);
   return result.rows;
+}
+
+// ⭐ NUEVA: Borrar cast
+async function deleteMediaCast(roomId) {
+  await pool.query('DELETE FROM media_cast WHERE room_id = $1', [roomId]);
+}
+
+// ⭐ NUEVA: Borrar crew
+async function deleteMediaCrew(roomId) {
+  await pool.query('DELETE FROM media_crew WHERE room_id = $1', [roomId]);
 }
 
 // ==================== FUNCIONES DE USUARIOS ====================
@@ -480,16 +536,21 @@ module.exports = {
   createRoom,
   getRoomById,
   deleteRoom,
+  updateRoomContent,      // ⭐ NUEVA
+  resetRoomContent,       // ⭐ NUEVA
   
   // Media Info
   saveMediaInfo,
   getMediaInfo,
+  updateMediaInfo,        // ⭐ NUEVA
   
   // Cast & Crew
   saveMediaCast,
   saveMediaCrew,
   getMediaCast,
   getMediaCrew,
+  deleteMediaCast,        // ⭐ NUEVA
+  deleteMediaCrew,        // ⭐ NUEVA
   
   // Usuarios
   addUserToRoom,
