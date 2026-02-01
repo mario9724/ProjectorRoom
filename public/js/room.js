@@ -343,31 +343,22 @@ function initRoom() {
   
   renderRoom();
   
-  // Mostrar botón "Cambiar fuente" si invitado sin fuente compartida
+  // ⭐ Mostrar botón "Cambiar contenido" SOLO a anfitriones
+  if (isHost) {
+    const btnChangeContent = document.getElementById('btnChangeContent');
+    if (btnChangeContent) {
+      btnChangeContent.style.display = 'inline-block';
+    }
+    console.log('🔄 Botón "Cambiar contenido" habilitado para anfitrión');
+  }
+
+  // ⭐ Mostrar botón "Cambiar fuente" SOLO a invitados sin fuente compartida
   if (!isHost && roomData.useHostSource === false) {
     const changeSourceSection = document.getElementById('changeSourceSection');
     if (changeSourceSection) {
       changeSourceSection.style.display = 'block';
     }
-    console.log('🔄 Botón "Cambiar fuente" habilitado');
-  }
-
-  // ⭐ Mostrar botón "Cambiar contenido" a invitados
-  if (!isHost) {
-    const btnChangeContent = document.getElementById('btnChangeContent');
-    if (btnChangeContent) {
-      btnChangeContent.style.display = 'inline-block';
-    }
-    console.log('🔄 Botón "Cambiar contenido" habilitado para invitado');
-  }
-
-  // ⭐ Mostrar botón "Cambiar película" a anfitriones
-  if (isHost) {
-    const btnChangeMovie = document.getElementById('btnChangeMovie');
-    if (btnChangeMovie) {
-      btnChangeMovie.style.display = 'inline-block';
-    }
-    console.log('🎬 Botón "Cambiar película" habilitado para anfitrión');
+    console.log('🔄 Botón "Cambiar fuente" habilitado para invitado');
   }
   
   connectSocket();
@@ -470,20 +461,13 @@ function connectSocket() {
     allReactions = data.reactions || [];
   });
 
-  // ⭐ Escuchar cambio de contenido por otro invitado
+  // ⭐ Escuchar cambio de contenido por anfitrión
   socket.on('content-changed', data => {
-    console.log('🔄 Contenido cambiado por:', data.username);
+    console.log('🔄 Contenido cambiado por anfitrión');
     
-    if (data.username !== username && !isHost) {
-      const shouldReselect = confirm(
-        `🔄 ${data.username} cambió el contenido de la sala\n\n` +
-        '¿Quieres seleccionar una nueva fuente para el nuevo contenido?'
-      );
-      
-      if (shouldReselect) {
-        localStorage.removeItem('projectorroom_guest_source_' + roomId);
-        window.location.reload();
-      }
+    if (!isHost) {
+      alert('🔄 El anfitrión cambió el contenido\n\nRecargando nueva película/serie...');
+      window.location.reload();
     }
   });
 }
@@ -780,7 +764,7 @@ function copyInvite() {
 
 function changeSource() {
   if (isHost) {
-    alert('Como anfitrión, debes crear una nueva sala para cambiar la fuente');
+    alert('Como anfitrión, usa "Cambiar contenido" para actualizar la sala');
     return;
   }
   
@@ -789,48 +773,54 @@ function changeSource() {
   window.location.reload();
 }
 
-function changeMovie() {
-  if (!isHost) {
-    alert('Solo el anfitrión puede cambiar la película');
-    return;
-  }
-  
-  if (confirm('¿Quieres cambiar la película? Esto cerrará la sala actual y creará una nueva.')) {
-    window.location.href = '/';
-  }
-}
-
-function changeContent() {
-    if (isHost) {
-        alert('Como anfitrión, usa "Cambiar película" para crear una nueva sala');
+// ⭐ NUEVA FUNCIÓN: Cambiar contenido (solo anfitrión)
+async function changeContent() {
+    if (!isHost) {
+        alert('Solo el anfitrión puede cambiar el contenido');
         return;
     }
 
-    console.log('🔄 Invitado cambiando contenido...');
+    const confirm1 = confirm(
+        '🔄 ¿Cambiar el contenido de la sala?\n\n' +
+        '✅ La sala permanecerá activa\n' +
+        '✅ Chat e invitados se mantendrán\n' +
+        '❌ Calificaciones y reacciones se resetearán\n\n' +
+        '¿Continuar?'
+    );
+    
+    if (!confirm1) return;
 
-    // Si el anfitrión NO comparte fuente, advertir que los demás invitados deberán reelegir
-    if (roomData.useHostSource === false) {
-        const confirm1 = confirm(
-            '⚠️ Cambiar contenido afectará a todos los invitados\n\n' +
-            'Los demás invitados recibirán un popup para seleccionar nueva fuente.\n\n' +
-            '¿Continuar?'
-        );
+    console.log('🔄 Anfitrión cambiando contenido de la sala...');
+
+    try {
+        // Resetear calificaciones y reacciones en backend
+        const res = await fetch(`/api/projectorrooms/${roomId}/reset-content`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await res.json();
         
-        if (!confirm1) return;
+        if (!data.success) {
+            throw new Error(data.message || 'Error reseteando contenido');
+        }
+
+        // Notificar a todos los usuarios via Socket.IO
+        if (socket) {
+            socket.emit('content-changed', { roomId });
+        }
+
+        // Guardar que se va a cambiar contenido
+        sessionStorage.setItem('projectorroom_changing_content_' + roomId, 'true');
+
+        // Redirigir a búsqueda (mantiene configuración de sala)
+        alert('🔍 Selecciona nueva película/serie...');
+        window.location.href = `/?changeContent=${roomId}`;
+
+    } catch (error) {
+        console.error('❌ Error cambiando contenido:', error);
+        alert('Error cambiando contenido. Intenta de nuevo.');
     }
-
-    // Limpiar localStorage del invitado (mantiene manifest seleccionado)
-    localStorage.removeItem('projectorroom_guest_source_' + roomId);
-    localStorage.removeItem('projectorroom_guest_configured_' + roomId);
-
-    // Emitir evento Socket.IO para notificar a otros invitados
-    if (socket && roomData.useHostSource === false) {
-        socket.emit('content-changed', { roomId, username });
-    }
-
-    // Redirigir a búsqueda (mantiene manifest)
-    alert('🔍 Redirigiendo a búsqueda de nueva película/serie...\n\nTu proyector configurado se mantendrá.');
-    window.location.href = '/';
 }
 
 function openCalificationsModal() {
@@ -983,7 +973,6 @@ function setupButtons() {
   const btnExternalPlayer = document.getElementById('btnExternalPlayer');
   const btnCopyInvite = document.getElementById('btnCopyInvite');
   const btnChangeSource = document.getElementById('btnChangeSource');
-  const btnChangeMovie = document.getElementById('btnChangeMovie');
   const btnChangeContent = document.getElementById('btnChangeContent');
   const btnCalifications = document.getElementById('btnCalifications');
   const btnReactions = document.getElementById('btnReactions');
@@ -997,7 +986,6 @@ function setupButtons() {
   if (btnExternalPlayer) btnExternalPlayer.onclick = openExternalPlayer;
   if (btnCopyInvite) btnCopyInvite.onclick = copyInvite;
   if (btnChangeSource) btnChangeSource.onclick = changeSource;
-  if (btnChangeMovie) btnChangeMovie.onclick = changeMovie;
   if (btnChangeContent) btnChangeContent.onclick = changeContent;
   if (btnCalifications) btnCalifications.onclick = openCalificationsModal;
   if (btnReactions) btnReactions.onclick = openReactionsModal;
