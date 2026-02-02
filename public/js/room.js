@@ -10,9 +10,8 @@ let currentRoom = null;
 let currentUsername = '';
 let myRating = 0;
 
-// ==================== FUNCIONES AUXILIARES ====================
+// ==================== FUNCIÓN DETECTAR MKV ====================
 
-// ⭐ FUNCIÓN CENTRALIZADA PARA DETECTAR MKV
 function checkAndHideProjectorIfMKV(sourceUrl) {
   if (!sourceUrl) {
     console.log('⚠️ No hay sourceUrl disponible');
@@ -40,12 +39,6 @@ function checkAndHideProjectorIfMKV(sourceUrl) {
     btnStartProjection.style.display = 'block';
     btnStartProjection.disabled = false;
   }
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 // ==================== INICIALIZACIÓN ====================
@@ -147,7 +140,7 @@ async function loadRoomData() {
     
     displayRoomInfo(data.projectorRoom, data.mediaInfo);
     
-    // ⭐ VERIFICAR MKV DE NUEVO DESPUÉS DE displayRoomInfo
+    // ⭐ VERIFICAR MKV DESPUÉS DE displayRoomInfo
     setTimeout(() => {
       checkAndHideProjectorIfMKV(currentRoom.sourceUrl);
     }, 100);
@@ -199,7 +192,7 @@ function displayRoomInfo(room, mediaInfo) {
     document.getElementById('movieOverview').textContent = mediaInfo.overview || 'Sin descripción disponible';
   }
   
-  // ⭐ VERIFICAR MKV AL MOSTRAR INFO
+  // ⭐ VERIFICAR MKV AQUÍ TAMBIÉN
   checkAndHideProjectorIfMKV(room.sourceUrl);
 }
 
@@ -250,6 +243,12 @@ function addChatMessage(username, message, timestamp, scroll = true) {
   if (scroll) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // ==================== CALIFICACIONES ====================
@@ -445,6 +444,12 @@ function setupCastButtons() {
   }
 }
 
+function openInVLC(streamUrl) {
+  const vlcUrl = `vlc://${streamUrl.replace(/^https?:\/\//, '')}`;
+  console.log('🎬 Abriendo en VLC:', vlcUrl);
+  window.location.href = vlcUrl;
+}
+
 // ==================== EVENT LISTENERS ====================
 
 function setupEventListeners() {
@@ -452,7 +457,7 @@ function setupEventListeners() {
   const btnStartProjection = document.getElementById('btnStartProjection');
   btnStartProjection.addEventListener('click', startProjection);
   
-  // ⭐ Botón: Usar pantalla externa (VLC en iOS, selector en Android)
+  // Botón: Usar pantalla externa
   const btnExternalPlayer = document.getElementById('btnExternalPlayer');
   
   btnExternalPlayer.addEventListener('click', () => {
@@ -466,19 +471,16 @@ function setupEventListeners() {
     const isAndroid = /Android/.test(navigator.userAgent);
     
     if (isIOS) {
-      // iOS: Abrir en VLC
       const vlcUrl = `vlc://${streamUrl.replace(/^https?:\/\//, '')}`;
       console.log('🎬 Abriendo en VLC (iOS):', vlcUrl);
       window.location.href = vlcUrl;
       
     } else if (isAndroid) {
-      // Android: Abrir selector nativo de reproductor
       const intent = `intent://${streamUrl.replace(/^https?:\/\//, '')}#Intent;action=android.intent.action.VIEW;type=video/*;end`;
       console.log('🎬 Abriendo selector de reproductor (Android):', intent);
       window.location.href = intent;
       
     } else {
-      // Escritorio: Abrir directamente el stream
       window.open(streamUrl, '_blank');
     }
   });
